@@ -10,21 +10,19 @@ public struct NewMatchChoice: Hashable, Sendable {
     public var players: [PlayerSetup]
     /// What the people see of the map.
     public var sight: MapSight
-    /// Whether bridges may be built (ruled 2026-11-21).
-    public var bridges: Bool
     /// The age the match begins in (ruled 2026-11-21).
     public var startingAge: Age
     /// The map's size (ruled 2026-11-21).
     public var mapSize: MapSize
 
-    public init(players: [PlayerSetup], sight: MapSight = .explore, bridges: Bool = true, startingAge: Age = .stone,
+    public init(players: [PlayerSetup], sight: MapSight = .explore, startingAge: Age = .towns,
                 mapSize: MapSize = .standard) {
-        self.players = players; self.sight = sight; self.bridges = bridges
+        self.players = players; self.sight = sight
         self.startingAge = startingAge; self.mapSize = mapSize
     }
 
     public func setup(map: GameMap, seed: UInt64, catalogue: Catalogue = .standard) -> MatchSetup {
-        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight, bridges: bridges,
+        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight,
                    startingAge: startingAge)
     }
 }
@@ -73,10 +71,8 @@ public struct NewMatchModel: Hashable, Sendable {
     public var matchName: String
     /// What the people in the match see of the map (ruled 2026-11-20).
     public var sight: MapSight = .explore
-    /// Whether bridges may be built in the match (ruled 2026-11-21: a setting of the match).
-    public var bridges = true
     /// The age the match begins in (ruled 2026-11-21: a setting of the match).
-    public var startingAge: Age = .stone
+    public var startingAge: Age = .towns
     /// The map's size (ruled 2026-11-21: a setting of the match).
     public var mapSize: MapSize = .standard
     private var nextID: Int
@@ -226,7 +222,7 @@ public struct NewMatchModel: Hashable, Sendable {
             return GameCore.Seat(player: player.id, team: player.team, kind: .host, civilization: seat.civilization,
                                  holder: host.isEmpty ? "Host" : host)
         }
-        return Lobby(name: lobbyName, seats: seats, sight: sight, bridges: bridges, startingAge: startingAge, mapSize: mapSize)
+        return Lobby(name: lobbyName, seats: seats, sight: sight, startingAge: startingAge, mapSize: mapSize)
     }
 
     /// The players in seat order, numbered from 0; teams are numbered by first
@@ -240,6 +236,6 @@ public struct NewMatchModel: Hashable, Sendable {
             players.append(PlayerSetup(id: PlayerID(i), civilization: seat.civilization, team: TeamID(team),
                                        controller: seat.controller))
         }
-        return NewMatchChoice(players: players, sight: sight, bridges: bridges, startingAge: startingAge, mapSize: mapSize)
+        return NewMatchChoice(players: players, sight: sight, startingAge: startingAge, mapSize: mapSize)
     }
 }

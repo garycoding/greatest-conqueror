@@ -7,31 +7,30 @@ import CoreGraphics
 import Foundation
 import Testing
 
-/// The combined source draws every key the Industrial age needs, and each key of
-/// the Iron, Alchemy and Industrial ages from the batch approved for it rather than from an
-/// earlier batch or a placeholder.
-@Test func everyKeyThroughTheIndustrialAgeComesFromItsApprovedBatch() {
+/// The combined source draws every key the last age needs, and each key in the
+/// Iron, Alchemy and Industrial looks from the batch approved for it rather than
+/// from an earlier batch or a placeholder.
+@Test func everyKeyThroughTheLastAgeComesFromItsApprovedBatch() {
     let all = GameSprites()
-    let approved: [Age: [any SpriteSource]] = [
-        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites(), BridgeSprites()],
-        .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(), BridgeSprites(),
+    let approved: [Look: [any SpriteSource]] = [
+        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites()],
+        .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(),
                    AlchemyBoatSprites()],
-        .industrial: [IndustrialOldBuildingSprites(), IndustrialNewBuildingSprites(), IndustrialPeopleSprites(),
-                      IndustrialWarriorSprites(), BridgeSprites(), IndustrialBoatSprites()],
+        .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(),
+                      IndustrialBoatSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []
     // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn.
-    let keys = SpriteKey.required(through: .industrial).filter { key in
+    let keys = SpriteKey.required(through: .hospitals).filter { key in
         if case .unit(let kind, _) = key.subject, kind.isWarfighter, key.pose == .working { return false }
         return true
     }
     for key in keys {
         guard let image = all.sprite(key) else { missing.append(key); continue }
-        let age: Age? = {
+        let age: Look? = {
             switch key.subject {
-            case .unit(_, let age), .building(_, let age): return age
-            case .site(let kind): return kind == .iron ? .iron : kind == .oilField ? .industrial : nil
+            case .unit(_, let look), .building(_, let look): return look
             default: return nil
             }
         }()

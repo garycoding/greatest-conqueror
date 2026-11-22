@@ -73,10 +73,10 @@ import Testing
     /// are the Stone batch's, and the boat house the Industrial old buildings'.
     @Test func everyOtherKeyHasNone() {
         let batch = Set(source.keys)
-        var others = SpriteKey.required(through: .industrial).filter { !batch.contains($0) }
+        var others = SpriteKey.required(through: .hospitals).filter { !batch.contains($0) }
         for frame in [-1, 12] { others.append(SpriteKey(Self.boat, .walking, frame: frame)) }
         others.append(SpriteKey(Self.boat, .fighting))
-        others += [Age.stone, .bronze, .iron, .alchemy].map { SpriteKey(.unit(.boat, $0), .standing) }
+        others += [Look.stone, .bronze, .iron, .alchemy].map { SpriteKey(.unit(.boat, $0), .standing) }
         others.append(SpriteKey(.site(.fish), .complete))
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .afloat) }
         others.append(SpriteKey(.building(.boatHouse, .industrial), .complete))

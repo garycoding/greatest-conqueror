@@ -27,25 +27,15 @@ enum Palette {
         switch resource {
         case .food: Color(red: 0.80, green: 0.40, blue: 0.28)
         case .wood: Color(red: 0.55, green: 0.38, blue: 0.24)
-        case .stone: Color(red: 0.62, green: 0.62, blue: 0.60)
-        case .bronze: Color(red: 0.76, green: 0.52, blue: 0.28)
         case .gold: Color(red: 0.90, green: 0.74, blue: 0.28)
-        case .iron: Color(red: 0.45, green: 0.52, blue: 0.60)
-        case .gunpowder: Color(red: 0.34, green: 0.30, blue: 0.30)
-        case .oil: Color(red: 0.22, green: 0.26, blue: 0.24)
-        case .electricity: Color(red: 0.95, green: 0.85, blue: 0.35)
-        case .data: Color(red: 0.30, green: 0.60, blue: 0.65)
         }
     }
 
     static func tint(of unit: UnitKind) -> Color {
-        switch unit.sector {
-        case .workers: ochre
-        case .warfighters: brick
-        case .scholars: teal
-        case .engineers: Color(red: 0.55, green: 0.38, blue: 0.24)
-        case .merchants: Color(red: 0.58, green: 0.33, blue: 0.55)
-        case nil: paperDeep
+        switch unit {
+        case .worker: ochre
+        case .car, .boat: paperDeep
+        default: brick
         }
     }
 }
@@ -132,14 +122,9 @@ struct ResourceGlyph: View {
             let r = CGRect(origin: .zero, size: s).insetBy(dx: 2, dy: 2)
             let path: Path
             switch resource {
-            case .food, .oil: path = Path(ellipseIn: r)
+            case .food: path = Path(ellipseIn: r)
             case .wood: path = Path(roundedRect: r.insetBy(dx: 0, dy: s.height * 0.12), cornerRadius: 3)
-            case .stone: path = Self.polygon(in: r, sides: 6)
-            case .bronze, .electricity: path = Self.polygon(in: r, sides: 3)
             case .gold: path = Self.polygon(in: r, sides: 4)
-            case .iron: path = Self.polygon(in: r, sides: 5)
-            case .gunpowder: path = Self.polygon(in: r, sides: 8)
-            case .data: path = Path(roundedRect: r, cornerRadius: 5)
             }
             context.fill(path, with: .color(Palette.colour(of: resource)))
             context.stroke(path.offsetBy(dx: 0.8, dy: 0.8), with: .color(Palette.ink), lineWidth: 1.1)
@@ -199,8 +184,6 @@ struct EntityIcon: View {
         let pose: SpritePose
         switch kind {
         case .unit: pose = .standing
-        // A bridge has no single picture: the icon shows the near lane's middle piece of a bridge of five.
-        case .building(.bridge): pose = BridgePlace(run: .alongX, lane: 1, index: 2, count: 5).pose(complete: true)
         case .building: pose = .complete
         }
         return sprites.sprite(SpriteKey(subject, pose))
@@ -219,21 +202,15 @@ struct PersonGlyph: View {
             context.fill(head, with: .color(Color(red: 0.93, green: 0.78, blue: 0.62)))
             var mark = Path()
             switch kind {
-            case .clubman, .spearman, .swordsman:
+            case .spearman, .swordsman:
                 mark.move(to: CGPoint(x: mid + u * 0.34, y: u * 0.96)); mark.addLine(to: CGPoint(x: mid + u * 0.34, y: u * 0.12))
-            case .slinger, .archer, .musketeer, .rifleman:
+            case .musketeer, .rifleman:
                 mark.addArc(center: CGPoint(x: mid + u * 0.30, y: u * 0.62), radius: u * 0.26,
                             startAngle: .degrees(-70), endAngle: .degrees(70), clockwise: false)
-            case .chariot, .horseman, .catapult, .knight, .cannon, .fieldGun, .armouredCar, .car, .boat:
+            case .horseman, .knight, .cannon, .fieldGun, .car, .boat:
                 mark.addEllipse(in: CGRect(x: mid - u * 0.46, y: u * 0.76, width: u * 0.24, height: u * 0.24))
                 mark.addEllipse(in: CGRect(x: mid + u * 0.22, y: u * 0.76, width: u * 0.24, height: u * 0.24))
-            case .engineer:
-                mark.addRect(CGRect(x: mid - u * 0.22, y: u * 0.04, width: u * 0.44, height: u * 0.1))
-            case .scholar:
-                mark.addRect(CGRect(x: mid - u * 0.1, y: u * 0.56, width: u * 0.2, height: u * 0.16))
-            case .merchant:
-                mark.addEllipse(in: CGRect(x: mid - u * 0.08, y: u * 0.58, width: u * 0.16, height: u * 0.16))
-            case .worker, .founder:
+            case .worker:
                 break
             }
             context.stroke(mark, with: .color(Palette.ink), lineWidth: 1.3)
@@ -265,10 +242,6 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.08, 0.5, 0.84, 0.42), wall), (rect(0.36, 0.2, 0.28, 0.72), wall), (roof(0.30, 0.04, 0.40, 0.2), roofColour)]
             case .house:
                 parts = [(rect(0.2, 0.5, 0.6, 0.42), wall), (roof(0.12, 0.2, 0.76, 0.32), roofColour)]
-            case .storagePit:
-                parts = [(Path(ellipseIn: CGRect(x: u * 0.1, y: u * 0.5, width: u * 0.8, height: u * 0.4)), Color(red: 0.5, green: 0.38, blue: 0.26))]
-            case .stockPen:
-                parts = [(rect(0.1, 0.45, 0.8, 0.45), Palette.sage.opacity(0.7)), (rect(0.1, 0.45, 0.06, 0.45), wall), (rect(0.84, 0.45, 0.06, 0.45), wall), (rect(0.47, 0.45, 0.06, 0.45), wall)]
             case .barracks:
                 parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Palette.teal), (rect(0.44, 0.04, 0.05, 0.22), Palette.ink), (rect(0.49, 0.04, 0.2, 0.1), roofColour)]
             case .watchTower:
@@ -277,27 +250,11 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.06, 0.5, 0.88, 0.4), Color(red: 0.76, green: 0.66, blue: 0.36))]
             case .stable:
                 parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Color(red: 0.55, green: 0.38, blue: 0.24))]
-            case .siegeWorkshop:
-                parts = [(rect(0.06, 0.4, 0.88, 0.5), wall), (roof(0.02, 0.16, 0.96, 0.28), Palette.inkSoft)]
-            case .stoneWall:
-                parts = [(rect(0.08, 0.3, 0.84, 0.6), Color(red: 0.62, green: 0.6, blue: 0.56))]
             case .castle:
                 parts = [(rect(0.1, 0.35, 0.8, 0.55), Color(red: 0.62, green: 0.6, blue: 0.56)), (rect(0.04, 0.15, 0.2, 0.75), Color(red: 0.62, green: 0.6, blue: 0.56)), (rect(0.76, 0.15, 0.2, 0.75), Color(red: 0.62, green: 0.6, blue: 0.56))]
-            case .alchemistsWorkshop:
-                parts = [(rect(0.12, 0.45, 0.76, 0.45), wall), (roof(0.06, 0.2, 0.88, 0.28), Palette.teal), (rect(0.66, 0.08, 0.1, 0.2), Palette.ink)]
-            case .factory:
-                parts = [(rect(0.08, 0.45, 0.84, 0.45), Color(red: 0.62, green: 0.3, blue: 0.24)), (rect(0.68, 0.06, 0.12, 0.4), Palette.ink)]
-            case .railwayDepot:
-                parts = [(rect(0.1, 0.4, 0.8, 0.4), wall), (roof(0.04, 0.18, 0.92, 0.24), Palette.inkSoft), (rect(0.02, 0.84, 0.96, 0.06), Palette.ink)]
-            case .oilWell:
-                parts = [(rect(0.44, 0.1, 0.12, 0.8), Palette.ink), (rect(0.2, 0.8, 0.6, 0.1), Palette.inkSoft)]
-            case .bridge:
-                parts = [(rect(0.0, 0.4, 1.0, 0.2), Color(red: 0.55, green: 0.38, blue: 0.24))]
             case .boatHouse:
                 parts = [(rect(0.1, 0.3, 0.8, 0.45), Color(red: 0.55, green: 0.38, blue: 0.24)),
                          (rect(0.0, 0.75, 1.0, 0.2), Color(red: 0.36, green: 0.52, blue: 0.72))]
-            case .palisade:
-                parts = [(rect(0.12, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.43, 0.24, 0.14, 0.66), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.74, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24))]
             }
             for (path, colour) in parts {
                 context.fill(path, with: .color(colour))

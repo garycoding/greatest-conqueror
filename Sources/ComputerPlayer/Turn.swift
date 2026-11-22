@@ -32,12 +32,11 @@ final class Turn {
     private var ordered: [Bool]
 
     // What the player owns.
+    /// Workers that gather and farm.
     var workers: [EntityView] = []
-    var engineers: [EntityView] = []
-    var scholars: [EntityView] = []
+    /// Workers set aside to build and repair (`Tuning.builders`): the oldest.
+    var builders: [EntityView] = []
     var warfighters: [EntityView] = []
-    var founders: [EntityView] = []
-    var merchants: [EntityView] = []
     var boats: [EntityView] = []
     var buildings: [EntityView] = []
     /// People in training at its buildings, by `UnitKind.rawValue`, with those
@@ -50,7 +49,8 @@ final class Turn {
     var base: MapPosition
 
     // What others show.
-    /// Opponents' people in sight, founders left out, since they cannot be harmed.
+    /// Opponents' units in sight, cars and boats left out: nothing harms a
+    /// car, and a boat on the water is out of reach and keeps nobody in the match.
     var enemyUnits: [EntityView] = []
     /// The warfighters of allied computer players.
     var allyWarfighters: [EntityView] = []
@@ -110,10 +110,6 @@ final class Turn {
                     case .unit(let kind):
                         switch kind {
                         case .worker: workers.append(entity)
-                        case .engineer: engineers.append(entity)
-                        case .scholar: scholars.append(entity)
-                        case .founder: founders.append(entity)
-                        case .merchant: merchants.append(entity)
                         case .boat: boats.append(entity)
                         default: if kind.isWarfighter { warfighters.append(entity) }
                         }
@@ -132,16 +128,21 @@ final class Turn {
                     case .unit(let kind): if kind.isWarfighter && !owner.isHuman { allyWarfighters.append(entity) }
                     case .building: allyBuildings.append(entity)
                     }
-                } else if !owner.isDefeated, case .unit(let kind) = entity.kind, kind != .founder {
+                } else if !owner.isDefeated, case .unit(let kind) = entity.kind, kind != .car, kind != .boat {
                     enemyUnits.append(entity)
                 }
             }
         }
+        // The oldest workers build (`Tuning.builders`), one for every five
+        // workers at first; the view lists entities in id order.
+        let setAside = min(tuning.builders(at: view.age), max(1, workers.count / 5), workers.count)
+        builders = Array(workers.prefix(setAside))
+        workers.removeFirst(setAside)
         if let centre = buildings.first(where: { $0.kind == .building(.townCentre) && Turn.isComplete($0) }) {
             base = centre.position
         } else if let first = buildings.first {
             base = first.position
-        } else if let middle = Turn.mean((workers + engineers + scholars + warfighters + founders + merchants).map(\.position)) {
+        } else if let middle = Turn.mean((workers + builders + warfighters).map(\.position)) {
             base = middle
         }
     }
@@ -185,21 +186,15 @@ final class Turn {
     /// The parts of an action, in their order of priority.
     func play() {
         remember()
-        if found() { return }
         advance()
         defend()
         build()
         trainAtTownCentre()
-        upgrade()
         trainArmy()
-        research()
         campaign()
         scout()
-        employCraftsmen()
         employWorkers()
-        employScholars()
-        employEngineers()
-        employMerchants()
+        employBuilders()
         trainBoats()
         sendBoats()
     }
@@ -465,13 +460,10 @@ struct Ground {
             if building[here] > 0 { near.append(placed[Int(building[here]) - 1]) }
             if site[here] > 0 { on.append(sites[Int(site[here]) - 1]) }
         }
-        // An oil field holds nothing but a well (`Placement.canPlace(_:at:in:)`).
-        let fields = on.filter { $0.kind == .oilField && $0.remaining > 0 }.map(\.tile)
-        var occupied = Placement.occupied(buildings: near, sites: on, catalogue: catalogue)
-        for t in fields { occupied.insert(t) }
+        let occupied = Placement.occupied(buildings: near, sites: on, catalogue: catalogue)
         return Placement.canPlace(kind, at: origin, width: width, height: height, terrain: view.terrain,
                                   occupied: occupied, explored: { view.visibility(at: $0) != .unexplored },
-                                  catalogue: catalogue, wanted: Placement.site(for: kind) == .oilField ? Set(fields) : [])
+                                  catalogue: catalogue)
     }
 
     /// Whether a person can stand on a tile: inside the map, passable, and

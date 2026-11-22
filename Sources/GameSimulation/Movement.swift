@@ -177,79 +177,7 @@ private let steps: [Step] = [
 extension Simulation {
     /// Move a person one tick toward a goal. People do not block one another;
     /// only `Placement`'s blocked tiles do.
-    mutating func approach(_ i: Int, _ goal: Goal) -> Approach {
-        if let trip = entities[i].rail {
-            if trip.goal == goal.anchor || goal.moving { return ride(i, trip, goal) }
-            entities[i].rail = nil
-        }
-        if !entities[i].route.planned, goal.distance(to: entities[i].position) > goal.reach, let trip = railTrip(i, goal) {
-            entities[i].rail = trip
-            return ride(i, trip, goal)
-        }
-        return walk(i, goal)
-    }
-
-    /// The railway journey that brings a person to the goal sooner than walking
-    /// the whole way, if there is one: boarding at the player's depot nearest
-    /// the person and alighting at the one nearest the goal (for a merchant, an
-    /// ally's depot too), taken when it needs at most four-fifths of the time
-    /// on foot, counted in straight lines.
-    func railTrip(_ i: Int, _ goal: Goal) -> RailTrip? {
-        guard let railway = catalogue.railway, entities[i].isPerson, !entities[i].isBoat,
-              let kind = entities[i].unitKind else { return nil }
-        let owner = entities[i].owner
-        let team = teamOf(owner)
-        var own: [Int] = [], alighting: [Int] = []
-        for j in depots {
-            guard entities[j].alive, entities[j].complete else { continue }
-            if entities[j].owner == owner { own.append(j); alighting.append(j) }
-            else if kind == .merchant && teamOf(entities[j].owner) == team { alighting.append(j) }
-        }
-        guard !own.isEmpty, alighting.count >= 2 else { return nil }
-        let from = entities[i].position, to = goal.nearestPoint(to: from)
-        func nearest(_ list: [Int], _ p: MapPosition) -> Int {
-            list.min { (entities[$0].position.distance(to: p), $0) < (entities[$1].position.distance(to: p), $1) }!
-        }
-        let board = nearest(own, from), alight = nearest(alighting, to)
-        guard board != alight else { return nil }
-        let speed = max(0.0001, tables.speedPerTick[kind.rawValue])
-        let onFoot = from.distance(to: to) / speed
-        let byRail = (from.distance(to: entities[board].position) + entities[alight].position.distance(to: to)) / speed
-            + Double(railway.journeyTime)
-        guard byRail <= onFoot * 0.8 else { return nil }
-        return RailTrip(board: entities[board].id, alight: entities[alight].id, departed: nil, goal: goal.anchor)
-    }
-
-    /// A journey by railway: to the boarding depot, the wait for the journey,
-    /// and out beside the depot alighted at. A depot lost on the way ends the
-    /// journey where the person is.
-    mutating func ride(_ i: Int, _ trip: RailTrip, _ goal: Goal) -> Approach {
-        guard let railway = catalogue.railway, let a = index(of: trip.board), let b = index(of: trip.alight) else {
-            entities[i].rail = nil
-            return walk(i, goal)
-        }
-        guard let departed = trip.departed else {
-            switch walk(i, .tiles(entities[a].origin, entities[a].size, reach: Rule.besideReach)) {
-            case .arrived:
-                entities[i].rail?.departed = tick
-                entities[i].route = Route()
-                return .moving
-            case .unreachable:
-                entities[i].rail = nil
-                return walk(i, goal)
-            case .moving:
-                return .moving
-            }
-        }
-        if tick - departed < railway.journeyTime { return .moving }
-        let spot = freeTile(besideBuilding: b, index: entities[b].spawned)
-        entities[b].spawned += 1
-        entities[i].position = spot.centre
-        entities[i].route = Route()
-        entities[i].rail = nil
-        restamp(i)
-        return .moving
-    }
+    mutating func approach(_ i: Int, _ goal: Goal) -> Approach { walk(i, goal) }
 
     /// The way on foot toward a goal.
     mutating func walk(_ i: Int, _ goal: Goal) -> Approach {
@@ -455,7 +383,7 @@ extension Simulation {
     }
 
     /// The living opponent person nearest a rectangle of the map, within a
-    /// distance of it: never a founder, which cannot be harmed, and, if asked,
+    /// distance of it: never a car, which cannot be harmed, and, if asked,
     /// only one the team can see. Ties go to the lower id.
     func nearestOpponent(of team: Int, minX: Double, minY: Double, maxX: Double, maxY: Double, within radius: Double,
                          visibleOnly: Bool) -> Int? {

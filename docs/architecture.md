@@ -35,11 +35,11 @@ A module uses another only through the types in `GameCore` and the protocols nam
   - `GameInterface` owns the panels: its buttons issue orders and set `placing`; a click on the small map moves the camera; it shows `lastRefusal`.
   - Both issue orders through `PlayerSession.issue`, never to the simulation directly. Orders flow one way: `issue` returns nothing, and a refusal comes back as `GameEvent.refused` in a later view, which `PlayerSession.update` turns into `lastRefusal`. The simulation therefore need not run on the main actor, and a second Mac can send orders across the LAN in the same way.
 
-`Placement` in `GameCore` is the one rule for where things may stand: a tile is blocked by impassable terrain, a building's footprint, or a tree, stone or metal deposit that remains (`SiteKind.blocksTile`); a building may be placed where every tile of its footprint is inside the map, buildable, unblocked and explored. The simulation, the drawing's placement outline and the computer player all use it.
+`Placement` in `GameCore` is the one rule for where things may stand: a tile is blocked by impassable terrain, a building's footprint, or a tree or gold mine that remains (`SiteKind.blocksTile`); a building may be placed where every tile of its footprint is inside the map, buildable, unblocked and explored. The simulation, the drawing's placement outline and the computer player all use it.
 
-The rules a reader could take two ways are settled in the documentation of `Order` (copper and tin, what scholars do at a building) and of `GameSimulating` (refusals, the checksum).
+The rules a reader could take two ways are settled in the documentation of `Order` (what workers do at a building, the advance to the next age) and of `GameSimulating` (refusals, the checksum).
 
-`Samples` in `GameCore` gives fixed maps and views (`stoneAgeOpening`, `bronzeAgeSkirmish`, `twoPlayerSetup`), so that the drawing, the interface and the computer player can be built and tested before the simulation exists.
+`Samples` in `GameCore` gives fixed maps and views (`townsAgeOpening`, `farmsAgeSkirmish`, `twoPlayerSetup`), so that the drawing, the interface and the computer player can be built and tested before the simulation exists.
 
 ## Time
 
@@ -61,7 +61,7 @@ A building's footprint (`BuildingStats.footprint`) covers tiles from its origin 
 
 ## Sprites
 
-- **Keys.** A sprite is named by a `SpriteKey`, whose subject for an entity is chosen by `SpriteSubject.of(_:ownerAge:)` in both the drawing and the artwork: a subject (a person of a kind at an age, a building in an age's style, a site, or a terrain tile), a pose, and a frame. `SpriteKey.required(through:)` lists every picture a milestone needs; it is the artwork's checklist.
+- **Keys.** A sprite is named by a `SpriteKey`, whose subject for an entity is chosen by `SpriteSubject.of(_:ownerAge:)` in both the drawing and the artwork: a subject (a unit of a kind in a look, a building in the look of its owner's age, a site, or a terrain tile; each age is drawn in a look, `Age.look`), a pose, and a frame. `SpriteKey.required(through:)` lists every picture a milestone needs; it is the artwork's checklist.
 - **Poses.** `standing`, `walking`, `working` and `fighting` for people; `complete` and `under-construction` for buildings. Poses are open-ended strings, so that the art style guide can add more; the drawing falls back to `standing` or `complete` where a pose is missing. A pose is a cycle of 12 frames, shown at 12 frames a second ([`art-style.md`](art-style.md#movement)). A site on a water tile is asked for in the pose `afloat` (ruled 2026-11-21: a rock rising from the water, with no shadow on the ground), falling back to `complete`. A site that moves, such as the fish, is drawn as a cycle of 12 frames too; the drawing runs each tile's cycle a number of frames ahead (`SiteNode.frameOffset`), so that neighbouring tiles, and the four tiles of a shoal, do not move in unison.
 - **Facing.** A person faces one of eight directions on the screen, chosen from the way it moves (`Facing.of`; ruled 2026-11-21). Five views are drawn (`SpriteView`: side, front-quarter, front, back and back-quarter, each facing right or toward the viewer's right), and the drawing mirrors them for the three facings toward the left. A source that draws views is a `ViewedSpriteSource`; where a view is not drawn, the drawing falls back to the side.
 - **Size.** Pictures are drawn at twice their size in points, for Retina displays. A person stands about 48 points tall on a tile 64 points wide; a building covers its footprint's diamonds.

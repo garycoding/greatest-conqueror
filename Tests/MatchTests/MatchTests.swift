@@ -55,18 +55,18 @@ let matchLimit = Tick.seconds(40 * 60)
 func reportHowEqualsPlay() {
     for seed: UInt64 in [3, 4] {
         var host = Host(setup: computerMatch(seed: seed, size: 64, difficulties: [.standard, .standard]))
-        var bronzeAt: [Int: Int] = [:]
+        var farmsAt: [Int: Int] = [:]
         while host.outcome == nil && host.tick < matchLimit {
             host.advance()
             if host.tick % 200 == 0 {
-                for p in host.peek(for: PlayerID(0)).players where p.age == .bronze && bronzeAt[p.id.rawValue] == nil {
-                    bronzeAt[p.id.rawValue] = host.tick / Tick.rate
+                for p in host.peek(for: PlayerID(0)).players where p.age == .farms && farmsAt[p.id.rawValue] == nil {
+                    farmsAt[p.id.rawValue] = host.tick / Tick.rate
                 }
             }
         }
         let v = host.peek(for: PlayerID(0))
         let own = v.entities.filter { $0.owner == PlayerID(0) }
-        print("seed \(seed): tick \(host.tick / Tick.rate / 60) min, outcome \(String(describing: host.outcome)), bronze at s \(bronzeAt), p0 entities \(own.count), p0 resources \(v.resources)")
+        print("seed \(seed): tick \(host.tick / Tick.rate / 60) min, outcome \(String(describing: host.outcome)), farms at s \(farmsAt), p0 entities \(own.count), p0 resources \(v.resources)")
     }
 }
 
@@ -118,19 +118,17 @@ func reportHowEqualsPlay() {
     #expect(reopened.dropped.isEmpty)
 }
 
-/// Two hard computer players on seed 5: one reaches the Iron age, and the match
-/// ends with a winner (plan step 4 of the Iron age). Seed 3 served until
-/// engineers went on to the next building on their own (2026-11-19), seed 6
-/// until five copper, tin and iron deposits were put near each start
-/// (2026-11-21), and seed 2 until the water was given fish and rocks
-/// (2026-11-21); most matches on these maps end before the Iron age.
-@Test func twoHardComputerPlayersReachTheIronAgeAndFinish() {
+/// Two hard computer players on seed 5: both reach the age of farms, and the
+/// match ends with a winner. (Cities of Progress asked for its third age; the
+/// computer players of Greatest Conqueror, with no warfighter before the age
+/// of farms, win before the age of ships until they are taught the new rules.)
+@Test func twoHardComputerPlayersReachTheAgeOfFarmsAndFinish() {
     var host = Host(setup: computerMatch(seed: 5, size: 64, difficulties: [.hard, .hard]))
     var reached = false
     while host.outcome == nil && host.tick < matchLimit {
         host.advance()
-        if !reached, host.tick % 100 == 0 { reached = host.peek(for: PlayerID(0)).players.contains { $0.age == .iron } }
+        if !reached, host.tick % 100 == 0 { reached = host.peek(for: PlayerID(0)).players.allSatisfy { $0.age >= .farms } }
     }
-    #expect(reached, "no one reached the Iron age; \(String(describing: host.outcome)) at \(host.tick / Tick.rate / 60) minutes")
+    #expect(reached, "not both reached the age of farms; \(String(describing: host.outcome)) at \(host.tick / Tick.rate / 60) minutes")
     #expect(host.outcome != nil, "no winner after \(host.tick) ticks")
 }

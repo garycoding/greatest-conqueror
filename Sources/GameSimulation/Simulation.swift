@@ -3,7 +3,7 @@
 
 import GameCore
 
-/// The rules of the Stone and Bronze ages, for a match of two to six players in
+/// The rules of the game, for a match of two to six players in
 /// any grouping of teams: the module's conformance to `GameSimulating`
 /// (docs/architecture.md, "The seams").
 ///
@@ -14,7 +14,7 @@ import GameCore
 /// effect of a blow, a delivery or a death is immediate, so a later entity in
 /// the same tick sees it. No outcome depends on the order of a `Dictionary` or a
 /// `Set`. Within a tick: people and buildings act in ID order; the dead are then
-/// removed; then defeat, founders and the outcome are settled.
+/// removed; then defeat and the outcome are settled.
 ///
 /// The cached grids (passability, sight counts, the spatial index, path-search
 /// buffers) are derived from the state, rebuilt when a saved match is decoded,
@@ -33,8 +33,6 @@ public struct Simulation: GameSimulating {
     public var isPaused = false
     /// What the people see of the map; nil is `.explore` (`MapSight`).
     public internal(set) var sight: MapSight?
-    /// True when the match's setup forbids bridges (ruled 2026-11-21); nil is allowed.
-    public internal(set) var noBridges: Bool?
     /// In player order; `players[i].id == PlayerID(i)`.
     var players: [PlayerState]
     /// Ordered by `TeamID`.
@@ -44,8 +42,7 @@ public struct Simulation: GameSimulating {
     /// Ordered by `SiteID`. An exhausted site stays with nothing remaining; views leave it out.
     var sites: [ResourceSite]
     var nextEntity = 1
-    /// The match's source of chance. No rule of the Stone and Bronze ages draws
-    /// on it yet; it is part of the state so that a saved match keeps its sequence.
+    /// The match's source of chance. No rule draws on it yet; it is part of the state so that a saved match keeps its sequence.
     var generator: SeededGenerator
 
     // MARK: Caches, derived from the state
@@ -73,8 +70,6 @@ public struct Simulation: GameSimulating {
     var searchBudget = Rule.searchesPerTick
     var searchesLeft = 0
     var deathsPending = false
-    /// The railway depots, by index into `entities`, rebuilt at each tick; not saved.
-    var depots: [Int] = []
 
     // MARK: Starting a match
 
@@ -85,7 +80,6 @@ public struct Simulation: GameSimulating {
         precondition(map.starts.count >= setup.players.count, "the map has a start for every player")
         catalogue = setup.catalogue
         sight = setup.sight
-        noBridges = setup.noBridges
         width = map.width
         height = map.height
         terrain = map.terrain
@@ -104,7 +98,7 @@ public struct Simulation: GameSimulating {
         // A match begun in a later age (ruled 2026-11-21): every player is in
         // that age from the start, and holds besides the standard stock what
         // the advances to it would have cost, so that the age's own work can begin.
-        var age = Age.stone
+        var age = Age.towns
         while age < setup.firstAge, let advance = catalogue.advance(from: age), let next = age.next {
             for p in players.indices { players[p].resources = players[p].resources + advance.cost }
             age = next
@@ -115,7 +109,7 @@ public struct Simulation: GameSimulating {
         for (i, p) in setup.players.enumerated() {
             let centre = placeBuilding(.townCentre, owner: p.id, origin: map.starts[i], complete: true)
             for k in 0..<catalogue.startingPeople {
-                spawnPerson(k == 0 ? .engineer : .worker, owner: p.id, at: freeTile(besideBuilding: centre, index: k).centre)
+                spawnPerson(.worker, owner: p.id, at: freeTile(besideBuilding: centre, index: k).centre)
             }
         }
     }
@@ -124,20 +118,12 @@ public struct Simulation: GameSimulating {
 
     enum CodingKeys: String, CodingKey {
         case catalogue, width, height, terrain, tick, outcome, isPaused, players, teams, entities, sites, nextEntity, generator
-        case sight, noBridges
+        case sight
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        var saved = try c.decode(Catalogue.self, forKey: .catalogue)
-        // A match saved before bridges (2026-11-21) gains the standard bridge.
-        if !saved.buildings.contains(where: { $0.kind == .bridge }) { saved.buildings.append(Catalogue.standard.stats(.bridge)) }
-        // A match saved before boats (2026-11-21) gains the standard boat and boat house.
-        if !saved.buildings.contains(where: { $0.kind == .boatHouse }) {
-            saved.buildings.append(Catalogue.standard.stats(.boatHouse))
-        }
-        if !saved.units.contains(where: { $0.kind == .boat }) { saved.units.append(Catalogue.standard.stats(.boat)) }
-        catalogue = saved
+        catalogue = try c.decode(Catalogue.self, forKey: .catalogue)
         width = try c.decode(Int.self, forKey: .width)
         height = try c.decode(Int.self, forKey: .height)
         terrain = try c.decode([Terrain].self, forKey: .terrain)
@@ -145,7 +131,6 @@ public struct Simulation: GameSimulating {
         outcome = try c.decodeIfPresent(MatchOutcome.self, forKey: .outcome)
         isPaused = try c.decode(Bool.self, forKey: .isPaused)
         sight = try c.decodeIfPresent(MapSight.self, forKey: .sight)
-        noBridges = try c.decodeIfPresent(Bool.self, forKey: .noBridges)
         players = try c.decode([PlayerState].self, forKey: .players)
         teams = try c.decode([TeamState].self, forKey: .teams)
         entities = try c.decode([Entity].self, forKey: .entities)
@@ -166,10 +151,9 @@ public struct Simulation: GameSimulating {
         indexOfSite = Array(repeating: -1, count: (sites.map(\.id.rawValue).max() ?? -1) + 1)
         for (i, site) in sites.enumerated() {
             indexOfSite[site.id.rawValue] = Int32(i)
-            // Oil fields are looked up too, for the wells that stand on them, but do not block.
-            if (site.kind.blocksTile || site.kind == .oilField) && site.remaining > 0 && inMap(site.tile) {
+            if site.kind.blocksTile && site.remaining > 0 && inMap(site.tile) {
                 siteAt[tileIndex(site.tile)] = Int32(i)
-                if site.kind.blocksTile { blocked[tileIndex(site.tile)] = true }
+                blocked[tileIndex(site.tile)] = true
             }
         }
         indexOfEntity = Array(repeating: -1, count: nextEntity)
@@ -183,8 +167,7 @@ public struct Simulation: GameSimulating {
             if let kind = e.buildingKind {
                 for t in footprintTiles(origin: e.origin, size: e.size) where inMap(t) {
                     buildingAt[tileIndex(t)] = Int32(e.id.rawValue)
-                    // A finished bridge piece is walked over.
-                    blocked[tileIndex(t)] = !(kind == .bridge && e.complete)
+                    blocked[tileIndex(t)] = true
                 }
                 if e.complete { housing[e.owner.rawValue] += tables.building(kind).housing }
             } else if let kind = e.unitKind {
@@ -203,7 +186,6 @@ public struct Simulation: GameSimulating {
         tick += 1
         searchesLeft = searchBudget
         buckets.rebuild(entities: entities, width: width, height: height)
-        depots = catalogue.railway == nil ? [] : entities.indices.filter { entities[$0].alive && entities[$0].buildingKind == .railwayDepot }
         let count = entities.count
         for i in 0..<count where entities[i].alive {
             if entities[i].isPerson { updatePerson(i) } else { updateBuilding(i) }
@@ -239,7 +221,7 @@ public struct Simulation: GameSimulating {
     @inline(__always) func open(_ t: GridPoint) -> Bool { open(t.x, t.y) }
 
     /// Whether a boat may enter a tile (ruled 2026-11-21): water, and no rock
-    /// standing in it; a bridge above it does not stop a boat.
+    /// standing in it.
     @inline(__always) func openAfloat(_ x: Int, _ y: Int) -> Bool {
         guard inMap(x, y) else { return false }
         let k = y * width + x
@@ -333,7 +315,7 @@ public struct Simulation: GameSimulating {
         let tiles = footprintTiles(origin: origin, size: stats.footprint).filter(inMap)
         for t in tiles {
             buildingAt[tileIndex(t)] = Int32(id.rawValue)
-            blocked[tileIndex(t)] = !(kind == .bridge && complete)
+            blocked[tileIndex(t)] = true
         }
         if complete { housing[owner.rawValue] += stats.housing }
         stampSight(of: index, by: 1)

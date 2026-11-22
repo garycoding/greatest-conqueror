@@ -15,14 +15,14 @@ import Testing
 @Suite struct SiteDrawingTests {
     /// A source whose every site picture tells its key by its size in points:
     /// 10 wide and one more for each frame, and 20 high, or 30 afloat.
-    /// The fish moves (12 frames of `complete`); stone has an `afloat` picture
-    /// at frame 0; copper has none.
+    /// The fish moves (12 frames of `complete`); gold has an `afloat` picture
+    /// at frame 0; the tree has none.
     struct SiteSource: SpriteSource {
         func sprite(_ key: SpriteKey) -> SpriteImage? {
             guard case .site(let kind) = key.subject, (0..<SpriteKey.framesPerPose).contains(key.frame) else { return nil }
             switch (kind, key.pose) {
             case (.fish, .complete): break
-            case (.stone, .complete), (.stone, .afloat), (.copper, .complete): guard key.frame == 0 else { return nil }
+            case (.gold, .complete), (.gold, .afloat), (.tree, .complete): guard key.frame == 0 else { return nil }
             default: return nil
             }
             let size = CGSize(width: 10 + Double(key.frame), height: key.pose == .afloat ? 30 : 20)
@@ -36,7 +36,7 @@ import Testing
 
     /// The opening's view with sites laid on chosen tiles, water where `water` says.
     func view(_ sites: [(SiteKind, GridPoint)], water: Set<GridPoint>) -> PlayerView {
-        var view = Samples.stoneAgeOpening()
+        var view = Samples.townsAgeOpening()
         for tile in water { view.terrain[tile.y * view.mapWidth + tile.x] = .shallowWater }
         view.sites = sites.enumerated().map { i, site in
             ResourceSite(id: SiteID(1_000 + i), kind: site.0, tile: site.1, remaining: 100)
@@ -54,12 +54,12 @@ import Testing
     }
 
     @Test func aRockOnWaterShowsItsAfloatPictureAndOnLandItsOwn() throws {
-        let scene = scene(view([(.stone, GridPoint(4, 4)), (.stone, GridPoint(6, 4)), (.copper, GridPoint(8, 4))],
+        let scene = scene(view([(.gold, GridPoint(4, 4)), (.gold, GridPoint(6, 4)), (.tree, GridPoint(8, 4))],
                                water: [GridPoint(4, 4), GridPoint(8, 4)]))
-        #expect(try node(scene, 0).size == CGSize(width: 10, height: 30), "stone on water")
-        #expect(try node(scene, 1).size == CGSize(width: 10, height: 20), "stone on land")
-        // Copper has no afloat picture: on water it falls back to its own.
-        #expect(try node(scene, 2).size == CGSize(width: 10, height: 20), "copper on water")
+        #expect(try node(scene, 0).size == CGSize(width: 10, height: 30), "gold on water")
+        #expect(try node(scene, 1).size == CGSize(width: 10, height: 20), "gold on land")
+        // The tree has no afloat picture: on water it falls back to its own.
+        #expect(try node(scene, 2).size == CGSize(width: 10, height: 20), "a tree on water")
     }
 
     @Test func neighbouringFishShowDifferentFramesAndEachMoves() throws {

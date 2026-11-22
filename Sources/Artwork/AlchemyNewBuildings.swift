@@ -40,7 +40,7 @@ struct AlchemyNewBuildingsSubject: Hashable, Sendable {
 /// What this batch draws, on what canvas, and the drawing of it.
 enum AlchemyNewBuildingsArt {
     /// The Alchemy age's new buildings.
-    static let kinds: [BuildingKind] = [.castle, .alchemistsWorkshop]
+    static let kinds: [BuildingKind] = [.castle]
 
     /// The subject a key names, if it is one of this batch's: a new building
     /// of the Alchemy age in the Alchemy age's look, complete or under
@@ -69,7 +69,6 @@ enum AlchemyNewBuildingsArt {
     static func height(_ kind: BuildingKind) -> Double {
         switch kind {
         case .castle: 182
-        case .alchemistsWorkshop: 172
         default: 80
         }
     }
@@ -91,7 +90,6 @@ extension AlchemyNewBuildingsPainter {
     mutating func building(_ kind: BuildingKind, complete: Bool) {
         switch kind {
         case .castle: castle(complete: complete)
-        case .alchemistsWorkshop: workshop(complete: complete)
         default: break
         }
     }

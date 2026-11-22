@@ -57,31 +57,24 @@ public struct Lobby: Hashable, Codable, Sendable {
     public var seats: [Seat]
     /// What the people will see of the map, chosen by the host; optional so that older lobbies decode, nil being `.explore`.
     public var sight: MapSight?
-    /// Whether bridges may be built, chosen by the host (ruled 2026-11-21);
-    /// optional so that older lobbies decode, nil being allowed.
-    public var noBridges: Bool?
     /// The age the match begins in, chosen by the host (ruled 2026-11-21);
-    /// optional so that older lobbies decode, nil being the Stone age.
+    /// nil being the age of towns.
     public var startingAge: Age?
     /// The map's size, chosen by the host (ruled 2026-11-21); optional so that
     /// older lobbies decode, nil being `.standard`.
     public var mapSize: MapSize?
 
-    public init(name: String, seats: [Seat], sight: MapSight = .explore, bridges: Bool = true,
-                startingAge: Age = .stone, mapSize: MapSize = .standard) {
+    public init(name: String, seats: [Seat], sight: MapSight = .explore,
+                startingAge: Age = .towns, mapSize: MapSize = .standard) {
         self.name = name; self.seats = seats; self.sight = sight == .explore ? nil : sight
-        self.noBridges = bridges ? nil : true
-        self.startingAge = startingAge == .stone ? nil : startingAge
+        self.startingAge = startingAge == .towns ? nil : startingAge
         self.mapSize = mapSize == .standard ? nil : mapSize
     }
 
     /// The age the match begins in.
-    public var firstAge: Age { startingAge ?? .stone }
+    public var firstAge: Age { startingAge ?? .towns }
     /// The map's size.
     public var size: MapSize { mapSize ?? .standard }
-
-    /// Whether bridges may be built in the match.
-    public var bridges: Bool { noBridges != true }
 
     /// The host may start once every seat is held and has a civilization.
     public var isReady: Bool { !seats.contains { $0.isWaiting } }
@@ -102,7 +95,7 @@ public struct Lobby: Hashable, Codable, Sendable {
             return PlayerSetup(id: seat.player, civilization: seat.civilization ?? .sumer, team: seat.team, controller: controller)
         }
         return MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight ?? .explore,
-                          bridges: bridges, startingAge: firstAge)
+                          startingAge: firstAge)
     }
 }
 
@@ -139,7 +132,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 9
+    public static let protocolVersion = 1
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`

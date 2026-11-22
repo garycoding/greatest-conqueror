@@ -3,17 +3,14 @@
 
 import GameCore
 
-/// The four peaceful sectors in their Industrial-age looks, drawn in the
-/// Cartoon Modern style of docs/art-style.md on the jointed figure every age
-/// shares (Figure.swift).
+/// The worker in the Industrial look, drawn in the Cartoon Modern style of
+/// docs/art-style.md on the jointed figure every look shares (Figure.swift).
 ///
-/// A peaceful sector takes the look of its owner's age
+/// A worker takes the look of its owner's age
 /// (`SpriteSubject.of(_:ownerAge:)`), so this source supplies
-/// `SpriteSubject.unit(kind, .industrial)` for the factory hand (worker), the
-/// scientist (scholar), the mechanic (engineer) and the industrialist
-/// (merchant), in every pose that the artwork's checklist
-/// (`SpriteKey.required(through:)`) lists for them: standing, walking and
-/// working, and fighting for those that can attack. Each pose is a cycle of 12
+/// `SpriteSubject.unit(.worker, .industrial)`, the factory hand, in every pose
+/// that the artwork's checklist (`SpriteKey.required(through:)`) lists for it:
+/// standing, walking, working and fighting. Each pose is a cycle of 12
 /// frames (`SpriteKey.frame` 0 to 11). Every other key returns nil.
 ///
 /// Each kind it has finished is drawn in all five views (ruled 2026-11-21),
@@ -29,7 +26,7 @@ public struct IndustrialPeopleSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .industrial, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .hospitals, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .industrial) = key.subject else { return false }
             return IndustrialPeopleLooks.look(kind) != nil
         }
@@ -42,7 +39,7 @@ public struct IndustrialPeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.worker, .engineer, .scholar, .merchant]
+    static let viewed: Set<UnitKind> = [.worker]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .industrial) = subject { return Self.viewed.contains(kind) }
@@ -64,11 +61,8 @@ enum IndustrialPeopleLooks {
     static func look(_ kind: UnitKind) -> (any PersonLook)? {
         switch kind {
         case .worker: IndustrialPeopleFactoryHand()
-        case .scholar: IndustrialPeopleScientist()
-        case .engineer: IndustrialPeopleMechanic()
-        case .merchant: IndustrialPeopleIndustrialist()
-        case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon,
-             .rifleman, .fieldGun, .armouredCar, .car, .boat: nil
+        case .spearman, .swordsman, .horseman, .knight, .musketeer, .cannon,
+             .rifleman, .fieldGun, .car, .boat: nil
         }
     }
 }

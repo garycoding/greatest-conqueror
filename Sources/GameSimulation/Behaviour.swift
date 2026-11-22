@@ -9,9 +9,6 @@ extension Simulation {
     mutating func updatePerson(_ i: Int) {
         if entities[i].unitKind == .car { clearAround(i) }
         if entities[i].cooldown > 0 { entities[i].cooldown -= 1 }
-        if let pending = entities[i].upgrade {
-            if pending.remaining <= 1 { finishUpgrade(i, to: pending.to) } else { entities[i].upgrade?.remaining -= 1 }
-        }
         switch entities[i].task {
         case .idle: entities[i].doing = .idle
         case .move(let point): moveTask(i, to: point)
@@ -19,27 +16,20 @@ extension Simulation {
         case .work(let building): workTask(i, at: building)
         case .demolish(let building): demolishTask(i, building)
         case .attack(let target): attackTask(i, target: target)
-        case .trade(let building, let give, let take): tradeTask(i, at: building, give: give, take: take)
-        case .carry(let resource, let target): carryTask(i, resource, to: target)
         }
     }
 
     mutating func setIdle(_ i: Int) {
-        returnCarried(i)
         entities[i].task = .idle
         entities[i].doing = .idle
         entities[i].route = Route()
-        entities[i].rail = nil
     }
 
     /// Give a person a new task, forgetting its route.
     mutating func assign(_ i: Int, _ task: Task) {
-        if entities[i].task != task { returnCarried(i) }
         entities[i].task = task
         entities[i].route = Route()
         entities[i].dropOff = nil
-        // A railway journey belongs to the task it was taken for.
-        entities[i].rail = nil
     }
 
     // MARK: Moving
@@ -55,8 +45,7 @@ extension Simulation {
 
     /// Units of a site's yield a worker takes per tick.
     func gatheringRate(_ kind: SiteKind, player: Int) -> Double {
-        let tools = players[player].improvements.reduce(1.0) { $0 * catalogue.stats($1).gatheringMultiplier }
-        return catalogue.gathering.perSecond(kind) * tools / Double(Tick.rate)
+        catalogue.gathering.perSecond(kind) / Double(Tick.rate)
     }
 
     mutating func gatherTask(_ i: Int, site: SiteID, kind: SiteKind, tile: GridPoint) {
@@ -160,23 +149,11 @@ extension Simulation {
     /// Whether a site stands in the water, where only boats gather (ruled 2026-11-21).
     func isAfloat(_ site: ResourceSite) -> Bool { inMap(site.tile) && terrain[tileIndex(site.tile)].isWater }
 
-    /// Credit a worker's load to its owner. Copper and tin ore pair into bronze,
-    /// one unit of each to one of bronze; unpaired ore is held up to one load of
-    /// each, and the rest is lost (`Order.gather`).
+    /// Credit a worker's load to its owner.
     mutating func deliver(_ i: Int) {
         guard let cargo = entities[i].cargo else { return }
         let p = entities[i].owner.rawValue
-        let load = catalogue.gathering.load
-        switch cargo.kind {
-        case .copper, .tin:
-            if cargo.kind == .copper { players[p].copperOre += cargo.amount } else { players[p].tinOre += cargo.amount }
-            let pairs = min(players[p].copperOre, players[p].tinOre)
-            players[p].resources[.bronze] += pairs
-            players[p].copperOre = min(players[p].copperOre - pairs, load)
-            players[p].tinOre = min(players[p].tinOre - pairs, load)
-        default:
-            players[p].resources[cargo.kind.yield] += cargo.amount
-        }
+        players[p].resources[cargo.kind.yield] += cargo.amount
         entities[i].cargo = nil
         entities[i].dropOff = nil
     }
@@ -191,15 +168,14 @@ extension Simulation {
 
     // MARK: Working at a building
 
-    /// Workers tend a stock pen; engineers construct or repair; scholars research
-    /// what is under way there or, at a town centre, study toward the next age.
+    /// Workers construct a building, repair it once it is damaged, or tend it
+    /// if it is a farm.
     mutating func workTask(_ i: Int, at building: EntityID) {
         guard let b = index(of: building), entities[b].owner == entities[i].owner,
-              let buildingKind = entities[b].buildingKind, let kind = entities[i].unitKind,
-              hasWork(kind, at: b, person: i) else {
-            // An engineer whose building is completed goes on to the next one under
+              let buildingKind = entities[b].buildingKind, hasWork(at: b, person: i) else {
+            // A builder whose building is completed goes on to the next one under
             // construction nearby, as a gatherer goes on to the next site (ruled 2026-11-19).
-            if entities[i].unitKind == .engineer, entities[i].doing == .constructing,
+            if entities[i].doing == .constructing,
                index(of: building).map({ entities[$0].complete }) == true, let next = nextConstruction(for: i) {
                 entities[i].task = .work(entities[next].id)
                 return
@@ -214,67 +190,39 @@ extension Simulation {
         face(i, dx: entities[b].position.x - entities[i].position.x, dy: entities[b].position.y - entities[i].position.y)
         let p = entities[i].owner.rawValue
         let stats = tables.building(buildingKind)
-        switch kind {
-        case .worker where buildingKind == .alchemistsWorkshop:
-            // A craftsman makes gunpowder from the stock's wood (ruled 2026-11-19); with no wood he waits.
-            guard let workshop = catalogue.workshop else { setIdle(i); return }
-            entities[i].doing = .working
-            let rate = workshop.perSecond * players[p].improvements.reduce(1.0) { $0 * (catalogue.stats($1).productionMultiplier ?? 1) }
-            entities[i].fraction += rate / Double(Tick.rate)
-            while entities[i].fraction >= 1 && players[p].resources[.wood] >= workshop.woodPerUnit {
-                entities[i].fraction -= 1
-                players[p].resources[.wood] -= workshop.woodPerUnit
-                players[p].resources[.gunpowder] += 1
-            }
-            if players[p].resources[.wood] < workshop.woodPerUnit { entities[i].fraction = min(entities[i].fraction, 1) }
-        case .worker:
-            entities[i].doing = .working
-            let full = buildingKind == .farm ? catalogue.gathering.farmYield : nil
-            if let full, (entities[b].farmUsed ?? 0) >= full {
-                // A farm that has run dry is reseeded by its farmer from the stock (ruled
-                // 2026-11-19); while the stock lacks the cost, the farmer waits.
-                let cost = catalogue.gathering.farmReseed ?? ResourceAmounts()
-                guard players[p].resources.covers(cost) else { return }
-                players[p].resources = players[p].resources - cost
-                entities[b].farmUsed = 0
-            }
-            let perSecond = buildingKind == .farm ? farmingRate(player: p) : catalogue.gathering.herdingPerSecond
-            let earned = entities[i].fraction + perSecond / Double(Tick.rate)
-            var whole = Int(earned.rounded(.down))
-            entities[i].fraction = earned - Double(whole)
-            if let full {
-                whole = min(whole, full - (entities[b].farmUsed ?? 0))
-                entities[b].farmUsed = (entities[b].farmUsed ?? 0) + whole
-            }
-            players[p].resources[.food] += whole
-        case .engineer:
-            let buildTime = max(1, stats.buildTime)
-            if !entities[b].complete {
-                entities[i].doing = .constructing
-                entities[b].built += 1
-                credit(b, health: stats.health, per: buildTime)
-                if entities[b].built >= buildTime { complete(b) }
-            } else {
-                entities[i].doing = .working
-                credit(b, health: stats.health, per: buildTime)
-                if entities[b].health >= entities[b].maxHealth { entities[b].healthCredit = 0 }
-            }
-        case .scholar:
-            entities[i].doing = .working
-            if let research = entities[b].research {
-                entities[b].researchProgress += 1
-                if entities[b].researchProgress >= catalogue.stats(research).work { finishResearch(b) }
-            } else if buildingKind == .townCentre, let advance = catalogue.advance(from: players[p].age),
-                      players[p].age.next != nil {
-                players[p].study = min(advance.study, players[p].study + 1)
-            }
-        default:
-            setIdle(i)
+        let buildTime = max(1, stats.buildTime)
+        if !entities[b].complete {
+            entities[i].doing = .constructing
+            entities[b].built += 1
+            credit(b, health: stats.health, per: buildTime)
+            if entities[b].built >= buildTime { complete(b) }
+            return
         }
+        if entities[b].health < entities[b].maxHealth {
+            entities[i].doing = .working
+            credit(b, health: stats.health, per: buildTime)
+            if entities[b].health >= entities[b].maxHealth { entities[b].healthCredit = 0 }
+            return
+        }
+        // A farm: its one worker earns food until it runs dry, and then reseeds
+        // it from the stock (ruled 2026-11-19); while the stock lacks the cost, the farmer waits.
+        entities[i].doing = .working
+        let full = catalogue.gathering.farmYield
+        if (entities[b].farmUsed ?? 0) >= full {
+            let cost = catalogue.gathering.farmReseed
+            guard players[p].resources.covers(cost) else { return }
+            players[p].resources = players[p].resources - cost
+            entities[b].farmUsed = 0
+        }
+        let earned = entities[i].fraction + catalogue.gathering.farmingPerSecond / Double(Tick.rate)
+        var whole = Int(earned.rounded(.down))
+        entities[i].fraction = earned - Double(whole)
+        whole = min(whole, full - (entities[b].farmUsed ?? 0))
+        entities[b].farmUsed = (entities[b].farmUsed ?? 0) + whole
+        players[p].resources[.food] += whole
     }
 
-    /// Engineers pull a building down over half its construction time
-    /// (requirement 28).
+    /// Workers pull a building down over half its construction time.
     mutating func demolishTask(_ i: Int, _ building: EntityID) {
         guard let b = index(of: building), entities[b].owner == entities[i].owner,
               let kind = entities[b].buildingKind else { setIdle(i); return }
@@ -289,7 +237,7 @@ extension Simulation {
         if entities[b].demolished >= Self.demolitionTime(tables.building(kind).buildTime) { demolish(b) }
     }
 
-    /// Engineer-ticks to pull down a building: half its construction time.
+    /// Worker-ticks to pull down a building: half its construction time.
     static func demolitionTime(_ buildTime: Int) -> Int { max(1, buildTime / 2) }
 
     /// A building comes down: half its cost back, and whatever was under way
@@ -299,30 +247,15 @@ extension Simulation {
         let p = entities[b].owner.rawValue
         var back = tables.building(kind).cost.halved
         for unit in entities[b].queue { back = back + tables.unit(unit).cost }
-        if let research = entities[b].research { back = back + catalogue.stats(research).cost }
+        if entities[b].advancing != nil, let advance = catalogue.advance(from: players[p].age) { back = back + advance.cost }
         entities[b].queue = []
-        entities[b].research = nil
+        entities[b].advancing = nil
         players[p].resources = players[p].resources + back
         record(.destroyed(entities[b].id), for: p)
         kill(b)
     }
 
-    /// Food per second a worker earns at a farm; the plough makes it more. A
-    /// farm runs dry after `GatheringStats.farmYield` and is reseeded (ruled 2026-11-19).
-    func farmingRate(player: Int) -> Double {
-        let plough = players[player].improvements.reduce(1.0) { $0 * (catalogue.stats($1).farmingMultiplier ?? 1) }
-        return (catalogue.gathering.farmingPerSecond ?? 0) * plough
-    }
-
-    /// How many workers, other than `besides`, work at a building.
-    func crafters(at b: Int, besides: Int?) -> Int {
-        let id = entities[b].id
-        return entities.indices.filter { j in
-            j != besides && entities[j].alive && entities[j].unitKind == .worker && entities[j].task == .work(id)
-        }.count
-    }
-
-    /// The nearest of the engineer's player's buildings still under construction,
+    /// The nearest of the worker's player's buildings still under construction,
     /// within the radius in which a gatherer looks for its next site.
     func nextConstruction(for i: Int) -> Int? {
         var best: Int?
@@ -343,30 +276,18 @@ extension Simulation {
         }
     }
 
-    /// Whether a person of this kind has anything to do at a building.
-    /// `person` is the one asking, who does not count as another farm's tender.
-    func hasWork(_ kind: UnitKind, at b: Int, person: Int? = nil) -> Bool {
+    /// Whether a worker has anything to do at a building: construct it, repair
+    /// it, or tend it if it is a farm that no other worker tends. `person` is
+    /// the one asking, who does not count as another farm's tender.
+    func hasWork(at b: Int, person: Int? = nil) -> Bool {
         let e = entities[b]
         guard let buildingKind = e.buildingKind else { return false }
-        switch kind {
-        case .worker:
-            guard e.complete else { return false }
-            if buildingKind == .stockPen { return true }
-            // A farm is tended by one worker at a time.
-            if buildingKind == .farm { return farmer(of: b, besides: person) == nil }
-            // A workshop takes up to `WorkshopStats.workers` craftsmen.
-            if buildingKind == .alchemistsWorkshop, let workshop = catalogue.workshop {
-                return crafters(at: b, besides: person) < workshop.workers
-            }
-            return false
-        case .engineer: return !e.complete || e.health < e.maxHealth
-        case .scholar: return e.complete && (buildingKind == .townCentre || !tables.building(buildingKind).researches.isEmpty)
-        default: return false
-        }
+        if !e.complete || e.health < e.maxHealth { return true }
+        return buildingKind == .farm && farmer(of: b, besides: person) == nil
     }
 
     /// Construction and repair restore a building's health at its full health per
-    /// `buildTime` engineer-ticks, in whole points.
+    /// `buildTime` worker-ticks, in whole points.
     mutating func credit(_ b: Int, health full: Int, per buildTime: Int) {
         entities[b].healthCredit += full
         while entities[b].healthCredit >= buildTime && entities[b].health < entities[b].maxHealth {
@@ -382,41 +303,14 @@ extension Simulation {
         entities[b].health = min(entities[b].health, entities[b].maxHealth)
         let p = entities[b].owner.rawValue
         housing[p] += tables.building(kind).housing
-        if kind == .bridge, inMap(entities[b].origin) { blocked[tileIndex(entities[b].origin)] = false }
         record(.constructed(entities[b].id, kind), for: p)
-    }
-
-    mutating func finishResearch(_ b: Int) {
-        guard let research = entities[b].research else { return }
-        let p = entities[b].owner.rawValue
-        entities[b].research = nil
-        entities[b].researchProgress = 0
-        if !players[p].has(research) { players[p].improvements.append(research) }
-        record(.researched(research), for: p)
-    }
-
-    // MARK: Upgrades
-
-    /// A warfighter becomes the kind it was paid to become, keeping its share of health.
-    mutating func finishUpgrade(_ i: Int, to kind: UnitKind) {
-        guard let old = entities[i].unitKind else { return }
-        let stats = tables.unit(kind)
-        let p = entities[i].owner.rawValue
-        stampSight(of: i, by: -1)
-        entities[i].kind = .unit(kind)
-        entities[i].health = max(1, entities[i].health * stats.health / max(1, entities[i].maxHealth))
-        entities[i].maxHealth = stats.health
-        entities[i].sight = stats.sight
-        entities[i].upgrade = nil
-        stampSight(of: i, by: 1)
-        population[p] += stats.population - tables.unit(old).population
     }
 
     // MARK: Buildings
 
     mutating func updateBuilding(_ b: Int) {
         guard entities[b].complete, let kind = entities[b].buildingKind else { return }
-        if kind == .oilWell { pump(b) }
+        if entities[b].advancing != nil { advance(b) }
         if entities[b].cooldown > 0 { entities[b].cooldown -= 1 }
         if let attack = tables.building(kind).attack, entities[b].cooldown == 0 {
             let e = entities[b]
@@ -443,44 +337,23 @@ extension Simulation {
         }
     }
 
-    /// An oil well pumps oil from the fields beneath it into its owner's stock,
-    /// without workers, until they are empty (ruled 2026-11-19).
-    mutating func pump(_ b: Int) {
-        guard let well = catalogue.oilWell else { return }
+    /// The advance to the next age under way at a town centre: when its time
+    /// has passed, the player reaches the next age (requirement 6).
+    mutating func advance(_ b: Int) {
         let p = entities[b].owner.rawValue
-        let rate = well.perSecond * players[p].improvements.reduce(1.0) { $0 * (catalogue.stats($1).pumpingMultiplier ?? 1) }
-        entities[b].fraction += rate / Double(Tick.rate)
-        while entities[b].fraction >= 1 {
-            guard let s = oilBeneath(b) else { entities[b].fraction = 0; return }
-            entities[b].fraction -= 1
-            sites[s].remaining -= 1
-            players[p].resources[.oil] += 1
-            if sites[s].remaining <= 0 { exhaust(s) }
+        guard let advance = catalogue.advance(from: players[p].age), let next = players[p].age.next else {
+            entities[b].advancing = nil; return
         }
-    }
-
-    /// The first oil field with oil left beneath a building's footprint.
-    func oilBeneath(_ b: Int) -> Int? {
-        for t in footprintTiles(origin: entities[b].origin, size: entities[b].size) where inMap(t) {
-            let s = Int(siteAt[tileIndex(t)])
-            if s >= 0, sites[s].kind == .oilField, sites[s].remaining > 0 { return s }
-        }
-        return nil
-    }
-
-    /// The oil left beneath a building's footprint.
-    func oilLeft(under b: Int) -> Int {
-        var total = 0
-        for t in footprintTiles(origin: entities[b].origin, size: entities[b].size) where inMap(t) {
-            let s = Int(siteAt[tileIndex(t)])
-            if s >= 0, sites[s].kind == .oilField { total += max(0, sites[s].remaining) }
-        }
-        return total
+        let done = (entities[b].advancing ?? 0) + 1
+        guard done >= advance.time else { entities[b].advancing = done; return }
+        entities[b].advancing = nil
+        players[p].age = next
+        record(.ageReached(next), for: p)
     }
 
     /// Every opponent's unit within a car's kill radius dies at once (ruled
-    /// 2026-11-21), unless its person has turned the radius off; founders and
-    /// cars, which nothing harms, are spared, and buildings are not touched.
+    /// 2026-11-21), unless its person has turned the radius off; cars, which
+    /// nothing harms, are spared, and buildings are not touched.
     mutating func clearAround(_ i: Int) {
         guard let radius = catalogue.car?.killRadius, entities[i].killRadiusOff != true else { return }
         let owner = entities[i].owner, here = entities[i].position

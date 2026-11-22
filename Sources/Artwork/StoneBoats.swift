@@ -18,9 +18,8 @@ import Synchronization
 /// - The fish (`SpriteSubject.site(.fish)`, `complete`): one water tile of a
 ///   shoal, fish under the water and one leaping from rings, a cycle of 12
 ///   frames which the drawing runs ahead tile by tile.
-/// - The rocks that rise from the water (`SpritePose.afloat`): stone, copper,
-///   tin, gold and iron, each the rock of its site cut at a waterline, with
-///   ripples about it and no shadow, at frame 0.
+/// - The rock that rises from the water (`SpritePose.afloat`): gold, the rock
+///   of its site cut at a waterline, with ripples about it and no shadow, at frame 0.
 ///
 /// The boat house is drawn with the Stone age's buildings
 /// (`StoneBuildingSprites`). Every other key gives nil. A boat's pose is drawn
@@ -32,10 +31,10 @@ public final class StoneBoatSprites: ViewedSpriteSource {
     private let cache = Mutex<[SpriteKey: SpriteImage]>([:])
 
     /// The rocks drawn rising from the water.
-    public static let rocks: [SiteKind] = [.stone, .copper, .tin, .gold, .iron]
+    public static let rocks: [SiteKind] = [.gold]
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .stone, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .towns, catalogue: catalogue).filter { key in
             guard case .unit(.boat, .stone) = key.subject else { return false }
             return StoneDugout.drawn(key.pose)
         }

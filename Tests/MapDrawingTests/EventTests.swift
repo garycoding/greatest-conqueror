@@ -12,7 +12,7 @@ import Testing
 @MainActor
 @Suite struct EventTests {
     func host() -> (MapSKView, NSWindow, MapScene, PlayerSession, OrderLog) {
-        let (session, log) = makeSession(Samples.stoneAgeOpening())
+        let (session, log) = makeSession(Samples.townsAgeOpening())
         let view = MapSKView(frame: CGRect(origin: .zero, size: screenSize))
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: true)
         window.contentView = view

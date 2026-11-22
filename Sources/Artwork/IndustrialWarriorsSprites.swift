@@ -4,14 +4,13 @@
 import Foundation
 import GameCore
 
-/// The rifleman, the field gun with its crew of two and the armoured car of
-/// the Industrial age, drawn in the Cartoon Modern style of docs/art-style.md
+/// The rifleman and the field gun with its crew of two of the Industrial look, drawn in the Cartoon Modern style of docs/art-style.md
 /// on the jointed figure every age shares (Figure.swift), one age on from the
 /// Alchemy warriors (`AlchemyWarriorSprites`).
 ///
 /// A warfighter keeps the look of its own age (`SpriteSubject.of(_:ownerAge:)`),
 /// so this source supplies `SpriteSubject.unit(kind, .industrial)` for those
-/// three kinds in the poses standing, walking and fighting, each a cycle of 12
+/// two kinds in the poses standing, walking and fighting, each a cycle of 12
 /// frames (`SpriteKey.frame` 0 to 11). The warfighters never work, and the
 /// drawing falls back to standing where a pose is missing, so the working pose
 /// is not supplied. Every other key returns nil.
@@ -28,7 +27,7 @@ public struct IndustrialWarriorSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .industrial, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .hospitals, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .industrial) = key.subject, key.pose != .working else { return false }
             return IndustrialWarriorsLooks.look(kind) != nil
         }
@@ -41,7 +40,7 @@ public struct IndustrialWarriorSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.rifleman, .fieldGun, .armouredCar]
+    static let viewed: Set<UnitKind> = [.rifleman, .fieldGun]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .industrial) = subject { return Self.viewed.contains(kind) }
@@ -65,7 +64,6 @@ enum IndustrialWarriorsLooks {
         switch kind {
         case .rifleman: IndustrialWarriorsRifleman()
         case .fieldGun: IndustrialWarriorsFieldGun()
-        case .armouredCar: IndustrialWarriorsArmouredCar()
         default: nil
         }
     }
@@ -73,7 +71,6 @@ enum IndustrialWarriorsLooks {
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
         case .fieldGun: IndustrialWarriorsFieldGun.canvas
-        case .armouredCar: IndustrialWarriorsArmouredCar.canvas
         default: IndustrialWarriorsRifleman.canvas
         }
     }

@@ -14,15 +14,15 @@ import Testing
 @Suite(.serialized) struct IndustrialWarriorsTests {
     private let source = IndustrialWarriorSprites()
 
-    @Test func theBatchIsTheRiflemanTheFieldGunAndTheArmouredCarStandingWalkingAndFighting() {
-        let expected = SpriteKey.required(through: .industrial).filter { key in
+    @Test func theBatchIsTheRiflemanAndTheFieldGunStandingWalkingAndFighting() {
+        let expected = SpriteKey.required(through: .hospitals).filter { key in
             guard case .unit(let kind, .industrial) = key.subject else { return false }
-            return [.rifleman, .fieldGun, .armouredCar].contains(kind) && key.pose != .working
+            return [.rifleman, .fieldGun].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
-        #expect(source.poses.count == 9)
+        #expect(source.poses.count == 6)
         #expect(Set(source.poses.map(\.pose)) == [.standing, .walking, .fighting])
-        #expect(source.keys.count == 9 * SpriteKey.framesPerPose)
+        #expect(source.keys.count == 6 * SpriteKey.framesPerPose)
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -48,14 +48,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -63,7 +63,7 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.rifleman, .fieldGun, .armouredCar] {
+        for kind in [UnitKind.rifleman, .fieldGun] {
             #expect(source.sprite(SpriteKey(.unit(kind, .industrial), .working, frame: 0)) == nil, "\(kind) working")
         }
     }
@@ -157,7 +157,7 @@ import Testing
 struct IndustrialWarriorsRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["INDUSTRIAL_WARRIORS_RENDERS"] ?? "/", isDirectory: true)
 
-    private static let kinds: [UnitKind] = [.rifleman, .fieldGun, .armouredCar]
+    private static let kinds: [UnitKind] = [.rifleman, .fieldGun]
 
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
         switch (kind, pose) {
@@ -167,9 +167,6 @@ struct IndustrialWarriorsRenders {
         case (.fieldGun, .standing): "standing: the crew wait by the gun"
         case (.fieldGun, .walking): "walking: pushed and hauled, the wheels turning with the stride"
         case (.fieldGun, .fighting): "fighting: fire and recoil, open the breech, load, close"
-        case (.armouredCar, .standing): "standing: the engine idles"
-        case (.armouredCar, .walking): "walking: the wheels turn, the exhaust puffs"
-        case (.armouredCar, .fighting): "fighting: the machine gun fires in bursts"
         default: pose.rawValue
         }
     }
@@ -187,7 +184,6 @@ struct IndustrialWarriorsRenders {
     private static func step(_ kind: UnitKind) -> Double {
         switch kind {
         case .fieldGun: IndustrialWarriorsFieldGun.groundPerFrame
-        case .armouredCar: IndustrialWarriorsArmouredCar.groundPerFrame
         default: 4
         }
     }
@@ -249,7 +245,7 @@ struct IndustrialWarriorsRenders {
                     let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
                     let sx = walking ? 1190 + Double(i) * Self.step(kind) * 0.4 : 1250
                     Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: sx, y: groundLine), in: context)
-                    Preview.label("\(kind.stageName(at: .industrial)), Industrial age, in Sumer's colour", in: context,
+                    Preview.label("\(kind.stageName(at: .hospitals)), Industrial age, in Sumer's colour", in: context,
                                   at: CGPoint(x: 28, y: Double(height) - 52), size: 26)
                     Preview.label(Self.caption(kind, pose) + ", 12 frames a second", in: context, at: CGPoint(x: 28, y: 28), size: 22)
                     Preview.label("at game size", in: context, at: CGPoint(x: 1210, y: 60), size: 18)
@@ -276,11 +272,11 @@ struct IndustrialWarriorsRenders {
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Industrial age's rifleman, field gun and armoured car beside the Alchemy age's musketeer, cannon and knight, "
                       + "in the colours of Rome, Angkor, Shang and Olmec", in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
-        let columns: [(UnitKind, Age)] = [(.musketeer, .alchemy), (.rifleman, .industrial), (.cannon, .alchemy), (.fieldGun, .industrial),
-                                          (.knight, .alchemy), (.armouredCar, .industrial)]
+        let columns: [(UnitKind, Look)] = [(.musketeer, .alchemy), (.rifleman, .industrial), (.cannon, .alchemy), (.fieldGun, .industrial),
+                                          (.knight, .alchemy)]
         for (i, (kind, age)) in columns.enumerated() {
             let left = Double(i * column)
-            Preview.label("\(kind.stageName(at: age)), \(age == .alchemy ? "Alchemy" : "Industrial") age", in: context,
+            Preview.label("\(kind.stageName(at: Age(rawValue: age.rawValue)!)), \(age == .alchemy ? "Alchemy" : "Industrial") age", in: context,
                           at: CGPoint(x: left + 20, y: Double(height) - 92), size: 22)
             let look: any PersonLook = try #require(age == .alchemy ? AlchemyWarriorsLooks.look(kind) : IndustrialWarriorsLooks.look(kind))
             let canvas = age == .alchemy ? AlchemyWarriorsLooks.canvas(kind) : IndustrialWarriorsLooks.canvas(kind)

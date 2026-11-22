@@ -6,12 +6,11 @@ import GameCore
 /// The people of the Bronze age, drawn in the Cartoon Modern style of
 /// docs/art-style.md on the jointed figure every age shares (Figure.swift).
 ///
-/// The four peaceful sectors take the look of their owner's age, and the
-/// warfighters keep the look of their own (`SpriteSubject.of(_:ownerAge:)`), so
-/// this source supplies `SpriteSubject.unit(kind, .bronze)` for the herder
-/// (worker), the scribe (scholar), the mason (engineer), the trader (merchant),
-/// the spearman, the archer and the chariot, in every pose that the artwork's
-/// checklist (`SpriteKey.required(through: .bronze)`) lists for them, each a
+/// The worker takes the look of its owner's age, and the spearman keeps the
+/// look of his own (`SpriteSubject.of(_:ownerAge:)`), so this source supplies
+/// `SpriteSubject.unit(kind, .bronze)` for the herder (worker) and the
+/// spearman, in every pose that the artwork's
+/// checklist (`SpriteKey.required(through: .farms)`) lists for them, each a
 /// cycle of 12 frames (`SpriteKey.frame` 0 to 11). The checklist lists a working
 /// pose for every kind; the warfighters never work, so theirs is their standing
 /// cycle. Every other key returns nil.
@@ -29,7 +28,7 @@ public struct BronzePeopleSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .bronze, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .farms, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .bronze) = key.subject else { return false }
             return BronzePeopleLooks.look(kind) != nil
         }
@@ -52,7 +51,7 @@ public struct BronzePeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .merchant, .spearman, .archer, .chariot]
+    static let viewed: Set<UnitKind> = [.worker, .spearman]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         guard case .unit(let kind, .bronze) = subject else { return false }
@@ -65,22 +64,16 @@ enum BronzePeopleLooks {
     static func look(_ kind: UnitKind) -> (any PersonLook)? {
         switch kind {
         case .worker: BronzePeopleHerder()
-        case .scholar: BronzePeopleScribe()
-        case .engineer: BronzePeopleMason()
-        case .merchant: BronzePeopleTrader()
         case .spearman: BronzePeopleSpearman()
-        case .archer: BronzePeopleArcher()
-        case .chariot: BronzePeopleChariot()
-        case .founder, .clubman, .slinger, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car, .boat: nil
+        case .swordsman, .horseman, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .car, .boat: nil
         }
     }
 
     /// The person's canvas, widened forward for the warfighters, whose spear
-    /// thrust and arrow in flight reach beyond it, and the chariot's own.
+    /// thrust reaches beyond it.
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
-        case .spearman, .archer: wide
-        case .chariot: BronzePeopleChariot.canvas
+        case .spearman: wide
         default: .person
         }
     }

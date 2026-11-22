@@ -20,7 +20,7 @@ import Testing
         #expect(source.keys.count == 3 * SpriteKey.framesPerPose)
         #expect(source.drawsViews(of: Self.boat))
         #expect(!source.drawsViews(of: .unit(.boat, .stone)))
-        #expect(UnitKind.boat.stageName(at: .bronze) == "Reed boat")
+        #expect(UnitKind.boat.stageName(at: .farms) == "Reed boat")
     }
 
     /// Every frame of every pose in every view: a mask that is not empty and
@@ -81,10 +81,10 @@ import Testing
 
     @Test func everyOtherKeyHasNone() {
         let batch = Set(source.keys)
-        var others = SpriteKey.required(through: .industrial).filter { !batch.contains($0) }
+        var others = SpriteKey.required(through: .hospitals).filter { !batch.contains($0) }
         for frame in [-1, 12] { others.append(SpriteKey(Self.boat, .walking, frame: frame)) }
         others.append(SpriteKey(Self.boat, .fighting))
-        others += [Age.stone, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
+        others += [Look.stone, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .afloat) }
         others.append(SpriteKey(.site(.fish), .complete))
         others.append(SpriteKey(.building(.boatHouse, .bronze), .complete))

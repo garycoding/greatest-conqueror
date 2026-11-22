@@ -14,7 +14,7 @@ import Testing
     private let source = BronzePeopleSprites()
 
     @Test func theBatchIsTheChecklistsBronzePeople() {
-        let expected = SpriteKey.required(through: .bronze).filter { key in
+        let expected = SpriteKey.required(through: .farms).filter { key in
             // The boat is drawn with the boats' art, in its own batch (`BronzeBoatSprites`).
             if case .unit(let kind, .bronze) = key.subject { return kind != .boat }
             return false
@@ -25,7 +25,7 @@ import Testing
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(kinds == [.worker, .scholar, .engineer, .merchant, .spearman, .archer, .chariot])
+        #expect(kinds == [.worker, .spearman])
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -36,12 +36,8 @@ import Testing
             #expect(Self.Pixels(mask).hasCoverage, "\(key)")
             guard case .unit(let kind, _) = key.subject else { continue }
             let pixels = Self.Pixels(sprite.base)
-            if kind == .chariot {
-                #expect(pixels.wheelMeetsGround(at: sprite.anchor), "\(key): the anchor is not where the near wheel meets the ground")
-            } else {
-                #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
-                        "\(key): the anchor is not on the ground between the feet")
-            }
+            #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
+                    "\(key): the anchor is not on the ground between the feet")
         }
     }
 
@@ -50,14 +46,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -78,7 +74,7 @@ import Testing
     }
 
     @Test func warfightersWorkingStandStill() throws {
-        for kind in [UnitKind.spearman, .archer, .chariot] {
+        for kind in [UnitKind.spearman] {
             for frame in [0, 8] {
                 let working = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .working, frame: frame)))
                 let standing = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .standing, frame: frame)))

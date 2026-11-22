@@ -198,7 +198,7 @@ enum StoneBoatsWater {
 
     static func drawAfloat(_ kind: SiteKind, _ svg: inout SVG) {
         drawAfloat(&svg) { svg in
-            if kind == .iron { IronNewBuildingsDeposit.draw(&svg, shadow: false) } else { TerrainSprites.drawSite(kind, &svg, shadow: false) }
+            TerrainSprites.drawSite(kind, &svg, shadow: false)
         }
     }
 

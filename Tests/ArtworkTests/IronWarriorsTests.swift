@@ -14,14 +14,14 @@ import Testing
     private let source = IronWarriorSprites()
 
     @Test func theBatchIsTheIronWarriorsStandingWalkingAndFighting() {
-        let expected = SpriteKey.required(through: .iron).filter { key in
+        let expected = SpriteKey.required(through: .ships).filter { key in
             guard case .unit(let kind, .iron) = key.subject else { return false }
-            return [.swordsman, .horseman, .catapult].contains(kind) && key.pose != .working
+            return [.swordsman, .horseman].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
-        #expect(source.poses.count == 9)
+        #expect(source.poses.count == 6)
         #expect(Set(source.poses.map(\.pose)) == [.standing, .walking, .fighting])
-        #expect(source.keys.count == 9 * SpriteKey.framesPerPose)
+        #expect(source.keys.count == 6 * SpriteKey.framesPerPose)
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -47,14 +47,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -62,7 +62,7 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.swordsman, .horseman, .catapult] {
+        for kind in [UnitKind.swordsman, .horseman] {
             #expect(source.sprite(SpriteKey(.unit(kind, .iron), .working, frame: 0)) == nil, "\(kind) working")
         }
     }

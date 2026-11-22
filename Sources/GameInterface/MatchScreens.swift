@@ -183,7 +183,6 @@ public struct NewMatchView: View {
                 }
             }
             SightPicker(sight: $model.sight)
-            BridgesPicker(bridges: $model.bridges)
             StartingAgePicker(age: $model.startingAge)
             MapSizePicker(size: $model.mapSize)
             if onHost != nil, model.hasOpenSeats {
@@ -309,9 +308,7 @@ public struct LobbyView: View {
             }
             Text("What you see: \((model.lobby.sight ?? .explore).name). \((model.lobby.sight ?? .explore).explanation)")
                 .font(Typeface.text(11.5)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
-            Text(model.lobby.bridges ? "Bridges: allowed." : "Bridges: not allowed; nobody may build one in this match.")
-                .font(Typeface.text(11.5)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
-            Text("Starting age: the \(model.lobby.firstAge.name) age. Map: \(model.lobby.size.title). \(model.lobby.size.explanation)")
+            Text("Starting age: the age of \(model.lobby.firstAge.name). Map: \(model.lobby.size.title). \(model.lobby.size.explanation)")
                 .font(Typeface.text(11.5)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
             if model.showsPicker {
                 VStack(alignment: .leading, spacing: 8) {
@@ -606,30 +603,8 @@ struct SightPicker: View {
     }
 }
 
-/// The setting "Bridges" (ruled 2026-11-21): allowed or not allowed, for every
-/// player in the match, computer players included.
-struct BridgesPicker: View {
-    @Binding var bridges: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Caption(text: "BRIDGES")
-                ForEach([true, false], id: \.self) { value in
-                    PillButton(title: value ? "Allowed" : "Not allowed", fill: value == bridges ? Palette.ochre : Palette.paper,
-                               size: 12) {
-                        bridges = value
-                    }
-                }
-            }
-            Text(bridges ? "Engineers may build bridges across water." : "Nobody may build a bridge in this match; water divides the map.")
-                .font(Typeface.text(11)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
 /// The setting "Starting age" (ruled 2026-11-21): the age every player begins
-/// in, from the Stone age to the last age the game has.
+/// in, from the age of towns to the last age the game has.
 struct StartingAgePicker: View {
     @Binding var age: Age
 
@@ -638,13 +613,13 @@ struct StartingAgePicker: View {
             HStack(spacing: 8) {
                 Caption(text: "STARTING AGE")
                 ForEach(Age.allCases.filter { $0 <= Catalogue.standard.lastAge }, id: \.self) { value in
-                    PillButton(title: value.name, fill: value == age ? Palette.ochre : Palette.paper, size: 12) {
+                    PillButton(title: value.title, fill: value == age ? Palette.ochre : Palette.paper, size: 12) {
                         age = value
                     }
                 }
             }
-            Text(age == .stone ? "Every player begins in the Stone age."
-                 : "Every player begins in the \(age.name) age, with the standard start and, besides, what the advances to it would have cost.")
+            Text(age == .towns ? "Every player begins in the age of towns."
+                 : "Every player begins in the age of \(age.name), with the standard start and, besides, what the advances to it would have cost.")
                 .font(Typeface.text(11)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
     }

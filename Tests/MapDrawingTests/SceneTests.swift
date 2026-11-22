@@ -25,7 +25,7 @@ import Testing
     // MARK: Drawing
 
     @Test func drawsANodePerEntityAndPerSiteAndRemovesWhatLeavesTheView() {
-        let view = Samples.bronzeAgeSkirmish()
+        let view = Samples.farmsAgeSkirmish()
         let (scene, session, _) = scene(view)
         #expect(scene.entityNodeCount == view.entities.count)
         #expect(scene.siteNodeCount == view.sites.count)
@@ -41,7 +41,7 @@ import Testing
     }
 
     @Test func entitiesAreDrawnInIncreasingDepth() {
-        let view = Samples.bronzeAgeSkirmish()
+        let view = Samples.farmsAgeSkirmish()
         let (scene, _, _) = scene(view)
         for entity in view.entities {
             let node = scene.entityNodes[entity.id]!
@@ -52,7 +52,7 @@ import Testing
     }
 
     @Test func theTerrainTileMapLaysTilesAsTheProjectionDoes() throws {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, _, _) = scene(view)
         let layer = try #require(scene.terrain)
         for (x, y) in [(0, 0), (5, 7), (31, 31), (12, 3)] {
@@ -64,7 +64,7 @@ import Testing
     }
 
     @Test func unexploredTilesAreBlackAndExploredOnesDarkened() throws {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, _, _) = scene(view)
         let layer = try #require(scene.terrain)
         func definition(_ x: Int, _ y: Int) -> SKTileDefinition? { layer.node.tileDefinition(atColumn: x, row: view.mapHeight - 1 - y) }
@@ -77,7 +77,7 @@ import Testing
     }
 
     @Test func aChangeInVisibilityRedrawsOnlyThoseTiles() throws {
-        var view = Samples.stoneAgeOpening()
+        var view = Samples.townsAgeOpening()
         let (scene, session, _) = scene(view)
         let layer = try #require(scene.terrain)
         let tile = (0..<view.visibility.count).first { view.visibility[$0] == .unexplored }!
@@ -90,7 +90,7 @@ import Testing
     }
 
     @Test func peopleWithoutArtworkAreDrawnAsPlaceholdersInTheTeamColour() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, _, _) = scene(view)
         let worker = scene.entityNodes[EntityID(2)]!
         #expect(worker.body.texture != nil)
@@ -104,7 +104,7 @@ import Testing
     }
 
     @Test func facingLeftMirrorsPeopleButNotBuildings() {
-        var view = Samples.bronzeAgeSkirmish()
+        var view = Samples.farmsAgeSkirmish()
         view.entities = view.entities.map { var e = $0; e.facing = .left; return e }
         let (scene, _, _) = scene(view)
         for entity in view.entities {
@@ -114,7 +114,7 @@ import Testing
     }
 
     @Test func artworkIsUsedWhereSuppliedAndTintedWithTheTeamColour() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, _, _) = scene(view, sprites: SolidSource())
         let worker = scene.entityNodes[EntityID(2)]!
         #expect(worker.body.size == CGSize(width: 40, height: 80))
@@ -131,7 +131,7 @@ import Testing
     }
 
     @Test func selectedAndDamagedEntitiesShowRingsAndHealthBars() {
-        let view = Samples.bronzeAgeSkirmish()
+        let view = Samples.farmsAgeSkirmish()
         let (scene, session, _) = scene(view)
         let wounded = view.entities.first { $0.health < $0.maxHealth && $0.owner == PlayerID(0) }!
         let healthy = view.entities.first { $0.health == $0.maxHealth && $0.kind == .unit(.worker) }!
@@ -148,9 +148,9 @@ import Testing
     }
 
     @Test func constructionProgressShowsOnABuildingUnderConstruction() {
-        let view = Samples.bronzeAgeSkirmish()
+        let view = Samples.farmsAgeSkirmish()
         let (scene, _, _) = scene(view)
-        let tower = view.entities.first { $0.kind == .building(.watchTower) }!
+        let tower = view.entities.first { $0.kind == .building(.watchTower) && $0.activity != .idle }!
         let visibleBars = scene.entityNodes[tower.id]!.children.filter { !($0 is SKShapeNode) && $0 !== scene.entityNodes[tower.id]!.body && !$0.isHidden }
         #expect(visibleBars.count >= 1)
         let bar = visibleBars.first!.children.first as? SKSpriteNode
@@ -158,7 +158,7 @@ import Testing
     }
 
     @Test func animationAlternatesTheFrameAFewTimesASecond() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, _, _) = scene(view)
         let walker = scene.entityNodes[EntityID(6)]!
         scene.step(at: 0.0)
@@ -174,7 +174,7 @@ import Testing
     // MARK: The camera
 
     @Test func theSceneFollowsACameraChangedElsewhere() {
-        let (scene, session, _) = scene(Samples.stoneAgeOpening())
+        let (scene, session, _) = scene(Samples.townsAgeOpening())
         session.camera = Camera(centre: MapPosition(x: 20, y: 18), zoom: 1.5)
         scene.updateFromSession()
         #expect(scene.appliedCamera == session.camera)
@@ -185,7 +185,7 @@ import Testing
     }
 
     @Test func scrollingAndZoomingUpdateTheSessionsCameraWithinLimits() {
-        let (scene, session, _) = scene(Samples.stoneAgeOpening())
+        let (scene, session, _) = scene(Samples.townsAgeOpening())
         let start = session.camera
         scene.scroll(contentBy: CGVector(dx: -200, dy: 0))
         #expect(session.camera.centre.x > start.centre.x && session.camera.centre.y < start.centre.y)
@@ -198,7 +198,7 @@ import Testing
     }
 
     @Test func arrowKeysScrollWhilstHeldAndStopWhenReleased() {
-        let (scene, session, _) = scene(Samples.stoneAgeOpening())
+        let (scene, session, _) = scene(Samples.townsAgeOpening())
         scene.step(at: 0)
         let start = session.camera.centre
         scene.handleKeyDown(.arrow(.right))
@@ -214,7 +214,7 @@ import Testing
     // MARK: Selecting
 
     @Test func clickSelectsAndShiftAdds() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, session, _) = scene(view)
         scene.click(at: point(scene, 12, 9, lift: 20))
         #expect(session.selection == [EntityID(2)])
@@ -225,7 +225,7 @@ import Testing
     }
 
     @Test func draggingABoxSelectsOwnPeople() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, session, _) = scene(view)
         let feet = [EntityID(4), EntityID(5), EntityID(6)].map { scene.geometry.scenePoint(for: view.entity($0)!.position) }
         let a = CGPoint(x: feet.map(\.x).min()! - 15, y: feet.map(\.y).min()! - 10)
@@ -246,7 +246,7 @@ import Testing
     }
 
     @Test func aShortDragIsAClick() {
-        let (scene, session, _) = scene(Samples.stoneAgeOpening())
+        let (scene, session, _) = scene(Samples.townsAgeOpening())
         let p = point(scene, 12, 9, lift: 20)
         scene.mouseDownForTest(at: p)
         scene.mouseDraggedForTest(to: CGPoint(x: p.x + 2, y: p.y))
@@ -257,7 +257,7 @@ import Testing
     // MARK: Orders
 
     @Test func rightClickIssuesTheContextualOrderThroughTheSession() {
-        let view = Samples.bronzeAgeSkirmish()
+        let view = Samples.farmsAgeSkirmish()
         let (scene, session, log) = scene(view)
         let worker = view.entities.first { $0.kind == .unit(.worker) }!
         session.selection = [worker.id]
@@ -266,9 +266,9 @@ import Testing
         scene.rightClick(at: point(scene, 4.5, 20.5))
         #expect(log.orders.last == .move(units: [worker.id], to: MapPosition(x: 4.5, y: 20.5)))
 
-        let tin = view.sites.first { $0.kind == .tin }!
-        scene.rightClick(at: point(scene, Double(tin.tile.x) + 0.5, Double(tin.tile.y) + 0.5, lift: 6))
-        #expect(log.orders.last == .gather(units: [worker.id], site: tin.id))
+        let gold = view.sites.first { $0.kind == .gold && $0.tile == GridPoint(18, 9) }!
+        scene.rightClick(at: point(scene, Double(gold.tile.x) + 0.5, Double(gold.tile.y) + 0.5, lift: 6))
+        #expect(log.orders.last == .gather(units: [worker.id], site: gold.id))
 
         let enemy = view.entities.first { $0.owner == PlayerID(1) && $0.kind == .unit(.spearman) }!
         scene.rightClick(at: point(scene, enemy.position.x, enemy.position.y, lift: 20))
@@ -277,13 +277,13 @@ import Testing
     }
 
     @Test func rightClickWithNoOwnPeopleSelectedDoesNothing() {
-        let (scene, _, log) = scene(Samples.stoneAgeOpening())
+        let (scene, _, log) = scene(Samples.townsAgeOpening())
         scene.rightClick(at: point(scene, 4.5, 20.5))
         #expect(log.orders.isEmpty)
     }
 
     @Test func rightClickGroundIsClampedToTheMap() {
-        let (scene, session, log) = scene(Samples.stoneAgeOpening())
+        let (scene, session, log) = scene(Samples.townsAgeOpening())
         session.selection = [EntityID(2)]
         scene.rightClick(at: point(scene, -10, 40))
         #expect(log.orders.last == .move(units: [EntityID(2)], to: MapPosition(x: 0, y: 32)))
@@ -292,7 +292,7 @@ import Testing
     // MARK: Placing
 
     @Test func thePlacementOutlineIsGreenWhereAllowedAndRedWhereNot() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, session, _) = scene(view)
         session.placing = .house
         scene.pointer = point(scene, 16, 18)
@@ -316,36 +316,20 @@ import Testing
         #expect(scene.placementOutline.isHidden && scene.placementState == nil)
     }
 
-    @Test func clickingPlacesTheBuildingWithTheSelectedEngineers() {
-        let view = Samples.stoneAgeOpening()
+    @Test func clickingPlacesTheBuildingWithTheSelectedWorkers() {
+        let view = Samples.townsAgeOpening()
         let (scene, session, log) = scene(view)
         session.selection = [EntityID(6), EntityID(2)]
         session.placing = .house
         let target = point(scene, 16, 18)
         scene.click(at: target)
         let origin = Placement.origin(.house, centre: scene.geometry.mapPosition(for: target))
-        #expect(log.orders == [.construct(engineers: [EntityID(6)], building: .house, at: origin)])
-        #expect(session.placing == nil)
-    }
-
-    @Test func aFounderPlacingATownCentreFoundsIt() {
-        var view = Samples.stoneAgeOpening()
-        let founder = EntityID(9100)
-        view.entities.append(EntityView(id: founder, owner: view.player, kind: .unit(.founder),
-                                        position: MapPosition(x: 14.5, y: 16.5), tile: GridPoint(14, 16), facing: .right,
-                                        health: 100, maxHealth: 100, activity: .idle))
-        let (scene, session, log) = scene(view)
-        session.selection = [founder]
-        session.placing = .townCentre
-        let target = point(scene, 16, 18)
-        scene.click(at: target)
-        let origin = Placement.origin(.townCentre, centre: scene.geometry.mapPosition(for: target))
-        #expect(log.orders == [.found(founder: founder, at: origin)])
+        #expect(log.orders == [.construct(workers: [EntityID(6), EntityID(2)], building: .house, at: origin)])
         #expect(session.placing == nil)
     }
 
     @Test func shiftClickKeepsPlacing() {
-        let (scene, session, log) = scene(Samples.stoneAgeOpening())
+        let (scene, session, log) = scene(Samples.townsAgeOpening())
         session.selection = [EntityID(6)]
         session.placing = .house
         scene.click(at: point(scene, 16, 18), additive: true)
@@ -353,23 +337,23 @@ import Testing
     }
 
     @Test func aBlockedPlacementIssuesNothingAndSaysWhy() {
-        let (scene, session, log) = scene(Samples.stoneAgeOpening())
+        let (scene, session, log) = scene(Samples.townsAgeOpening())
         session.selection = [EntityID(6)]
         session.placing = .house
         scene.click(at: point(scene, 9.5, 9.5))
         #expect(log.orders.isEmpty && session.lastRefusal == .placementBlocked && session.placing == .house)
     }
 
-    @Test func placingWithoutAnEngineerSelectedIssuesNothing() {
-        let (scene, session, log) = scene(Samples.stoneAgeOpening())
-        session.selection = [EntityID(2)]
+    @Test func placingWithoutAWorkerSelectedIssuesNothing() {
+        let (scene, session, log) = scene(Samples.townsAgeOpening())
+        session.selection = [EntityID(1)]
         session.placing = .house
         scene.click(at: point(scene, 16, 18))
         #expect(log.orders.isEmpty && session.lastRefusal == .notYours)
     }
 
     @Test func escapeAndRightClickCancelPlacing() {
-        let (scene, session, log) = scene(Samples.stoneAgeOpening())
+        let (scene, session, log) = scene(Samples.townsAgeOpening())
         session.placing = .barracks
         scene.handleKeyDown(.escape)
         #expect(session.placing == nil)
@@ -382,7 +366,7 @@ import Testing
     // MARK: Groups
 
     @Test func shiftCAsksForTheCarAndACarGlowsOutToItsRadius() {
-        var view = Samples.stoneAgeOpening()
+        var view = Samples.townsAgeOpening()
         let car = EntityID(9200)
         view.entities.append(EntityView(id: car, owner: view.player, kind: .unit(.car), position: MapPosition(x: 12.5, y: 12.5),
                                         tile: GridPoint(12, 12), facing: .right, health: 1, maxHealth: 1, activity: .idle))
@@ -402,7 +386,7 @@ import Testing
     }
 
     @Test func commandNumberSetsAGroupAndTheNumberAloneRecallsIt() {
-        let (scene, session, _) = scene(Samples.stoneAgeOpening())
+        let (scene, session, _) = scene(Samples.townsAgeOpening())
         session.selection = [EntityID(2), EntityID(4)]
         scene.handleKeyDown(.digit(1), command: true)
         #expect(session.groups[1] == [EntityID(2), EntityID(4)])
@@ -414,7 +398,7 @@ import Testing
     }
 
     @Test func aGroupRecallDropsEntitiesThatNoLongerExist() {
-        let view = Samples.stoneAgeOpening()
+        let view = Samples.townsAgeOpening()
         let (scene, session, _) = scene(view)
         session.groups[2] = [EntityID(2), EntityID(999)]
         scene.handleKeyDown(.digit(2))

@@ -56,20 +56,20 @@ struct BronzeFacingRenders {
 
     /// The kinds of the batch, each with the name its pictures take and its title.
     static let kinds: [(kind: UnitKind, name: String, title: String)] = [
-        (.worker, "herder", "The herder (worker)"), (.scholar, "scribe", "The scribe (scholar)"),
-        (.engineer, "mason", "The mason (engineer)"), (.merchant, "trader", "The trader (merchant)"),
-        (.spearman, "spearman", "The spearman"), (.archer, "archer", "The archer"), (.chariot, "chariot", "The chariot"),
+        (.worker, "herder", "The herder (worker)"), 
+
+        (.spearman, "spearman", "The spearman"), 
     ]
 
     @Test(arguments: kinds.filter { BronzePeopleSprites.viewed.contains($0.kind) }.map(\.name)) func sheet(_ name: String) throws {
         let entry = try #require(Self.kinds.first { $0.name == name })
-        try sheet(.unit(entry.kind, .bronze), name: "bronze-\(name)-facings", title: entry.title, wide: entry.kind == .chariot)
+        try sheet(.unit(entry.kind, .bronze), name: "bronze-\(name)-facings", title: entry.title, wide: false)
     }
 
     @Test(arguments: kinds.filter { BronzePeopleSprites.viewed.contains($0.kind) }.map(\.name)) func round(_ name: String) throws {
         let entry = try #require(Self.kinds.first { $0.name == name })
-        try round(.unit(entry.kind, .bronze), name: "bronze-\(name)-round", wide: entry.kind == .chariot,
-                  stride: entry.kind == .chariot ? 1.2 : 1.6)
+        try round(.unit(entry.kind, .bronze), name: "bronze-\(name)-round", wide: false,
+                  stride: 1.6)
     }
 
     /// The eight facings in the order of a turn, each its view and mirroring,

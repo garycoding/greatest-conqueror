@@ -64,7 +64,7 @@ import Testing
     })
 
     // Notices over the whole screen, which shows the match paused while a person is dropped out.
-    let bronze = Samples.bronzeAgeSkirmish()
+    let bronze = Samples.farmsAgeSkirmish()
     var speed = MatchNotices(isHost: false)
     speed.receive(.speedChanged(to: 2, by: "Hyun"))
     #expect(render("lan-notice-speed", width: 1440, height: 900, scale: 1) {

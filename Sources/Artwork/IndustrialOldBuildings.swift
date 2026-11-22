@@ -11,9 +11,8 @@ import Synchronization
 /// roofs with chimney pots, sash windows, cast-iron columns and railings, and
 /// gas lamps, in the style of docs/art-style.md. A building takes the look of
 /// its owner's age (`SpriteSubject.of`), so these replace the Alchemy looks
-/// once a player reaches the Industrial age. The Industrial age's own
-/// buildings (the factory, the railway depot and the oil well) are drawn by
-/// another batch; every key but this batch's gives nil. Each building is drawn
+/// once a player reaches the age of hospitals, drawn in the Industrial look.
+/// Every key but this batch's gives nil. Each building is drawn
 /// in the side view; the boat house is drawn in the back view as well (ruled
 /// 2026-11-22), so that it can face whichever edge of its footprint touches
 /// water (`FootprintEdge.boatHouseView`).
@@ -45,11 +44,11 @@ private final class Store: Sendable {
 /// What this batch draws, on what canvas, and the drawing of it.
 enum IndustrialOldBuildingsArt {
     /// The buildings this batch draws: those of the Stone, Bronze, Iron and Alchemy ages.
-    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .stockPen, .barracks, .watchTower, .palisade,
-                                        .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .boatHouse]
+    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .watchTower,
+                                        .farm, .stable, .castle, .boatHouse]
 
     /// The buildings drawn with the kit of the larger works (`IndustrialOldBuildingsLatePainter`).
-    static let late: [BuildingKind] = [.castle, .alchemistsWorkshop]
+    static let late: [BuildingKind] = [.castle]
 
     /// The building and pose a key names, if it is one of this batch's: a
     /// building of an earlier age in the Industrial age's look, complete or
@@ -111,18 +110,13 @@ extension IndustrialOldBuildingsPainter {
         switch kind {
         case .townCentre: townCentre(complete: complete)
         case .house: house(complete: complete)
-        case .storagePit: storagePit(complete: complete)
-        case .stockPen: stockPen(complete: complete)
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
-        case .palisade: palisade(complete: complete)
         case .farm: farm(complete: complete)
         case .stable: stable(complete: complete)
-        case .siegeWorkshop: siegeWorkshop(complete: complete)
-        case .stoneWall: stoneWall(complete: complete)
         case .boatHouse: boatHouse(complete: complete, turn: .side)
         // Drawn with the kit of the larger works, or by another batch.
-        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
+        case .castle: break
         }
     }
 }
@@ -132,7 +126,6 @@ extension IndustrialOldBuildingsLatePainter {
     mutating func building(_ kind: BuildingKind, complete: Bool) {
         switch kind {
         case .castle: castle(complete: complete)
-        case .alchemistsWorkshop: workshop(complete: complete)
         default: break
         }
     }

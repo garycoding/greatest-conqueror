@@ -22,7 +22,7 @@ public struct CarSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .stone, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .towns, catalogue: catalogue).filter { key in
             guard case .unit(.car, .stone) = key.subject else { return false }
             return CarSaloon.drawn(key.pose) != nil
         }

@@ -18,15 +18,15 @@ import Testing
     }
 
     @Test func theBatchIsTheAlchemyAgesNewBuildings() {
-        let alchemy = Catalogue.standard.buildings.filter { $0.age == .alchemy }.map(\.kind)
+        let alchemy = Catalogue.standard.buildings.filter { $0.age == .cannons }.map(\.kind)
         #expect(Set(alchemy) == Set(AlchemyNewBuildingsArt.kinds))
-        #expect(Self.batch.count == 4)
+        #expect(Self.batch.count == 2)
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        var keys = SpriteKey.required(through: .ai)
+        var keys = SpriteKey.required(through: .hospitals)
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 keys.append(SpriteKey(.building(kind, age), .complete))
                 keys.append(SpriteKey(.building(kind, age), .underConstruction))
             }
@@ -51,10 +51,10 @@ import Testing
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(3, 3), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)
-            let subject = SpriteSubject.of(entity, ownerAge: .alchemy)
+            let subject = SpriteSubject.of(entity, ownerAge: .cannons)
             #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(kind)")
             #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(kind)")
-            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .industrial), .complete)) == nil, "\(kind)")
+            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .hospitals), .complete)) == nil, "\(kind)")
         }
     }
 
@@ -94,15 +94,15 @@ import Testing
         }
     }
 
-    /// The castle is the strongest building in the game, and is drawn the tallest of the batch.
-    @Test func theCastleStandsTallerThanTheWorkshop() throws {
+    /// The castle is the strongest building in the game, and is drawn tall.
+    @Test func theCastleStandsTall() throws {
         func height(_ kind: BuildingKind) throws -> Double {
             let sprite = try #require(Self.source.sprite(SpriteKey(.building(kind, .alchemy), .complete)))
             let pixels = AlchemyNewBuildingsPixels(sprite.base)
             let drawn = try #require(pixels.bounds(alphaAbove: 128))
             return (1 - sprite.anchor.y) * Double(pixels.height) - Double(drawn.minY)
         }
-        #expect(try height(.castle) > height(.alchemistsWorkshop))
+        #expect(try height(.castle) > 100)
     }
 
     @Test func theSameKeyGivesTheSamePixels() throws {
@@ -199,9 +199,7 @@ struct AlchemyNewBuildingsRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let cellW = 580, cellH = 540, label = 34, columns = 5
         let rows: [(BuildingKind, [(String, SpriteKey)])] = [
-            (.castle, [("Iron watch tower", SpriteKey(.building(.watchTower, .iron), .complete)),
-                       ("Iron stone wall", SpriteKey(.building(.stoneWall, .iron), .complete))]),
-            (.alchemistsWorkshop, [("Iron siege workshop", SpriteKey(.building(.siegeWorkshop, .iron), .complete))]),
+            (.castle, [("Iron watch tower", SpriteKey(.building(.watchTower, .iron), .complete))]),
         ]
         let width = cellW * columns, height = (cellH + label) * rows.count + 70
         let context = try #require(Raster.bitmap(width: width, height: height))
@@ -268,25 +266,19 @@ struct AlchemyNewBuildingsRenders {
         // What stands on the map: the key, its centre on the map, and its civilization.
         var things: [(SpriteKey, Double, Double, Civilization?)] = [
             (SpriteKey(.building(.castle, .alchemy), .complete), 12, 10, .rome),
-            (SpriteKey(.building(.alchemistsWorkshop, .alchemy), .complete), 17.5, 13.5, .rome),
-            (SpriteKey(.building(.alchemistsWorkshop, .alchemy), .underConstruction), 9.5, 16.5, .rome),
             (SpriteKey(.building(.townCentre, .iron), .complete), 14.5, 17.5, .rome),
             (SpriteKey(.building(.house, .iron), .complete), 18, 17, .rome),
             (SpriteKey(.building(.house, .iron), .complete), 11, 20, .rome),
             (SpriteKey(.building(.castle, .alchemy), .underConstruction), 16, 5, .angkor),
-            (SpriteKey(.building(.alchemistsWorkshop, .alchemy), .complete), 21.5, 11.5, .angkor),
             (SpriteKey(.site(.tree), .complete), 3.5, 4.5, nil),
             (SpriteKey(.site(.tree), .complete), 4.5, 2.5, nil),
             (SpriteKey(.site(.tree), .complete), 2.5, 16.5, nil),
             (SpriteKey(.site(.tree), .complete), 9.5, 3.5, nil),
             (SpriteKey(.site(.gold), .complete), 5.5, 19.5, nil),
             (SpriteKey(.unit(.worker, .iron), .walking), 13.2, 14.5, .rome),
-            (SpriteKey(.unit(.engineer, .iron), .working), 10.7, 14.6, .rome),
             (SpriteKey(.unit(.swordsman, .iron), .standing), 12.6, 12.9, .rome),
             (SpriteKey(.unit(.horseman, .iron), .standing), 15.8, 15.6, .rome),
         ]
-        // A stretch of stone wall to the west of the castle.
-        for y in 6..<13 { things.append((SpriteKey(.building(.stoneWall, .iron), .complete), 7.5, Double(y) + 0.5, .rome)) }
         for (key, x, y, civilization) in things.sorted(by: { ($0.1 + $0.2, $0.1) < ($1.1 + $1.2, $1.1) }) {
             guard let sprite = source.sprite(key) ?? others.sprite(key) else { continue }
             let image = civilization.map { Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: .of($0)) } ?? sprite.base

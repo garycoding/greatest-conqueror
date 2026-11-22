@@ -39,7 +39,7 @@ extension PlayerView {
 @MainActor
 @Suite struct BoatHouseFacingTests {
     @Test func eachBoatHouseIsDrawnFacingItsWater() throws {
-        var view = Samples.stoneAgeOpening()
+        var view = Samples.townsAgeOpening()
         let w = view.mapWidth
         // Four boat houses, each with water along one edge only.
         let places: [(GridPoint, [GridPoint], width: CGFloat, xScale: CGFloat)] = [
@@ -63,7 +63,7 @@ extension PlayerView {
     }
 
     @Test func aBoatHouseWithNoBackViewFallsBackToTheSide() throws {
-        var view = Samples.stoneAgeOpening()
+        var view = Samples.townsAgeOpening()
         let w = view.mapWidth
         for t in [GridPoint(20, 11), GridPoint(21, 11)] { view.terrain[t.y * w + t.x] = .shallowWater }
         let id = view.addBoatHouse(at: GridPoint(20, 12))
