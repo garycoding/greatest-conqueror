@@ -24,7 +24,7 @@ extension TerrainSprites {
         case .tree: drawTree(&svg)
         case .prey: drawDeer(&svg)
         case .gold: drawGold(&svg, shadow: shadow)
-        // The fish belong to the boats' batch; the fruit bush is drawn as its stand-in (`StandIn.site`) until step 8.
+        // The fish belong to the boats' batch; the fruit bush to its own (`FruitBushSprites`).
         case .fish, .fruit: break
         }
     }

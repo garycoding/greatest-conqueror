@@ -17,6 +17,7 @@ public final class GameSprites: SpriteSource {
         batches = [
             CartoonSprites(catalogue: catalogue),
             TerrainSprites(),
+            FruitBushSprites(),
             StoneBuildingSprites(),
             StoneBoatSprites(catalogue: catalogue),
             BronzeBuildingSprites(),

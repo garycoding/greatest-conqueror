@@ -29,6 +29,7 @@ import Testing
     }
     for key in keys {
         guard let image = all.sprite(key) else { missing.append(key); continue }
+        if key.subject == .site(.fruit), let own = FruitBushSprites().sprite(key), !sameImage(own, image) { wrong.append(key) }
         let age: Look? = {
             switch key.subject {
             case .unit(_, let look), .building(_, let look): return look
