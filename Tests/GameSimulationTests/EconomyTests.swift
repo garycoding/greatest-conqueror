@@ -42,6 +42,47 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.resources(me)[kind.yield] == before + load)
     }
 
+    /// A worker gathers a fruit bush at its `gather_food` rate and carries the
+    /// food to a town centre (ruled 2026-11-22); the bush blocks its tile as a tree does.
+    @Test func aWorkerGathersFruitAtItsFoodRateAndDeliversIt() {
+        var sim = duel(sites: [(.fruit, 9, 3)])
+        sim.exploreAll(me)
+        #expect(!sim.open(GridPoint(9, 3)))
+        let worker = sim.people(me, .worker)[0]
+        let food = sim.resources(me)[.food]
+        #expect(sim.apply(.gather(units: [worker], site: SiteID(0)), from: me) == .accepted)
+        do { let reached = sim.run(until: { $0.living(worker).doing == .gathering }, limit: 1_000); #expect(reached) }
+        #expect(sim.view(for: me).entity(worker)?.activity == .gathering(.fruit))
+        // A load takes `load / gather_food` seconds to pick.
+        var ticks = 0
+        while sim.living(worker).doing == .gathering && ticks < 2_000 { sim.step(); ticks += 1 }
+        let rate = Catalogue.standard.stats(.worker).gathers(.food)
+        let expected = Double(load) / rate * Double(Tick.rate)
+        #expect(abs(Double(ticks) - expected) <= 2, "\(ticks) ticks against \(expected)")
+        #expect(sim.view(for: me).entity(worker)?.activity == .carrying(.food, load))
+        do { let reached = sim.run(until: { $0.resources(me)[.food] > food }, limit: 1_000); #expect(reached) }
+        #expect(sim.resources(me)[.food] == food + load)
+        #expect(sim.sites[0].remaining == Catalogue.standard.gathering.amount(.fruit) - load)
+    }
+
+    /// A bush is used up: it leaves the map, and its gatherer turns to the next bush.
+    @Test func aFruitBushIsUsedUpAndItsGathererTurnsToTheNextBush() {
+        var sim = duel(sites: [(.fruit, 9, 3), (.fruit, 10, 4)])
+        sim.exploreAll(me)
+        sim.sites[0].remaining = 3
+        let worker = sim.people(me, .worker)[0]
+        let food = sim.resources(me)[.food]
+        _ = sim.apply(.gather(units: [worker], site: SiteID(0)), from: me)
+        do { let reached = sim.run(until: { $0.sites[0].remaining == 0 }, limit: 1_000); #expect(reached) }
+        #expect(!sim.view(for: me).sites.contains { $0.id == SiteID(0) })
+        // Used up, it no longer blocks its tile.
+        #expect(sim.open(GridPoint(9, 3)))
+        sim.step()
+        if case .gather(let site, .fruit, _) = sim.living(worker).task { #expect(site == SiteID(1)) } else { Issue.record("not gathering fruit") }
+        do { let reached = sim.run(until: { $0.resources(me)[.food] > food }, limit: 2_000); #expect(reached) }
+        #expect(sim.resources(me)[.food] == food + load)
+    }
+
     @Test func anExhaustedSiteVanishesAndItsWorkerTurnsToTheNextOfItsKind() {
         var sim = duel(sites: [(.tree, 8, 3), (.tree, 10, 3)])
         sim.exploreAll(me)

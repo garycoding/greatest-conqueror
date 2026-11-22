@@ -19,6 +19,7 @@ public enum InterfaceText {
         case .prey: "prey"
         case .gold: "gold"
         case .fish: "fish"
+        case .fruit: "fruit"
         }
     }
 
@@ -49,7 +50,7 @@ public enum InterfaceText {
         case .tree: "Lumberjack"
         case .prey: "Hunter"
         case .gold: "Miner"
-        case .fish: "Gatherer"
+        case .fish, .fruit: "Gatherer"
         }
     }
 
@@ -72,6 +73,7 @@ public enum InterfaceText {
             switch site {
             case .prey: return ("Hunting", nil)
             case .tree: return ("Felling trees", nil)
+            case .fruit: return ("Gathering fruit", nil)
             default: return ("Mining \(name(of: site))", nil)
             }
         case .carrying(let resource, let amount):

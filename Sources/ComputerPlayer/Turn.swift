@@ -168,21 +168,22 @@ final class Turn {
     }
 
     /// The mean position of the sites within twelve tiles of the base, and
-    /// whether prey remains within fourteen: one pass over the sites, made once.
+    /// whether wild food (prey or fruit bushes) remains within fourteen: one
+    /// pass over the sites, made once.
     func surroundings() -> Surroundings {
         if let nearby { return nearby }
         var x = 0.0, y = 0.0, n = 0.0
-        var preyNear = false
+        var wildFoodNear = false
         let bx = base.x, by = base.y
         view.sites.withUnsafeBufferPointer { sites in
             for i in 0..<sites.count where sites[i].remaining > 0 {
                 let sx = Double(sites[i].tile.x) + 0.5, sy = Double(sites[i].tile.y) + 0.5
                 let d = ((sx - bx) * (sx - bx) + (sy - by) * (sy - by)).squareRoot()
                 if d < 12 { x += sx; y += sy; n += 1 }
-                if d < 14 && sites[i].kind == .prey { preyNear = true }
+                if d < 14 && (sites[i].kind == .prey || sites[i].kind == .fruit) { wildFoodNear = true }
             }
         }
-        let found = Surroundings(resources: n > 0 ? MapPosition(x: x / n, y: y / n) : nil, preyNear: preyNear)
+        let found = Surroundings(resources: n > 0 ? MapPosition(x: x / n, y: y / n) : nil, wildFoodNear: wildFoodNear)
         nearby = found
         return found
     }
@@ -330,7 +331,8 @@ final class Turn {
 /// What lies around the base (`Turn.surroundings`).
 struct Surroundings {
     var resources: MapPosition?
-    var preyNear: Bool
+    /// Whether prey or fruit bushes remain near the base.
+    var wildFoodNear: Bool
 }
 
 /// The ground as the player sees it, made once per action from the view's

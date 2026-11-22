@@ -349,10 +349,12 @@ final class SiteNode: SKSpriteNode {
 
     func apply(_ site: ResourceSite, afloat: Bool, frame: Int, visibility: TileVisibility, cache: SpriteCache) {
         let shown = (frame + Self.frameOffset(site.tile)) % SpriteKey.framesPerPose
-        let sprite = cache.sprite(forSite: site.kind, afloat: afloat, frame: shown)
+        // A site without a picture of its own is drawn as its stand-in, to its scale (`StandIn.site`).
+        let sprite = cache.sprite(forSite: StandIn.site(site.kind), afloat: afloat, frame: shown)
         if texture !== sprite.texture {
             texture = sprite.texture
-            size = sprite.size
+            let scale = StandIn.scale(site.kind)
+            size = CGSize(width: sprite.size.width * scale, height: sprite.size.height * scale)
             anchorPoint = sprite.anchor
         }
         if kind != site.kind {

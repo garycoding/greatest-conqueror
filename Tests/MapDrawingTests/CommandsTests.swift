@@ -42,6 +42,20 @@ import Testing
                 == .move(units: [spearman], to: tree.tile.centre))
     }
 
+    /// A right-click on a fruit bush with workers selected gathers it (ruled 2026-11-22).
+    @Test func aFruitBushGivesGatherForWorkers() {
+        var view = self.view
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
+        var bush = view.sites.first { $0.kind == .tree }!
+        bush.id = SiteID(9_001)
+        bush.kind = .fruit
+        view.sites.append(bush)
+        #expect(MapCommands.contextualOrder(on: .site(bush), view: view, selection: [worker, spearman])
+                == .gather(units: [worker], site: bush.id))
+        #expect(MapCommands.contextualOrder(on: .site(bush), view: view, selection: [spearman])
+                == .move(units: [spearman], to: bush.tile.centre))
+    }
+
     @Test func aSiteInTheWaterGivesGatherForBoatsOnly() {
         var view = self.view
         let worker = id(.unit(.worker))

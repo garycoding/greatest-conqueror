@@ -40,8 +40,9 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
 /// The kinds drawn, until their own art is made, as an existing kind (step 5
 /// of the plan; step 8 replaces this table with the new drawings): the doctor
 /// and the founder as the worker, the navy ship as the fishing boat, drawn
-/// larger, knight 3 as knight 2, the cannon factory as the barracks and the
-/// hospital as the house. Every other kind is drawn as itself.
+/// larger, knight 3 as knight 2, the cannon factory as the barracks, the
+/// hospital as the house, and the fruit bush as the tree, drawn smaller.
+/// Every other kind is drawn as itself.
 public enum StandIn {
     public static func unit(_ kind: UnitKind) -> UnitKind {
         switch kind {
@@ -60,8 +61,15 @@ public enum StandIn {
         }
     }
 
+    /// The fruit bush as the tree, the nearest plant drawn, until step 8 draws the bush.
+    public static func site(_ kind: SiteKind) -> SiteKind { kind == .fruit ? .tree : kind }
+
     /// How much larger than its stand-in a kind is drawn.
     public static func scale(_ kind: EntityKind) -> Double { kind == .unit(.navyShip) ? 1.5 : 1 }
+
+    /// How much larger than its stand-in a site is drawn: the fruit bush at a
+    /// little over a third of the tree's height.
+    public static func scale(_ kind: SiteKind) -> Double { kind == .fruit ? 0.4 : 1 }
 
     /// A look a kind lacks, drawn in another: the castle, of the age of ships
     /// now (requirement 10), in the Iron look as in the Alchemy look.
@@ -174,7 +182,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
                 keys.append(SpriteKey(.building(stats.kind, look), .underConstruction))
             }
         }
-        for kind in SiteKind.allCases {
+        for kind in SiteKind.allCases where StandIn.site(kind) == kind {
             keys.append(SpriteKey(.site(kind), .complete))
         }
         keys.append(SpriteKey(.outcrop, .complete))

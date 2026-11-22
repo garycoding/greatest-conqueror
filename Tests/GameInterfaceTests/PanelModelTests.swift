@@ -348,7 +348,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     var view = Samples.townsAgeOpening()
     let worker = view.id(of: .unit(.worker))
     let i = view.entities.firstIndex { $0.id == worker }!
-    for (job, name) in [(Job.gathering(.tree), "Lumberjack"), (.gathering(.prey), "Hunter"), (.gathering(.gold), "Miner"),
+    for (job, name) in [(Job.gathering(.tree), "Lumberjack"), (.gathering(.prey), "Hunter"), (.gathering(.gold), "Miner"), (.gathering(.fruit), "Gatherer"),
                         (.working(.farm), "Farmer"), (.constructing, "Builder"), (.repairing, "Repairer"), (.idle, "Worker")] {
         view.entities[i].job = job
         guard case .single(let detail) = model(view, [worker]).content else { Issue.record("not one"); return }

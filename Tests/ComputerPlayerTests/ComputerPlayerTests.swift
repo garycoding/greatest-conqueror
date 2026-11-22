@@ -40,6 +40,25 @@ private func moves(_ orders: [Order]) -> [(units: [EntityID], to: MapPosition)] 
     #expect(gathered.allSatisfy { [.food, .wood, .gold].contains($0.kind.yield) })
 }
 
+/// Early on, fruit bushes near the base feed the player as deer do (ruled 2026-11-22).
+@Test func gathersFruitForFoodEarlyAsItHunts() {
+    var view = Samples.townsAgeOpening()
+    view.remove([EntityID(5), EntityID(6)])
+    for id in [2, 3, 4] { view.set(EntityID(id), .idle) }
+    view.population = 3
+    view.resources = Catalogue.standard.startingResources
+    view.ageProgress = 0
+    view.tick = 0
+    for i in view.sites.indices where view.sites[i].kind == .prey { view.sites[i].kind = .fruit }
+    var cp = player()
+    let orders = decide(&cp, view)
+    let gathered = orders.compactMap { order -> ResourceSite? in
+        guard case .gather(_, let site) = order else { return nil }
+        return view.sites.first { $0.id == site }
+    }
+    #expect(gathered.contains { $0.kind == .fruit })
+}
+
 @Test func anOpponentsWorkerAmongTheBuildingsIsNoThreat() {
     // A scouting worker beside the town centre: training and gathering go on.
     var view = TestViews.openingWithRoom()

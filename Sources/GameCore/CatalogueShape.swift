@@ -84,7 +84,7 @@ public struct CatalogueShape: Sendable {
             BuildingShape(kind: .hospital, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
         ]
         let gathering = GatheringStats(farmYield: 300, farmReseed: cost([.wood: 60]), load: 10,
-                                       siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200])
+                                       siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200, .fruit: 150])
         let bonuses: [Bonus] = [
             Bonus(.soldier1, against: .knight1, 3),
             Bonus(.soldier2, against: .soldier1, 1.5),

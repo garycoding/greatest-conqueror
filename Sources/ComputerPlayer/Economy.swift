@@ -216,7 +216,7 @@ extension Turn {
             let short = max(0, reserve[resource] - view.resources[resource])
             share[resource.rawValue] *= 1 + min(1, Double(short) / 200)
         }
-        if !open.has(.prey) && completeBuildings(.farm).isEmpty { set(.food, 0) }
+        if !open.has(.prey) && !open.has(.fruit) && completeBuildings(.farm).isEmpty { set(.food, 0) }
         if !open.has(.tree) { set(.wood, 0) }
         if !open.has(.gold) { set(.gold, 0) }
         let total = share.reduce(0, +)
@@ -249,12 +249,16 @@ extension Turn {
                        pens: [Pen]) -> (Task, Workplace)? {
         switch resource {
         case .food:
-            let prey = nearestSite(.prey, to: worker.position, open: &open)
-            if let prey, prey.tile.centre.distance(to: worker.position) <= 12 { return (.hunting, .site(prey.id)) }
+            // Wild food first, prey or fruit bushes, whichever is nearer, as long as it lasts near by.
+            let wild = [(Task.hunting, nearestSite(.prey, to: worker.position, open: &open)),
+                        (Task.picking, nearestSite(.fruit, to: worker.position, open: &open))]
+                .compactMap { task, site in site.map { (task: task, site: $0) } }
+                .min { $0.site.tile.centre.distance(to: worker.position) < $1.site.tile.centre.distance(to: worker.position) }
+            if let wild, wild.site.tile.centre.distance(to: worker.position) <= 12 { return (wild.task, .site(wild.site.id)) }
             // A farm without a farmer.
             let farms = pens.filter { $0.herders < $0.room }.map(\.building)
             if let farm = Turn.nearest(farms, to: worker.position) { return (.herding, .pen(farm.id)) }
-            if let prey { return (.hunting, .site(prey.id)) }
+            if let wild { return (wild.task, .site(wild.site.id)) }
             return nil
         default:
             guard let kind = SiteKind.allCases.first(where: { $0.yield == resource }), let task = Task(site: kind),

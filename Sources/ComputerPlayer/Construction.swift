@@ -52,7 +52,7 @@ extension Turn {
             // quarter of the workers.
             let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
             let full = herders >= completeBuildings(.farm).count
-            let hungry = !surroundings().preyNear || view.resources[.food] < 200
+            let hungry = !surroundings().wildFoodNear || view.resources[.food] < 200
             if farms < wantedFarms && full && hungry && memory.plans.allSatisfy({ $0.kind != .farm }) {
                 out.append((.farm, homeSide(by: 6), 0...10))
             }

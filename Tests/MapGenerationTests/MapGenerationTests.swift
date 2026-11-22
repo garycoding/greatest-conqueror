@@ -67,8 +67,10 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 /// Stored values, which a second process reproduces. If a deliberate change to
 /// the generator alters the map, regenerate them and say so in the commit.
 @Test func storedChecksumsMatch() {
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 3_920_376_032_371_803_565)
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 8_816_661_928_020_874_576)
+    let two = checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1)))
+    let six = checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2)))
+    #expect(two == 1_180_303_697_386_938_539, "\(two)")
+    #expect(six == 15_961_188_598_196_525_373, "\(six)")
 }
 
 // MARK: - Shape
@@ -170,10 +172,26 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 }
 
 @Test(arguments: 2...6) func everyStartHasItsNearbyResources(players: Int) {
-    let near: [(SiteKind, Int)] = [(.tree, 6), (.prey, 3), (.gold, 2)]
+    let near: [(SiteKind, Int)] = [(.tree, 6), (.prey, 3), (.fruit, 3), (.gold, 2)]
     for map in Maps.byPlayers[players]! { for start in map.starts {
         for (kind, least) in near { #expect(count(kind, in: map, within: 14, of: start) >= least, "\(kind) near \(start)") }
     } }
+}
+
+/// Fruit bushes stand in a small cluster near every start, on land, and
+/// nowhere else (ruled 2026-11-22).
+@Test(arguments: 2...6) func fruitBushesStandNearEveryStartAndNowhereElse(players: Int) {
+    for map in Maps.byPlayers[players]! {
+        for start in map.starts {
+            let n = count(.fruit, in: map, within: 11, of: start)
+            #expect((3...4).contains(n), "\(n) bushes near \(start)")
+        }
+        for bush in map.sites where bush.kind == .fruit {
+            #expect(map.terrain[bush.tile.y * map.width + bush.tile.x].isPassable)
+            #expect(map.starts.contains { centre(of: $0).distance(to: bush.tile.centre) <= 11 }, "a bush at \(bush.tile) far from every start")
+            #expect(bush.remaining == Catalogue.standard.gathering.amount(.fruit))
+        }
+    }
 }
 
 @Test(arguments: 2...6) func startsAreFarApart(players: Int) {
@@ -267,6 +285,7 @@ private func colour(_ k: SiteKind) -> (UInt8, UInt8, UInt8) {
     case .prey: (240, 240, 240)
     case .gold: (250, 215, 30)
     case .fish: (230, 250, 255)
+    case .fruit: (200, 40, 90)
     }
 }
 
