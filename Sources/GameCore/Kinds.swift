@@ -50,6 +50,10 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
 
     /// Whether the kind keeps the look of the age in which it first appears,
     /// rather than taking its owner's: the tiers, the navy ship, the car and the founder.
+    /// A kind that may board a navy ship (ruled 2026-11-22): soldiers,
+    /// knights, cannons, workers and doctors.
+    public var boardsShips: Bool { isWarfighter || self == .worker || self == .doctor }
+
     public var keepsItsLook: Bool { isWarfighter || self == .car || self == .founder }
 
     /// Towers, castles and navy ships are upgraded at each new age (requirement 24).
