@@ -347,7 +347,7 @@ private func openingByAPond() -> PlayerView {
             "update OrderFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum OrderFixture { static let expected: UInt64 = 0x01C0_7AD7_2F90_AF57 }
+enum OrderFixture { static let expected: UInt64 = 0xA385_F88B_51F5_3FBB }
 
 @Test func aSavedPlayerResumesWithTheSameDecisions() throws {
     let views = TestViews.sequence()

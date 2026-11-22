@@ -49,7 +49,6 @@ struct Digest {
         for b in c.buildings {
             add(b.kind.rawValue); add(b.age.rawValue); add(b.cost); add(b.buildTime); add(b.health); add(b.armour)
             add(b.footprint); add(b.sight); add(b.attack); add(b.housing)
-            add(b.accepts.count); for r in b.accepts { add(r.rawValue) }
             add(b.trains.count); for u in b.trains { add(u.rawValue) }
             add(b.levels); add(b.demolishTime); add(b.demolishReturn)
         }
@@ -57,7 +56,7 @@ struct Digest {
         for p in c.production { add(p.maker); add(p.unit.rawValue); add(p.age.rawValue); add(p.time) }
         add(c.advances.count)
         for a in c.advances { add(a.from.rawValue); add(a.cost); add(a.time) }
-        add(c.gathering.farmYield); add(c.gathering.farmReseed); add(c.gathering.load)
+        add(c.gathering.farmYield); add(c.gathering.farmReseed)
         for a in c.gathering.amountBySite { add(a) }
         add(c.bonuses.count)
         for b in c.bonuses { add(b.attacker.rawValue); add(b.defender.rawValue); add(b.multiplier) }
@@ -124,8 +123,6 @@ extension Simulation {
         for w in r.waypoints { d.add(w) }
         d.add(r.direct); d.add(r.planned); d.add(r.partial); d.add(r.forceSearch); d.add(r.plannedFor)
         d.add(r.plannedAt); d.add(r.stuck)
-        if let c = e.cargo { d.add(c.kind.rawValue); d.add(c.amount) } else { d.add(-1) }
-        d.add(e.dropOff?.rawValue ?? -1)
         d.add(e.farmUsed ?? -1)
         d.add(e.fraction)
         d.add(e.built); d.add(e.complete); d.add(e.healthCredit); d.add(e.demolished)

@@ -163,12 +163,12 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(d.ownerLine == "Sumer, yours")
 }
 
-@Test func aWorkerCarryingAndAWorkerHunting() {
+@Test func aWorkerWalkingAndAWorkerHunting() {
     let view = Samples.townsAgeOpening()
-    let carrier = view.entities.first { $0.activity == .carrying(.food, 6) }!
-    guard case .single(let d) = model(view, [carrier.id]).content else { Issue.record("expected single"); return }
+    let walker = view.entities.first { $0.kind == .unit(.worker) && $0.activity == .moving }!
+    guard case .single(let d) = model(view, [walker.id]).content else { Issue.record("expected single"); return }
     #expect(d.name == "Worker")
-    #expect(d.activity == "Carrying 6 Food")
+    #expect(d.activity == "Walking")
     let hunter = view.entities.first { $0.activity == .gathering(.prey) }!
     guard case .single(let h) = model(view, [hunter.id]).content else { Issue.record("expected single"); return }
     #expect(h.activity == "Hunting")

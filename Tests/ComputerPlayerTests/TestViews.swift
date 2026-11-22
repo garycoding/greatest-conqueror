@@ -194,7 +194,7 @@ enum TestViews {
             let activity: Activity = switch i % 6 {
             case 0, 1, 2: .idle
             case 3: .gathering(.tree)
-            case 4: .carrying(.wood, 6)
+            case 4: .moving
             default: .working
             }
             view.add(.unit(.worker), owner: me, at: x, y, activity)

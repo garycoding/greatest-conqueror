@@ -122,7 +122,7 @@ import Testing
         for i in v.entities.indices where v.entities[i].id == workers[0] { v.entities[i].job = .gathering(.tree) }
         let clubman = id(.unit(.soldier1))
         let onScreen = [workers[0], extra, idle, clubman]   // `far` is off the screen
-        // Lumberjacks on the screen, whether chopping or carrying; not the idle one, the clubman or the one off the screen.
+        // Lumberjacks on the screen, whether chopping or walking; not the idle one, the clubman or the one off the screen.
         #expect(MapCommands.selection(afterDoubleClickOn: workers[0], onScreen: onScreen, view: v) == [workers[0], extra])
         #expect(MapCommands.selection(afterDoubleClickOn: idle, onScreen: onScreen, view: v) == [idle])
         // A building, an opponent or nothing: as a single click.

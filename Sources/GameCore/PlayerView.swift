@@ -16,8 +16,6 @@ public enum Activity: Hashable, Codable, Sendable {
     case idle
     case moving
     case gathering(SiteKind)
-    /// Carrying a load back to be delivered.
-    case carrying(Resource, Int)
     /// Working at a building (farming, repairing).
     case working
     case constructing
@@ -31,8 +29,8 @@ public enum Activity: Hashable, Codable, Sendable {
 }
 
 /// What a person has been set to do, as its player sees it: the job it keeps
-/// whilst it walks to and fro (a lumberjack chopping and one carrying wood back
-/// both have the job `gathering(.tree)`), so that a double-click can select
+/// whilst it walks from one site to the next (a lumberjack chopping and one
+/// walking to the next tree both have the job `gathering(.tree)`), so that a double-click can select
 /// people at the same work (ruled 2026-11-20).
 public enum Job: Hashable, Codable, Sendable {
     case idle

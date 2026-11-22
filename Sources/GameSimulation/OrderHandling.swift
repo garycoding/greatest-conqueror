@@ -126,7 +126,6 @@ extension Simulation {
         let kind = sites[s].kind
         guard tables.unit(gatherer).gathers(kind.yield) > 0 else { return .refused(.invalidTarget) }
         for i in workers {
-            if let cargo = entities[i].cargo, cargo.kind != kind { entities[i].cargo = nil }
             entities[i].fraction = 0
             assign(i, .gather(site: site, kind: kind, tile: sites[s].tile))
         }

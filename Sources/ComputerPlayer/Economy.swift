@@ -185,13 +185,6 @@ extension Turn {
             return Task(site: kind)
         case .working:
             return .herding
-        case .carrying(let resource, _):
-            if let last = memory.assignment(of: worker.id), last.task.resource == resource { return last.task }
-            switch resource {
-            case .food: return .hunting
-            case .wood: return .felling
-            case .gold: return .gold
-            }
         case .moving:
             return memory.assignment(of: worker.id)?.task
         default:

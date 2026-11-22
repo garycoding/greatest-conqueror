@@ -154,7 +154,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         }
         switch activity {
         case .idle: return .standing
-        case .moving, .carrying: return .walking
+        case .moving: return .walking
         case .gathering, .working, .constructing: return .working
         case .fighting: return .fighting
         case .underConstruction, .training, .advancing: return .standing
