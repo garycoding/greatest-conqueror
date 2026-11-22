@@ -22,11 +22,10 @@ import Testing
         + [SpriteKey(.building(.farm, .bronze), .complete), SpriteKey(.building(.farm, .bronze), .underConstruction)]
 
     @Test func theBatchIsTheIronAgesNewBuildings() {
-        // The stable, of the age of ships, and the farm, which Cities of Progress drew from its Iron age.
-        // The castle, of the age of ships now, is drawn in the Iron look by its Alchemy stand-in (`StandIn`).
-        let iron = Catalogue.standard.buildings.filter { $0.age == .ships && $0.kind != .castle }.map(\.kind) + [.farm]
+        // The stable and the castle, of the age of ships, and the farm, which Cities of Progress drew from its Iron age.
+        let iron = Catalogue.standard.buildings.filter { $0.age == .ships }.map(\.kind) + [.farm]
         #expect(Set(iron) == Set(IronNewBuildingsArt.kinds))
-        #expect(Self.batch.count == 6)
+        #expect(Self.batch.count == 8)
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {

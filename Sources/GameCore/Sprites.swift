@@ -37,44 +37,30 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
     }
 }
 
-/// The kinds drawn, until their own art is made, as an existing kind (step 5
-/// of the plan; step 8 replaces this table with the new drawings): the doctor
-/// and the founder as the worker, the navy ship as the fishing boat, drawn
-/// larger, knight 3 as knight 2, the cannon factory as the barracks, the
-/// hospital as the house, and the fruit bush as the tree, drawn smaller.
-/// Every other kind is drawn as itself.
+/// The kinds drawn as an existing kind until their own art is made: since the
+/// art of step 8, only the founder, drawn as the worker. Every other kind is
+/// drawn as itself.
 public enum StandIn {
     public static func unit(_ kind: UnitKind) -> UnitKind {
         switch kind {
-        case .doctor, .founder: .worker
-        case .navyShip: .fishingBoat
-        case .knight3: .knight2
+        case .founder: .worker
         default: kind
         }
     }
 
     public static func building(_ kind: BuildingKind) -> BuildingKind {
         switch kind {
-        case .cannonFactory: .barracks
-        case .hospital: .house
         default: kind
         }
     }
 
-    /// The fruit bush as the tree, the nearest plant drawn, until step 8 draws the bush.
-    public static func site(_ kind: SiteKind) -> SiteKind { kind == .fruit ? .tree : kind }
-
     /// How much larger than its stand-in a kind is drawn.
-    public static func scale(_ kind: EntityKind) -> Double { kind == .unit(.navyShip) ? 1.5 : 1 }
+    public static func scale(_ kind: EntityKind) -> Double { 1 }
 
-    /// How much larger than its stand-in a site is drawn: the fruit bush at a
-    /// little over a third of the tree's height.
-    public static func scale(_ kind: SiteKind) -> Double { kind == .fruit ? 0.4 : 1 }
-
-    /// A look a kind lacks, drawn in another: the castle, of the age of ships
-    /// now (requirement 10), in the Iron look as in the Alchemy look.
+    /// A look a kind lacks, drawn in another. None is now: the castle, of the
+    /// age of ships, has its own Iron look.
     public static func subject(_ subject: SpriteSubject) -> SpriteSubject {
-        subject == .building(.castle, .iron) ? .building(.castle, .alchemy) : subject
+        subject
     }
 }
 
@@ -182,8 +168,10 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
                 keys.append(SpriteKey(.building(stats.kind, look), .underConstruction))
             }
         }
-        for kind in SiteKind.allCases where StandIn.site(kind) == kind {
-            keys.append(SpriteKey(.site(kind), .complete))
+        for kind in SiteKind.allCases {
+            // A site drawn in each look (the fruit bush) needs a picture in each look reached.
+            let poses = kind.isDrawnInEachLook ? ages.map { SpritePose.complete(in: $0.look) } : [.complete]
+            for pose in poses { keys.append(SpriteKey(.site(kind), pose)) }
         }
         keys.append(SpriteKey(.outcrop, .complete))
         for terrain in Terrain.allCases { keys.append(SpriteKey(.terrain(terrain, variant: 0), .complete)) }

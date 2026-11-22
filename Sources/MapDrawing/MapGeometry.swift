@@ -92,7 +92,8 @@ enum Stature {
         case .stable: 28
         case .castle: 60
         case .boatHouse: 30
-        case .cannonFactory, .hospital: building(StandIn.building(kind))
+        case .cannonFactory: 34
+        case .hospital: 40
         }
     }
 
@@ -103,7 +104,7 @@ enum Stature {
         case .prey: 22
         case .gold: 26
         case .fish: 6
-        case .fruit: site(StandIn.site(kind)) * StandIn.scale(kind)
+        case .fruit: 24
         }
     }
 }

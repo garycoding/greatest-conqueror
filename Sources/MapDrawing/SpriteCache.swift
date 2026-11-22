@@ -53,7 +53,7 @@ final class SpriteCache {
     private struct PersonKey: Hashable { var kind: UnitKind; var civilization: Civilization; var pose: String; var frame: Int }
     private struct BuildingKey: Hashable { var kind: BuildingKind; var civilization: Civilization; var constructing: Bool }
     private struct TerrainKey: Hashable { var terrain: Terrain; var variant: Int; var dimmed: Bool }
-    private struct SiteKey: Hashable { var kind: SiteKind; var afloat: Bool; var frame: Int }
+    private struct SiteKey: Hashable { var kind: SiteKind; var afloat: Bool; var look: Look; var frame: Int }
     private var people: [PersonKey: ResolvedSprite] = [:]
     private var buildings: [BuildingKey: ResolvedSprite] = [:]
     private var sites: [SiteKey: ResolvedSprite] = [:]
@@ -136,12 +136,16 @@ final class SpriteCache {
     }
 
     /// The sprite of a site at a frame of its animation: `afloat` on a water
-    /// tile (ruled 2026-11-21), falling back to `complete`, then to frame 0,
-    /// then to a placeholder.
-    func sprite(forSite kind: SiteKind, afloat: Bool = false, frame: Int = 0) -> ResolvedSprite {
-        let key = SiteKey(kind: kind, afloat: afloat, frame: frame)
+    /// tile (ruled 2026-11-21), and a site drawn in each look (the fruit bush)
+    /// in `look`, the look of the age of the player who sees it; each falling
+    /// back to `complete`, then to frame 0, then to a placeholder.
+    func sprite(forSite kind: SiteKind, afloat: Bool = false, look: Look = .stone, frame: Int = 0) -> ResolvedSprite {
+        // A site with one picture for every age is kept once, whatever the look.
+        let look = kind.isDrawnInEachLook ? look : .stone
+        let key = SiteKey(kind: kind, afloat: afloat, look: look, frame: frame)
         if let known = sites[key] { return known }
-        let sprite = suppliedWithFallback(.site(kind), pose: afloat ? .afloat : .complete, frame: frame, fallback: .complete)
+        let pose: SpritePose = afloat ? .afloat : .site(kind, in: look)
+        let sprite = suppliedWithFallback(.site(kind), pose: pose, frame: frame, fallback: .complete)
             ?? sitePlaceholder(kind)
         sites[key] = sprite
         return sprite

@@ -206,7 +206,7 @@ public final class MapScene: SKScene {
                 siteNodes[site.id] = node
             }
             node.generation = generation
-            node.apply(site, afloat: view.terrain(at: site.tile).isWater, frame: animationFrame,
+            node.apply(site, afloat: view.terrain(at: site.tile).isWater, look: view.age.look, frame: animationFrame,
                        visibility: view.visibility(at: site.tile), cache: cache)
             seenSites += 1
         }
