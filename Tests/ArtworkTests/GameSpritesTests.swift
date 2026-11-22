@@ -15,9 +15,9 @@ import Testing
     let approved: [Look: [any SpriteSource]] = [
         .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites()],
         .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(),
-                   AlchemyBoatSprites()],
+                   AlchemyBoatSprites(), LateBuildingSprites()],
         .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(),
-                      IndustrialBoatSprites()],
+                      IndustrialBoatSprites(), LateBuildingSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []
