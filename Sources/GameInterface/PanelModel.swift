@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, build, age, demolish, dismiss, reseed, car
+        case train, build, age, demolish, dismiss, reseed, car, orders
 
         public var heading: String {
             switch self {
@@ -30,6 +30,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .dismiss: "Dismiss"
             case .reseed: "Farm"
             case .car: "Car"
+            case .orders: "Orders"
             }
         }
     }
@@ -44,6 +45,12 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case reseed(farm: EntityID)
         /// Turn the kill radius of these cars on or off (ruled 2026-11-21).
         case killRadius(cars: [EntityID], on: Bool)
+        /// Board a navy ship (requirement 16).
+        case board(units: [EntityID], ship: EntityID)
+        /// Land a navy ship's troops at a point on the shore (requirement 16).
+        case land(ships: [EntityID], at: MapPosition)
+        /// Doctors heal a wounded unit (requirement 13).
+        case heal(doctors: [EntityID], target: EntityID)
     }
 
     public var id: String
@@ -73,6 +80,9 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .dismiss(let units): .dismiss(units: units)
         case .reseed(let farm): .reseed(farm: farm)
         case .killRadius(let cars, let on): .setKillRadius(cars: cars, on: on)
+        case .board(let units, let ship): .board(units: units, ship: ship)
+        case .land(let ships, let point): .land(ships: ships, at: point)
+        case .heal(let doctors, let target): .heal(doctors: doctors, target: target)
         }
     }
 
@@ -148,12 +158,15 @@ public struct PanelModel: Sendable {
     public var dismiss: [ActionOffer] = []
     public var reseed: [ActionOffer] = []
     public var car: [ActionOffer] = []
+    /// Boarding, landing and healing: the orders a right-click also gives.
+    public var orders: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + reseed + car + build + demolish + dismiss }
+    public var actions: [ActionOffer] { train + reseed + car + orders + build + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.reseed, reseed), (.car, car), (.build, build), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
+        [(.train, train), (.reseed, reseed), (.car, car), (.orders, orders), (.build, build), (.demolish, demolish),
+         (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -303,6 +316,8 @@ public struct PanelModel: Sendable {
             }
         }
 
+        orders = Self.shipAndCareOffers(own: own, view: view, catalogue: catalogue, gate: gate)
+
         // Dismiss the player's own units; a founder cannot be dismissed.
         let leaving = own.filter { if case .unit(let kind) = $0.kind { return kind != .founder } else { return false } }
             .map(\.id).sorted()
@@ -323,6 +338,9 @@ public struct PanelModel: Sendable {
     /// Keys for the actions that are not tied to the selection.
     public static let pauseKey: Character = " "
     public static let advanceKey: Character = "n"
+    public static let boardKey: Character = "v"
+    public static let landKey: Character = "p"
+    public static let healKey: Character = "e"
     /// The Delete key (backspace), which dismisses the selected people.
     public static let deleteKey: Character = "\u{8}"
 
@@ -352,13 +370,98 @@ public struct PanelModel: Sendable {
         case .house: "h"
         case .barracks: "b"
         case .tower: "w"
-        case .farm: "f"
+        // F is left free: it finds the founder (ruled 2026-11-22).
+        case .farm: "r"
         case .stable: "l"
         case .castle: "c"
         case .boatHouse: "i"
         case .cannonFactory: "m"
         case .hospital: "o"
         }
+    }
+
+    // MARK: Boarding, landing and healing
+
+    /// The buttons for the orders a right-click gives (requirements 13 and 16),
+    /// each aimed at the nearest fitting target: the nearest navy ship of the
+    /// player's with room, for troops to board; the nearest open shore tile, for
+    /// a ship to land its troops on; the nearest wounded unit of the player's
+    /// within the doctors' radius, for doctors to heal.
+    static func shipAndCareOffers(own: [EntityView], view: PlayerView, catalogue: Catalogue,
+                                  gate: Unavailability?) -> [ActionOffer] {
+        func distance(_ a: MapPosition, _ b: MapPosition) -> Double { a.distance(to: b) }
+        func nearest(_ candidates: [EntityView], to p: MapPosition) -> EntityView? {
+            candidates.min { (distance($0.position, p), $0.id) < (distance($1.position, p), $1.id) }
+        }
+        var offers: [ActionOffer] = []
+
+        let boarders = own.filter { if case .unit(let k) = $0.kind { return k.boardsShips } else { return false } }
+        if let first = boarders.first {
+            let ships = view.entities.filter {
+                $0.owner == view.player && $0.kind == .unit(.navyShip) && ($0.passengers ?? 0) < catalogue.shipCargo
+            }
+            let ship = nearest(ships, to: first.position)
+            var why = gate
+            if why == nil && ship == nil { why = Unavailability(.invalidTarget, "No navy ship of yours with room") }
+            offers.append(ActionOffer(
+                id: "board", section: .orders, title: "Board",
+                detail: "The selected go aboard the nearest navy ship of yours with room, once it is at the shore; up to \(catalogue.shipCargo) a ship.",
+                cost: ResourceAmounts(), action: .board(units: boarders.map(\.id), ship: ship?.id ?? EntityID(-1)),
+                unavailable: why, shortcut: boardKey, icon: .unit(.navyShip), iconSubject: nil))
+        }
+
+        let loaded = own.filter { $0.kind == .unit(.navyShip) && ($0.passengers ?? 0) > 0 }
+        if let ship = loaded.first {
+            let shore = nearestShore(to: ship.position, view: view, catalogue: catalogue)
+            var why = gate
+            if why == nil && shore == nil { why = Unavailability(.invalidTarget, "No open shore near the ship") }
+            offers.append(ActionOffer(
+                id: "land", section: .orders, title: "Land",
+                detail: "The ship sails to the nearest open shore and sets its troops down there.",
+                cost: ResourceAmounts(), action: .land(ships: loaded.map(\.id), at: shore?.centre ?? ship.position),
+                unavailable: why, shortcut: landKey, icon: nil, iconSubject: nil))
+        }
+
+        let doctors = own.filter { if case .unit(let k) = $0.kind { return catalogue.stats(k).healing ?? 0 > 0 } else { return false } }
+        if let first = doctors.first, case .unit(let doctorKind) = first.kind {
+            let radius = catalogue.stats(doctorKind).radius
+            let wounded = view.entities.filter { e in
+                guard e.owner == view.player, case .unit(let k) = e.kind, k.isUnit, !k.isAfloat, e.health < e.maxHealth,
+                      !(doctors.count == 1 && e.id == first.id) else { return false }
+                return radius.map { distance(e.position, first.position) <= $0 } ?? true
+            }
+            let target = nearest(wounded, to: first.position)
+            var why = gate
+            if why == nil && target == nil { why = Unavailability(.invalidTarget, "No wounded unit of yours near") }
+            offers.append(ActionOffer(
+                id: "heal", section: .orders, title: "Heal",
+                detail: "The doctors heal the nearest wounded unit of yours up to its full health; more doctors heal it faster.",
+                cost: ResourceAmounts(),
+                action: .heal(doctors: doctors.map(\.id).filter { $0 != target?.id }, target: target?.id ?? EntityID(-1)),
+                unavailable: why, shortcut: healKey, icon: nil, iconSubject: nil))
+        }
+        return offers
+    }
+
+    /// The open land tile nearest a point within six tiles: passable, and not
+    /// covered by a building or a site that blocks it.
+    static func nearestShore(to point: MapPosition, view: PlayerView, catalogue: Catalogue) -> GridPoint? {
+        let occupied = Placement.occupied(buildings: view.entities.compactMap { e -> (kind: BuildingKind, origin: GridPoint)? in
+            guard case .building(let kind) = e.kind else { return nil }
+            return (kind, e.tile)
+        }, sites: view.sites, catalogue: catalogue)
+        let t = point.tile
+        var best: (GridPoint, Double)?
+        for y in (t.y - 6)...(t.y + 6) {
+            for x in (t.x - 6)...(t.x + 6) {
+                guard x >= 0, y >= 0, x < view.mapWidth, y < view.mapHeight else { continue }
+                let tile = GridPoint(x, y)
+                guard view.terrain(at: tile).isPassable, !occupied.contains(tile) else { continue }
+                let d = tile.centre.distance(to: point)
+                if d <= 6, best.map({ d < $0.1 || (d == $0.1 && tile < $0.0) }) ?? true { best = (tile, d) }
+            }
+        }
+        return best?.0
     }
 
     // MARK: Helpers

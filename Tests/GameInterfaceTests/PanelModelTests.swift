@@ -359,3 +359,105 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func noTrainingKeyIsF() {
     for unit in UnitKind.allCases { #expect(PanelModel.trainKey(unit) != "f", "\(unit)") }
 }
+
+// MARK: Step 6: boarding, landing and healing
+
+/// The skirmish with a navy ship of the player's beside its first worker.
+private func withShip(passengers: Int) -> (PlayerView, EntityView) {
+    var view = Samples.farmsAgeSkirmish()
+    view.age = .ships
+    var ship = view.entities.first { $0.owner == view.player && $0.kind == .unit(.worker) }!
+    ship.id = EntityID(9_100)
+    ship.kind = .unit(.navyShip)
+    ship.passengers = passengers
+    ship.position = MapPosition(x: ship.position.x + 1, y: ship.position.y)
+    view.entities.append(ship)
+    view.entities.sort { $0.id < $1.id }
+    return (view, ship)
+}
+
+@Test func selectedTroopsAndWorkersOfferToBoardTheNearestShipWithRoom() {
+    let (view, ship) = withShip(passengers: 3)
+    let troops = view.ids(ofUnits: [.worker, .soldier1])
+    let board = offer(model(view, troops), "board")
+    #expect(board.order == .board(units: troops, ship: ship.id) && board.isAvailable && board.shortcut == "v")
+    #expect(!board.detail.isEmpty)
+    // A full ship has no room.
+    let (full, _) = withShip(passengers: catalogue.shipCargo)
+    let refused = offer(model(full, full.ids(ofUnits: [.soldier1])), "board")
+    #expect(refused.unavailable?.explanation == "No navy ship of yours with room")
+}
+
+@Test func aLoadedShipOffersToLandOnTheNearestOpenShore() {
+    let (view, ship) = withShip(passengers: 5)
+    let land = offer(model(view, [ship.id]), "land")
+    guard case .land(let ships, let point) = land.action else { Issue.record("not a landing"); return }
+    #expect(ships == [ship.id] && land.shortcut == "p" && land.isAvailable)
+    #expect(view.terrain(at: point.tile).isPassable && point.distance(to: ship.position) <= 6)
+    // An empty ship offers no landing.
+    let (empty, bare) = withShip(passengers: 0)
+    #expect(!model(empty, [bare.id]).actions.contains { $0.id == "land" })
+}
+
+@Test func doctorsOfferToHealTheNearestWoundedUnitWithinTheirRadius() {
+    var view = Samples.farmsAgeSkirmish()
+    var doctor = view.entities.first { $0.owner == view.player && $0.kind == .unit(.worker) }!
+    doctor.id = EntityID(9_200)
+    doctor.kind = .unit(.doctor)
+    view.entities.append(doctor)
+    let soldier = view.entities.firstIndex { $0.owner == view.player && $0.kind == .unit(.soldier1) }!
+    view.entities[soldier].health = 1
+    view.entities[soldier].position = MapPosition(x: doctor.position.x + 2, y: doctor.position.y)
+    let heal = offer(model(view, [doctor.id]), "heal")
+    #expect(heal.order == .heal(doctors: [doctor.id], target: view.entities[soldier].id))
+    #expect(heal.shortcut == "e" && heal.isAvailable)
+    // Out of the radius, or with nobody wounded, it is refused.
+    view.entities[soldier].health = view.entities[soldier].maxHealth
+    #expect(offer(model(view, [doctor.id]), "heal").unavailable?.explanation == "No wounded unit of yours near")
+}
+
+@Test func noBuildingKeyIsFAndTheFarmIsR() {
+    for kind in BuildingKind.allCases { #expect(PanelModel.buildKey(kind) != "f", "\(kind)") }
+    #expect(PanelModel.buildKey(.farm) == "r")
+    for key in [PanelModel.boardKey, PanelModel.landKey, PanelModel.healKey, PanelModel.advanceKey] { #expect(key != "f") }
+}
+
+/// Every maker offers what it makes, each with its key and a description.
+@Test func everyMakerOffersItsUnitsWithKeysAndDescriptions() {
+    var view = Samples.farmsAgeSkirmish()
+    view.age = .hospitals
+    view.resources = ResourceAmounts([.food: 9_999, .wood: 9_999, .gold: 9_999])
+    for kind in BuildingKind.allCases where !catalogue.made(by: .building(kind)).isEmpty {
+        var maker = view.entities.first { $0.owner == view.player && $0.kind == .building(.house) }!
+        maker.id = EntityID(9_400 + kind.rawValue)
+        maker.kind = .building(kind)
+        var v = view
+        v.entities.append(maker)
+        let m = model(v, [maker.id])
+        #expect(m.train.count == catalogue.made(by: .building(kind)).count, "\(kind)")
+        for o in m.train { #expect(o.shortcut != nil && o.shortcut != "f" && !o.detail.isEmpty, "\(kind) \(o.id)") }
+        let keys = m.actions.compactMap(\.shortcut)
+        #expect(Set(keys).count == keys.count, "\(kind): \(keys)")
+    }
+}
+
+/// Keys do not collide within any selection the new offers appear in.
+@Test func theNewOffersKeysDoNotCollide() {
+    let (view, ship) = withShip(passengers: 4)
+    var doctorView = view
+    var doctor = view.entities.first { $0.owner == view.player && $0.kind == .unit(.worker) }!
+    doctor.id = EntityID(9_201)
+    doctor.kind = .unit(.doctor)
+    doctorView.entities.append(doctor)
+    let selections: [(PlayerView, [EntityID])] = [
+        (view, view.ids(ofUnits: [.worker, .soldier1])),
+        (view, [ship.id]),
+        (view, [ship.id] + view.ids(ofUnits: [.worker])),
+        (doctorView, [doctor.id] + view.ids(ofUnits: [.worker])),
+    ]
+    for (v, ids) in selections {
+        let keys = model(v, ids).actions.compactMap(\.shortcut) + [PanelModel.advanceKey, PanelModel.pauseKey]
+        #expect(Set(keys).count == keys.count, "\(keys)")
+        #expect(!keys.contains("f"))
+    }
+}
