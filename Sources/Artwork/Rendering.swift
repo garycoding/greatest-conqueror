@@ -79,16 +79,25 @@ enum Raster {
     }
 
     /// The SVG document drawn by macOS (`NSImage`) into a new bitmap of the canvas's size.
+    ///
+    /// One document at a time: AppKit's SVG drawing gives different pixels now
+    /// and then when two threads draw at once (the batches draw a pose's frames
+    /// side by side), so this step alone is serialised.
     static func draw(_ document: String, on canvas: Canvas) -> CGContext? {
-        guard let image = NSImage(data: Data(document.utf8)),
-              let context = bitmap(width: canvas.pixelWidth, height: canvas.pixelHeight) else { return nil }
-        let graphics = NSGraphicsContext(cgContext: context, flipped: false)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = graphics
-        image.draw(in: NSRect(x: 0, y: 0, width: canvas.pixelWidth, height: canvas.pixelHeight))
-        NSGraphicsContext.restoreGraphicsState()
-        return context
+        svgDrawing.withLock { _ in
+            guard let image = NSImage(data: Data(document.utf8)),
+                  let context = bitmap(width: canvas.pixelWidth, height: canvas.pixelHeight) else { return nil }
+            let graphics = NSGraphicsContext(cgContext: context, flipped: false)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = graphics
+            image.draw(in: NSRect(x: 0, y: 0, width: canvas.pixelWidth, height: canvas.pixelHeight))
+            NSGraphicsContext.restoreGraphicsState()
+            return context
+        }
     }
+
+    /// Held while AppKit draws an SVG document (`draw(_:on:)`).
+    private static let svgDrawing = Mutex<Void>(())
 
     /// Turns a drawing of the mask (white for the team's colour, black for
     /// everything else) into the mask itself: white, with the white's share of
