@@ -61,10 +61,10 @@ public enum StandIn {
     /// How much larger than its stand-in a kind is drawn.
     public static func scale(_ kind: EntityKind) -> Double { 1 }
 
-    /// A look a kind lacks, drawn in another: the castle, of the age of ships
-    /// now (requirement 10), in the Iron look as in the Alchemy look.
+    /// A look a kind lacks, drawn in another. None is now: the castle, of the
+    /// age of ships, has its own Iron look.
     public static func subject(_ subject: SpriteSubject) -> SpriteSubject {
-        subject == .building(.castle, .iron) ? .building(.castle, .alchemy) : subject
+        subject
     }
 }
 
