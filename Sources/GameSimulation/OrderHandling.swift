@@ -111,7 +111,7 @@ extension Simulation {
         let workers = people.filter { entities[$0].unitKind == gatherer }
         guard !workers.isEmpty else { return .refused(.invalidTarget) }
         let kind = sites[s].kind
-        guard catalogue.gathering.perSecond(kind) > 0 else { return .refused(.invalidTarget) }
+        guard tables.unit(gatherer).gathers(kind.yield) > 0 else { return .refused(.invalidTarget) }
         for i in workers {
             if let cargo = entities[i].cargo, cargo.kind != kind { entities[i].cargo = nil }
             entities[i].fraction = 0
@@ -213,10 +213,10 @@ extension Simulation {
     mutating func train(_ kind: UnitKind, at building: EntityID, player: PlayerID) -> OrderResult {
         guard let b = ownBuilding(building, player) else { return .refused(.notYours) }
         guard entities[b].complete, let buildingKind = entities[b].buildingKind,
-              tables.building(buildingKind).trains.contains(kind), let stats = tables.units[kind.rawValue],
-              stats.trainedAt.contains(buildingKind) else { return .refused(.invalidTarget) }
+              let made = catalogue.production(of: kind, at: buildingKind), let stats = tables.units[kind.rawValue]
+        else { return .refused(.invalidTarget) }
         let p = player.rawValue
-        guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
+        guard players[p].age >= made.age else { return .refused(.ageNotReached(made.age)) }
         guard population[p] + queuedPopulation(p) + stats.population <= populationLimit(p) else {
             return .refused(.populationLimit)
         }

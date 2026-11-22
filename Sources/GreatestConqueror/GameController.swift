@@ -167,7 +167,11 @@ final class GameController {
     private(set) var client: MatchClient?
     /// What the person is told of the match across the LAN.
     var notices = MatchNotices(isHost: false)
-    let sprites = GameSprites()
+    /// The player's folder of tables, and the catalogue read from it at the start
+    /// (requirements 25 and 26), by which every new match on this Mac is played.
+    let tableFolder = TableFolder()
+    let catalogue: Catalogue
+    let sprites: GameSprites
     var problem: String?
     let autosaves = Autosaves()
     /// The automatic saves, newest first, for the File menu.
@@ -188,12 +192,25 @@ final class GameController {
         personName = UserDefaults.standard.string(forKey: "personName")
             ?? NSFullUserName().split(separator: " ").first.map(String.init) ?? ""
         recentAutosaves = autosaves.entries()
+        let tables = tableFolder.load()
+        catalogue = tables.catalogue
+        sprites = GameSprites(catalogue: tables.catalogue)
+        // A fault in the tables is told once, as the app opens.
+        problem = tables.problem
         AppDelegate.beforeQuitting = { [weak self] in
             self?.autosaveNow()
             let wasOnNetwork = self?.isOnNetwork ?? false
             self?.closeNetwork()
             return wasOnNetwork
         }
+    }
+
+    // MARK: Tables
+
+    /// Opens the folder of tables in the Finder, with the stats table selected.
+    func showTables() {
+        try? tableFolder.seed()
+        NSWorkspace.shared.activateFileViewerSelecting([tableFolder.url(.stats)])
     }
 
     // MARK: Saves
@@ -249,8 +266,9 @@ final class GameController {
 
     func start(_ choice: NewMatchChoice) {
         let seed = UInt64.random(in: 1...UInt64.max)
-        let map = MapGenerator().generate(MapRequest(size: choice.mapSize, playerCount: choice.players.count, seed: seed))
-        let setup = choice.setup(map: map, seed: seed)
+        let map = MapGenerator().generate(MapRequest(size: choice.mapSize, playerCount: choice.players.count, seed: seed,
+                                                     catalogue: catalogue))
+        let setup = choice.setup(map: map, seed: seed, catalogue: catalogue)
         guard let person = setup.players.first(where: { $0.controller == .human }) else { return }
         let new = Match(host: Host(setup: setup), player: person.id, name: Self.newName())
         new.speed = speed
@@ -361,8 +379,9 @@ final class GameController {
             new = Match(host: saved.host, player: saved.player, camera: saved.camera, name: saved.name ?? lobby.name)
         } else {
             let seed = UInt64.random(in: 1...UInt64.max)
-            let map = MapGenerator().generate(MapRequest(size: lobby.size, playerCount: lobby.seats.count, seed: seed))
-            guard let setup = lobby.setup(map: map, seed: seed) else { return }
+            let map = MapGenerator().generate(MapRequest(size: lobby.size, playerCount: lobby.seats.count, seed: seed,
+                                                         catalogue: catalogue))
+            guard let setup = lobby.setup(map: map, seed: seed, catalogue: catalogue) else { return }
             new = Match(host: Host(setup: setup), player: seat, name: lobby.name)
         }
         new.server = server

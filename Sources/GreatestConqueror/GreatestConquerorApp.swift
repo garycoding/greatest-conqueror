@@ -50,6 +50,9 @@ struct GreatestConquerorApp: App {
                 Button("Save Match…") { game.save() }
                     .keyboardShortcut("s")
                     .disabled(game.match == nil)
+                Divider()
+                // The tables the game reads when it starts (requirement 26).
+                Button("Show the tables in Finder") { game.showTables() }
             }
         }
     }

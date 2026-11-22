@@ -116,7 +116,7 @@ extension Simulation {
         var sim = duel()
         _ = sim.apply(.train(at: sim.townCentre(me), unit: .worker), from: me)
         _ = sim.apply(.advanceAge(at: sim.townCentre(them)), from: me)
-        sim.run(Catalogue.standard.stats(.worker).trainTime)
+        sim.run(Catalogue.standard.production(of: .worker, at: .townCentre)!.time)
         let trained = sim.people(me, .worker).last!
         #expect(sim.view(for: me).events == [.refused(.notYours), .trained(trained, .worker)])
         #expect(sim.view(for: me).events.isEmpty)

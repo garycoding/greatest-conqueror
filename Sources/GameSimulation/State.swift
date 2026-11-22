@@ -179,6 +179,8 @@ struct Tables: Sendable {
     var speedPerTick: [Double]
     /// `Catalogue.bonus`, by attacker and defender raw value.
     var bonus: [Double]
+    /// Production times, by maker and unit raw value; 0 where the maker does not make the unit.
+    var time: [Int]
 
     init(_ catalogue: Catalogue) {
         units = UnitKind.allCases.map { kind in catalogue.units.first { $0.kind == kind } }
@@ -187,6 +189,8 @@ struct Tables: Sendable {
         let n = UnitKind.allCases.count
         bonus = Array(repeating: 1, count: n * n)
         for a in UnitKind.allCases { for d in UnitKind.allCases { bonus[a.rawValue * n + d.rawValue] = catalogue.bonus(a, against: d) } }
+        time = Array(repeating: 0, count: BuildingKind.allCases.count * n)
+        for item in catalogue.production { time[item.maker.rawValue * n + item.unit.rawValue] = item.time }
     }
 
     func unit(_ kind: UnitKind) -> UnitStats {
@@ -198,6 +202,9 @@ struct Tables: Sendable {
         guard let stats = buildings[kind.rawValue] else { preconditionFailure("the catalogue has no \(kind)") }
         return stats
     }
+
+    /// Ticks a maker takes to make a unit (`production.csv`).
+    func trainTime(_ unit: UnitKind, at maker: BuildingKind) -> Int { max(1, time[maker.rawValue * UnitKind.allCases.count + unit.rawValue]) }
 
     func bonus(_ attacker: UnitKind, against defender: UnitKind) -> Double {
         bonus[attacker.rawValue * UnitKind.allCases.count + defender.rawValue]

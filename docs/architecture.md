@@ -8,7 +8,7 @@ The game is one Swift package. `Package.swift` declares every module, and each m
 
 | Module | What it holds | Depends on |
 |---|---|---|
-| `GameCore` | The types every module shares: the vocabulary, the map, orders, the player's view, the catalogue of costs and strengths, the session shared by the map and the panels, the projection, sprite keys, and sample states for tests | nothing |
+| `GameCore` | The types every module shares: the vocabulary, the map, orders, the player's view, the catalogue of costs and strengths and the reader of the tables it is built from, with the default tables as its resources ([`tables.md`](tables.md)), the session shared by the map and the panels, the projection, sprite keys, and sample states for tests | nothing |
 | `GameSimulation` | The rules: a type conforming to `GameSimulating` | `GameCore` |
 | `MapGeneration` | A type conforming to `MapGenerating` | `GameCore` |
 | `ComputerPlayer` | A type conforming to `ComputerPlaying` | `GameCore` |
@@ -68,7 +68,7 @@ A building's footprint (`BuildingStats.footprint`) covers tiles from its origin 
 - **Anchor.** `SpriteImage.anchor` is the point of the image placed on the entity's `EntityView.position`: for a person, between its feet; for a building, the centre of its footprint at ground level, which on screen is the centre of the footprint's diamond; for a boat, the middle of its hull on the waterline. It is a fraction of the image with (0, 0) at the bottom left.
 - **Team colour.** A sprite has a base image and, where it carries a civilization's colour, a mask: white where the colour goes. The drawing tints the mask with `TeamColour.of(civilization)` and lays it over the base, so that one picture serves every civilization.
 - **The batches.** Each batch of artwork supplies its own `SpriteSource`; `GameSprites` asks them in turn, and the drawing shows a placeholder for a key none answers. The drawing measures each building's height from its picture's topmost drawn pixel, for clicks and health bars.
-- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and [`art-style.md`](art-style.md). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources, so that the assembled app needs no resource bundle.
+- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and [`art-style.md`](art-style.md). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources. The one resource bundle is `GameCore`'s, of the default tables, which `scripts/make-app.sh` copies into the app's `Contents/Resources`, where `Bundle.module` finds it.
 
 ## Checks
 

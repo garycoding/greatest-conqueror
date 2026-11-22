@@ -80,7 +80,7 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.living(workers[1]).task != .work(farm))
         #expect(sim.apply(.work(units: [workers[1]], at: farm), from: me) == .refused(.invalidTarget))
         do { let reached = sim.run(until: { $0.living(workers[0]).doing == .working }, limit: 300); #expect(reached) }
-        let perSecond = Catalogue.standard.gathering.farmingPerSecond
+        let perSecond = Catalogue.standard.stats(.worker).farming
         let food = sim.resources(me)[.food]
         sim.run(60 * Tick.rate)
         #expect(abs(Double(sim.resources(me)[.food] - food) - 60 * perSecond) <= 1)
@@ -133,7 +133,7 @@ private let load = Catalogue.standard.gathering.load
             sim.step()
             if sim.living(worker).doing == .gathering { ticks += 1 }
         }
-        let expected = Double(load) / (Catalogue.standard.gathering.perSecond(.tree) / Double(Tick.rate))
+        let expected = Double(load) / (Catalogue.standard.stats(.worker).gathers(.wood) / Double(Tick.rate))
         #expect(abs(Double(ticks) - expected) <= 1)
     }
 
@@ -317,7 +317,7 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.resources(me)[.food] == food - Catalogue.standard.stats(.worker).cost[.food])
         _ = sim.view(for: me)
         do { let reached = sim.run(until: { $0.people(me, .worker).count == 4 }, limit: 400); #expect(reached) }
-        #expect(sim.tick == Catalogue.standard.stats(.worker).trainTime)
+        #expect(sim.tick == Catalogue.standard.production(of: .worker, at: .townCentre)!.time)
         let trained = sim.people(me, .worker).last!
         #expect(sim.view(for: me).events.contains(.trained(trained, .worker)))
         let footprint = Goal.tiles(GridPoint(2, 2), GridPoint(3, 3), reach: 0)

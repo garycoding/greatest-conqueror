@@ -1,0 +1,5 @@
+from,to,food,wood,gold,seconds
+towns,farms,300,100,0,90
+farms,ships,500,0,250,150
+ships,cannons,800,0,400,200
+cannons,hospitals,1000,0,750,250

@@ -20,6 +20,39 @@ struct Digest {
     mutating func add(_ p: GridPoint) { add(p.x); add(p.y) }
     mutating func add(_ p: MapPosition) { add(p.x); add(p.y) }
     mutating func add(_ amounts: ResourceAmounts) { for a in amounts.amounts { add(a) } }
+    mutating func add(_ v: Double?) { if let v { add(true); add(v) } else { add(false) } }
+    mutating func add(_ attack: Attack?) {
+        guard let attack else { add(false); return }
+        add(true); add(attack.damage); add(attack.range); add(attack.interval); add(attack.area)
+    }
+
+    /// Every figure of the catalogue, so that two Macs, or a save and its
+    /// match, playing by different tables have different checksums.
+    mutating func add(_ c: Catalogue) {
+        for u in c.units {
+            add(u.kind.rawValue); add(u.age.rawValue); add(u.cost); add(u.health); add(u.armour); add(u.speed); add(u.sight)
+            add(u.attack); add(u.population); for g in u.gathering { add(g) }; add(u.farming)
+            add(u.healing); add(u.repairing); add(u.radius)
+            add(u.trainedAt.count); for b in u.trainedAt { add(b.rawValue) }
+        }
+        for b in c.buildings {
+            add(b.kind.rawValue); add(b.age.rawValue); add(b.cost); add(b.buildTime); add(b.health); add(b.armour)
+            add(b.footprint); add(b.sight); add(b.attack); add(b.housing)
+            add(b.accepts.count); for r in b.accepts { add(r.rawValue) }
+            add(b.trains.count); for u in b.trains { add(u.rawValue) }
+            add(b.levels.count); for l in b.levels { add(l.age.rawValue); add(l.health); add(l.attack) }
+        }
+        add(c.production.count)
+        for p in c.production { add(p.maker.rawValue); add(p.unit.rawValue); add(p.age.rawValue); add(p.time) }
+        add(c.advances.count)
+        for a in c.advances { add(a.from.rawValue); add(a.cost); add(a.time) }
+        add(c.gathering.farmYield); add(c.gathering.farmReseed); add(c.gathering.load)
+        for a in c.gathering.amountBySite { add(a) }
+        add(c.bonuses.count)
+        for b in c.bonuses { add(b.attacker.rawValue); add(b.defender.rawValue); add(b.multiplier) }
+        add(c.startingResources); add(c.startingPeople); add(c.populationMaximum)
+        if let car = c.car { add(true); add(car.killRadius); add(car.perPerson); add(car.laserRange); add(car.laserTime) } else { add(false) }
+    }
 
     var value: UInt64 {
         var sum = StableChecksum()
@@ -29,12 +62,13 @@ struct Digest {
 }
 
 extension Simulation {
-    /// A checksum of the match, field by field from the ordered arrays: the tick,
-    /// the pause, the outcome, the generator, the players, what each team has
-    /// explored, the sites and the entities. The caches are derived from these,
+    /// A checksum of the match, field by field from the ordered arrays: the
+    /// catalogue, the tick, the pause, the outcome, the generator, the players,
+    /// what each team has explored, the sites and the entities. The caches are derived from these,
     /// and the events awaiting views are left out (see `Simulation`).
     public func checksum() -> UInt64 {
         var d = Digest(capacity: 4096 + entities.count * 256 + teams.count * width * height / 8)
+        d.add(catalogue)
         d.add(tick)
         d.add(isPaused)
         if case .won(let team) = outcome { d.add(team.rawValue) } else { d.add(-1) }

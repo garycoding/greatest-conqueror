@@ -209,14 +209,14 @@ public struct PanelModel: Sendable {
 
         // Train at a single own building that stands complete.
         if selected.count == 1, let b = own.first, case .building(let kind) = b.kind, !Self.isUnderConstruction(b) {
-            let stats = catalogue.stats(kind)
-            train = stats.trains.filter { catalogue.stats($0).age <= catalogue.lastAge }.map { unit in
+            train = catalogue.production.filter { $0.maker == kind && $0.age <= catalogue.lastAge }.map { made in
+                let unit = made.unit
                 let u = catalogue.stats(unit)
                 let name = unit.stageName(at: view.age)
                 return ActionOffer(
                     id: "train-\(unit)", section: .train, title: name, detail: "Trains one \(name).", cost: u.cost,
                     action: .train(at: b.id, unit: unit),
-                    unavailable: planner.check(cost: u.cost, age: u.age, population: u.population),
+                    unavailable: planner.check(cost: u.cost, age: made.age, population: u.population),
                     shortcut: Self.trainKey(unit), icon: .unit(unit),
                     iconSubject: planner.subject(.unit(unit)))
             }

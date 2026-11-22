@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// The tables of the game: what everything costs, how strong it is, and how long
-// it takes. The simulation, the interface and the computer player all read these
-// values, so they live here. They are first estimates, to be tuned by play;
-// every duration is in ticks (see `Tick`).
+// The catalogue: every figure the simulation, the interface and the computer
+// player read about the kinds of unit and building, the ages and the start of a
+// match. The figures that requirement 25 names come from the three tables
+// (CatalogueTables.swift); the rest from `CatalogueShape`. Every duration is in
+// ticks (see `Tick`).
 
 /// How a unit or building attacks.
 public struct Attack: Hashable, Codable, Sendable {
@@ -25,10 +26,10 @@ public struct Attack: Hashable, Codable, Sendable {
 
 public struct UnitStats: Hashable, Codable, Sendable {
     public var kind: UnitKind
-    /// The age in which the kind can first be trained.
+    /// The age in which the kind first appears, whose look it keeps if it is a
+    /// warfighter; each maker makes it from the age `production.csv` gives.
     public var age: Age
     public var cost: ResourceAmounts
-    public var trainTime: Int
     public var health: Int
     public var armour: Int
     /// Tiles per second.
@@ -36,21 +37,41 @@ public struct UnitStats: Hashable, Codable, Sendable {
     /// Tiles within which it sees.
     public var sight: Double
     public var attack: Attack?
-    /// The building kinds at which it is trained.
+    /// The building kinds at which it is made (`Catalogue.production`).
     public var trainedAt: [BuildingKind]
     /// How many places it takes under the population limit.
     public var population: Int
+    /// Units of each resource it takes from a site a second, by `Resource.rawValue`:
+    /// food from prey or fish, wood from trees, gold from gold mines.
+    public var gathering: [Double]
+    /// Food a second it earns tending a farm.
+    public var farming: Double
+    /// Health points a second it restores to a wounded unit (a later step's doctor).
+    public var healing: Double?
+    /// Health points a second it restores to a damaged building (a later step's rule).
+    public var repairing: Double?
+    /// The radius within which it looks, idle, for work to heal or repair.
+    public var radius: Double?
 
-    public init(kind: UnitKind, age: Age, cost: ResourceAmounts, trainTime: Int, health: Int, armour: Int,
-                speed: Double, sight: Double, attack: Attack?, trainedAt: [BuildingKind], population: Int = 1) {
-        self.kind = kind; self.age = age; self.cost = cost; self.trainTime = trainTime; self.health = health
+    public init(kind: UnitKind, age: Age, cost: ResourceAmounts, health: Int, armour: Int, speed: Double, sight: Double,
+                attack: Attack?, trainedAt: [BuildingKind] = [], population: Int = 1, gathering: [Double] = [],
+                farming: Double = 0, healing: Double? = nil, repairing: Double? = nil, radius: Double? = nil) {
+        self.kind = kind; self.age = age; self.cost = cost; self.health = health
         self.armour = armour; self.speed = speed; self.sight = sight; self.attack = attack
         self.trainedAt = trainedAt; self.population = population
+        self.gathering = gathering.count == Resource.allCases.count ? gathering : Array(repeating: 0, count: Resource.allCases.count)
+        self.farming = farming; self.healing = healing; self.repairing = repairing; self.radius = radius
+    }
+
+    /// Units of a resource it takes from a site a second.
+    public func gathers(_ resource: Resource) -> Double {
+        resource.rawValue < gathering.count ? gathering[resource.rawValue] : 0
     }
 }
 
 public struct BuildingStats: Hashable, Codable, Sendable {
     public var kind: BuildingKind
+    /// The age from which it can be built.
     public var age: Age
     public var cost: ResourceAmounts
     /// Ticks of one worker's work to construct it; more workers finish sooner.
@@ -66,20 +87,52 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     public var housing: Int
     /// Resources that workers (or boats, at a boat house) may deliver here.
     public var accepts: [Resource]
-    /// What may be trained here.
+    /// What may be made here (`Catalogue.production`).
     public var trains: [UnitKind]
+    /// For a tower or a castle, its upgrade in each later age that `stats.csv`
+    /// gives a row of its own, in the order of the ages (requirement 24). The
+    /// upgrade itself is a later step's rule; the rows are read and kept.
+    public var levels: [BuildingLevel]
 
     public init(kind: BuildingKind, age: Age, cost: ResourceAmounts, buildTime: Int, health: Int, armour: Int,
                 footprint: GridPoint, sight: Double, attack: Attack? = nil, housing: Int = 0,
-                accepts: [Resource] = [], trains: [UnitKind] = []) {
+                accepts: [Resource] = [], trains: [UnitKind] = [], levels: [BuildingLevel] = []) {
         self.kind = kind; self.age = age; self.cost = cost; self.buildTime = buildTime; self.health = health
         self.armour = armour; self.footprint = footprint; self.sight = sight; self.attack = attack
-        self.housing = housing; self.accepts = accepts; self.trains = trains
+        self.housing = housing; self.accepts = accepts; self.trains = trains; self.levels = levels
     }
 }
 
-/// What it takes to leave an age for the next (requirement 6): paid at a town
-/// centre when the advance begins, which then takes `time` ticks there.
+/// A building's figures from a later age on (`BuildingStats.levels`).
+public struct BuildingLevel: Hashable, Codable, Sendable {
+    public var age: Age
+    public var health: Int
+    public var attack: Attack?
+
+    public init(age: Age, health: Int, attack: Attack?) { self.age = age; self.health = health; self.attack = attack }
+}
+
+extension BuildingKind {
+    /// The kinds upgraded at each new age, whose later rows in `stats.csv` are
+    /// their upgrades (requirement 24): the tower and the castle.
+    public var isUpgradedWithAge: Bool { self == .watchTower || self == .castle }
+}
+
+/// One maker and one unit it makes (`production.csv`): the age from which it
+/// makes it, and the ticks each takes.
+public struct ProductionStats: Hashable, Codable, Sendable {
+    public var maker: BuildingKind
+    public var unit: UnitKind
+    public var age: Age
+    public var time: Int
+
+    public init(maker: BuildingKind, unit: UnitKind, age: Age, time: Int) {
+        self.maker = maker; self.unit = unit; self.age = age; self.time = time
+    }
+}
+
+/// What it takes to leave an age for the next (requirement 6, `ages.csv`):
+/// paid at a town centre when the advance begins, which then takes `time` ticks there.
 public struct AdvanceStats: Hashable, Codable, Sendable {
     public var from: Age
     public var cost: ResourceAmounts
@@ -90,13 +143,10 @@ public struct AdvanceStats: Hashable, Codable, Sendable {
     }
 }
 
-/// Gathering rates and loads. Tables are arrays indexed by `SiteKind.rawValue`,
-/// not dictionaries, so that they encode identically in every process.
+/// The ground's sites and the farm. Tables are arrays indexed by
+/// `SiteKind.rawValue`, not dictionaries, so that they encode identically in
+/// every process.
 public struct GatheringStats: Hashable, Codable, Sendable {
-    /// Units of the resource a worker takes from a site per second, by site kind.
-    public var perSecondBySite: [Double]
-    /// Food per second a worker earns tending a farm.
-    public var farmingPerSecond: Double
     /// The food a farm yields before it runs dry and must be reseeded (ruled 2026-11-19).
     public var farmYield: Int
     /// What reseeding a farm that has run dry costs.
@@ -106,17 +156,11 @@ public struct GatheringStats: Hashable, Codable, Sendable {
     /// What each kind of site holds when the map is made, by site kind.
     public var amountBySite: [Int]
 
-    public init(perSecond: [SiteKind: Double], farmingPerSecond: Double, farmYield: Int, farmReseed: ResourceAmounts,
-                load: Int, siteAmount: [SiteKind: Int]) {
-        perSecondBySite = SiteKind.allCases.map { perSecond[$0] ?? 0 }
+    public init(farmYield: Int, farmReseed: ResourceAmounts, load: Int, siteAmount: [SiteKind: Int]) {
         amountBySite = SiteKind.allCases.map { siteAmount[$0] ?? 0 }
-        self.farmingPerSecond = farmingPerSecond; self.farmYield = farmYield; self.farmReseed = farmReseed
-        self.load = load
+        self.farmYield = farmYield; self.farmReseed = farmReseed; self.load = load
     }
 
-    public func perSecond(_ kind: SiteKind) -> Double {
-        kind.rawValue < perSecondBySite.count ? perSecondBySite[kind.rawValue] : 0
-    }
     public func amount(_ kind: SiteKind) -> Int {
         kind.rawValue < amountBySite.count ? amountBySite[kind.rawValue] : 0
     }
@@ -152,6 +196,8 @@ public struct Bonus: Hashable, Codable, Sendable {
 public struct Catalogue: Hashable, Codable, Sendable {
     public var units: [UnitStats]
     public var buildings: [BuildingStats]
+    /// Who makes what, from which age, and how long each takes.
+    public var production: [ProductionStats]
     public var advances: [AdvanceStats]
     public var gathering: GatheringStats
     /// Damage multipliers; 1 where none is listed.
@@ -165,10 +211,10 @@ public struct Catalogue: Hashable, Codable, Sendable {
     /// What a person's car does; nil for no car.
     public var car: CarStats?
 
-    public init(units: [UnitStats], buildings: [BuildingStats], advances: [AdvanceStats], gathering: GatheringStats,
-                bonuses: [Bonus], startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int,
-                car: CarStats? = nil) {
-        self.units = units; self.buildings = buildings; self.advances = advances
+    public init(units: [UnitStats], buildings: [BuildingStats], production: [ProductionStats], advances: [AdvanceStats],
+                gathering: GatheringStats, bonuses: [Bonus], startingResources: ResourceAmounts, startingPeople: Int,
+                populationMaximum: Int, car: CarStats? = nil) {
+        self.units = units; self.buildings = buildings; self.production = production; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses
         self.startingResources = startingResources; self.startingPeople = startingPeople
         self.populationMaximum = populationMaximum; self.car = car
@@ -177,6 +223,11 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public func stats(_ kind: UnitKind) -> UnitStats { units.first { $0.kind == kind }! }
     public func stats(_ kind: BuildingKind) -> BuildingStats { buildings.first { $0.kind == kind }! }
     public func advance(from age: Age) -> AdvanceStats? { advances.first { $0.from == age } }
+
+    /// How a maker makes a unit, if it does.
+    public func production(of unit: UnitKind, at maker: BuildingKind) -> ProductionStats? {
+        production.first { $0.unit == unit && $0.maker == maker }
+    }
 
     /// The last age a player can reach with these tables.
     public var lastAge: Age {
@@ -190,95 +241,15 @@ public struct Catalogue: Hashable, Codable, Sendable {
         bonuses.first { $0.attacker == attacker && $0.defender == defender }?.multiplier ?? 1
     }
 
-    /// The standard tables: the figures of Cities of Progress for the kinds
-    /// that remain, with the costs in resources that are gone moved to wood
-    /// (stone) and gold (bronze, iron, gunpowder and oil), until they are tuned.
+    /// The standard tables: the package's default files (`TableTexts.defaults`)
+    /// on `CatalogueShape.standard`. The defaults are checked by the tests, so a
+    /// fault in them stops the program at once rather than playing on with a
+    /// catalogue that is not the one intended.
     public static let standard: Catalogue = {
-        func cost(_ pairs: [Resource: Int]) -> ResourceAmounts { ResourceAmounts(pairs) }
-        let s = Tick.seconds
-        let units: [UnitStats] = [
-            UnitStats(kind: .worker, age: .towns, cost: cost([.food: 50]), trainTime: s(12), health: 25, armour: 0,
-                      speed: 1.0, sight: 4, attack: Attack(damage: 3, range: 1, interval: s(1.5)), trainedAt: [.townCentre]),
-            // A boat (ruled 2026-11-21): on the water only, a worker's speed, health and load.
-            UnitStats(kind: .boat, age: .towns, cost: cost([.wood: 50]), trainTime: s(15), health: 25, armour: 0,
-                      speed: 1.0, sight: 5, attack: nil, trainedAt: [.boatHouse]),
-            // A person's car (ruled 2026-11-21): free, outside the population, twice a worker's speed.
-            UnitStats(kind: .car, age: .towns, cost: cost([:]), trainTime: 0, health: 1, armour: 0,
-                      speed: 2.0, sight: 8, attack: nil, trainedAt: [], population: 0),
-            UnitStats(kind: .spearman, age: .farms, cost: cost([.food: 60, .gold: 20]), trainTime: s(14), health: 55, armour: 1,
-                      speed: 1.0, sight: 5, attack: Attack(damage: 5, range: 1, interval: s(1.5)), trainedAt: [.barracks]),
-            UnitStats(kind: .swordsman, age: .ships, cost: cost([.food: 60, .gold: 25]), trainTime: s(14), health: 70, armour: 2,
-                      speed: 1.0, sight: 5, attack: Attack(damage: 7, range: 1, interval: s(1.5)), trainedAt: [.barracks]),
-            UnitStats(kind: .musketeer, age: .cannons, cost: cost([.food: 60, .gold: 30]), trainTime: s(16), health: 60,
-                      armour: 1, speed: 1.0, sight: 7, attack: Attack(damage: 12, range: 6, interval: s(3)),
-                      trainedAt: [.barracks, .castle]),
-            UnitStats(kind: .rifleman, age: .hospitals, cost: cost([.food: 60, .gold: 40]), trainTime: s(16),
-                      health: 70, armour: 1, speed: 1.1, sight: 8, attack: Attack(damage: 14, range: 7, interval: s(2.5)),
-                      trainedAt: [.barracks]),
-            UnitStats(kind: .horseman, age: .ships, cost: cost([.food: 80, .gold: 20]), trainTime: s(18), health: 90, armour: 1,
-                      speed: 2.2, sight: 7, attack: Attack(damage: 7, range: 1, interval: s(1.4)), trainedAt: [.stable],
-                      population: 2),
-            UnitStats(kind: .knight, age: .cannons, cost: cost([.food: 100, .gold: 60]), trainTime: s(20), health: 130, armour: 3,
-                      speed: 2.0, sight: 7, attack: Attack(damage: 10, range: 1, interval: s(1.5)), trainedAt: [.stable, .castle],
-                      population: 2),
-            UnitStats(kind: .cannon, age: .cannons, cost: cost([.wood: 120, .gold: 140]), trainTime: s(35),
-                      health: 160, armour: 2, speed: 0.6, sight: 9, attack: Attack(damage: 30, range: 10, interval: s(5), area: 1.5),
-                      trainedAt: [.castle], population: 3),
-            UnitStats(kind: .fieldGun, age: .hospitals, cost: cost([.gold: 180]), trainTime: s(35),
-                      health: 180, armour: 2, speed: 0.8, sight: 10, attack: Attack(damage: 32, range: 12, interval: s(5), area: 1.5),
-                      trainedAt: [.castle], population: 3),
-        ]
-        let buildings: [BuildingStats] = [
-            BuildingStats(kind: .townCentre, age: .towns, cost: cost([.wood: 300]), buildTime: s(120), health: 1200,
-                          armour: 2, footprint: GridPoint(3, 3), sight: 8, attack: Attack(damage: 3, range: 6, interval: s(2)),
-                          housing: 5, accepts: [.food, .wood, .gold], trains: [.worker]),
-            BuildingStats(kind: .house, age: .towns, cost: cost([.wood: 30]), buildTime: s(20), health: 200, armour: 0,
-                          footprint: GridPoint(2, 2), sight: 3, housing: 5),
-            // A boat house on the shore (ruled 2026-11-21): it trains boats and takes in their loads.
-            BuildingStats(kind: .boatHouse, age: .towns, cost: cost([.wood: 100]), buildTime: s(30), health: 300, armour: 0,
-                          footprint: GridPoint(2, 2), sight: 4, accepts: [.food, .gold], trains: [.boat]),
-            BuildingStats(kind: .barracks, age: .farms, cost: cost([.wood: 100]), buildTime: s(40), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.spearman, .swordsman, .musketeer, .rifleman]),
-            BuildingStats(kind: .watchTower, age: .farms, cost: cost([.wood: 100]), buildTime: s(40), health: 400,
-                          armour: 2, footprint: GridPoint(1, 1), sight: 9, attack: Attack(damage: 4, range: 7, interval: s(2))),
-            // The farm is of the age of farms (requirement 10), not of Cities of
-            // Progress's Iron age: the stock pen, which fed that game's Bronze age, is gone.
-            BuildingStats(kind: .farm, age: .farms, cost: cost([.wood: 60]), buildTime: s(20), health: 150, armour: 0,
-                          footprint: GridPoint(3, 3), sight: 2),
-            BuildingStats(kind: .stable, age: .ships, cost: cost([.wood: 120]), buildTime: s(45), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.horseman, .knight]),
-            BuildingStats(kind: .castle, age: .cannons, cost: cost([.wood: 800]), buildTime: s(150), health: 3000,
-                          armour: 4, footprint: GridPoint(4, 4), sight: 10, attack: Attack(damage: 8, range: 8, interval: s(2)),
-                          housing: 10, trains: [.knight, .musketeer, .cannon, .fieldGun]),
-        ]
-        // Each advance's time is the Cities of Progress study divided among the
-        // four scholars it was set for.
-        let advances: [AdvanceStats] = [
-            AdvanceStats(from: .towns, cost: cost([.food: 300, .wood: 100]), time: s(90)),
-            AdvanceStats(from: .farms, cost: cost([.food: 500, .gold: 250]), time: s(150)),
-            AdvanceStats(from: .ships, cost: cost([.food: 800, .gold: 400]), time: s(200)),
-            AdvanceStats(from: .cannons, cost: cost([.food: 1000, .gold: 750]), time: s(250)),
-        ]
-        let gathering = GatheringStats(
-            perSecond: [.tree: 0.6, .prey: 0.8, .gold: 0.4, .fish: 0.7],
-            farmingPerSecond: 0.9,
-            farmYield: 300,
-            farmReseed: cost([.wood: 60]),
-            load: 10,
-            siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200]
-        )
-        let bonuses: [Bonus] = [
-            Bonus(.spearman, against: .horseman, 3),
-            Bonus(.swordsman, against: .spearman, 1.5),
-            Bonus(.knight, against: .swordsman, 1.5), Bonus(.knight, against: .musketeer, 1.5),
-            Bonus(.spearman, against: .knight, 2.5),
-            Bonus(.musketeer, against: .knight, 2), Bonus(.musketeer, against: .swordsman, 1.5),
-            Bonus(.rifleman, against: .knight, 2), Bonus(.rifleman, against: .musketeer, 1.5), Bonus(.rifleman, against: .swordsman, 1.5),
-            Bonus(.fieldGun, against: .rifleman, 1.5), Bonus(.fieldGun, against: .musketeer, 1.5),
-        ]
-        return Catalogue(units: units, buildings: buildings, advances: advances, gathering: gathering, bonuses: bonuses,
-                         startingResources: cost([.food: 200, .wood: 250]),
-                         startingPeople: 3, populationMaximum: 200,
-                         car: CarStats(killRadius: 11))
+        do {
+            return try Catalogue(tables: .defaults)
+        } catch {
+            preconditionFailure("the default tables do not load: \(error)")
+        }
     }()
 }
