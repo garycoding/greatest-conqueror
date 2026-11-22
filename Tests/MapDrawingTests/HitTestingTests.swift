@@ -7,7 +7,7 @@ import Testing
 @testable import MapDrawing
 
 @Suite struct HitTestingTests {
-    let view = Samples.bronzeAgeSkirmish()
+    let view = Samples.farmsAgeSkirmish()
 
     func entity(_ id: Int) -> EntityView { view.entity(EntityID(id))! }
 
@@ -59,26 +59,12 @@ import Testing
 
     @Test func aSiteIsFoundOnItsTileOnlyOnceExplored() {
         let g = geometry(10, 10)
-        let tree = view.sites.first { $0.kind == .tin }!
+        let tree = view.sites.first { $0.kind == .gold && $0.tile == GridPoint(18, 9) }!
         let p = g.scenePoint(for: tree.tile.centre)
         #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 10), in: view, geometry: g)?.id == tree.id)
         var hidden = view
         hidden.visibility = Array(repeating: .unexplored, count: hidden.visibility.count)
         #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 10), in: hidden, geometry: g) == nil)
-    }
-
-    @Test func anOilFieldUnderAWellIsHiddenByIt() {
-        let g = geometry(10, 10)
-        var oily = view
-        let field = ResourceSite(id: SiteID(9999), kind: .oilField, tile: GridPoint(10, 10), remaining: 2000)
-        oily.sites.append(field)
-        let p = g.scenePoint(for: field.tile.centre)
-        #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 4), in: oily, geometry: g)?.id == field.id)
-        oily.entities.append(EntityView(id: EntityID(9999), owner: oily.player, kind: .building(.oilWell),
-                                        position: MapPosition(x: 11, y: 11), tile: GridPoint(10, 10), facing: .right,
-                                        health: 300, maxHealth: 300, activity: .idle))
-        #expect(MapHitTesting.coveredSiteTiles(in: oily).contains(field.tile))
-        #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 4), in: oily, geometry: g) == nil)
     }
 
     @Test func targetIsEntityThenSiteThenGround() {
@@ -88,10 +74,10 @@ import Testing
         if case .entity(let hit) = MapHitTesting.target(at: CGPoint(x: foot.x, y: foot.y + 10), in: view, geometry: g) {
             #expect(hit.id == worker.id)
         } else { Issue.record("expected an entity") }
-        let tin = view.sites.first { $0.kind == .tin }!
-        let siteTop = g.scenePoint(for: tin.tile.centre)
+        let gold = view.sites.first { $0.kind == .gold && $0.tile == GridPoint(18, 9) }!
+        let siteTop = g.scenePoint(for: gold.tile.centre)
         if case .site(let hit) = MapHitTesting.target(at: CGPoint(x: siteTop.x, y: siteTop.y + 6), in: view, geometry: g) {
-            #expect(hit.id == tin.id)
+            #expect(hit.id == gold.id)
         } else { Issue.record("expected a site") }
         let ground = g.scenePoint(for: MapPosition(x: 4.5, y: 20.5))
         if case .ground(let position) = MapHitTesting.target(at: ground, in: view, geometry: g) {
@@ -132,7 +118,7 @@ import Testing
 /// A building drawn taller than its block is hit up to the top of its drawing,
 /// measured from its anchor, and no higher, even over its back corner.
 @Test func aTallBuildingIsHitUpToTheTopOfItsDrawingAndNoHigher() {
-    var view = Samples.bronzeAgeSkirmish()
+    var view = Samples.farmsAgeSkirmish()
     view.entities.removeAll { if case .unit = $0.kind { true } else { false } }
     let centre = view.entities.first { $0.kind == .building(.townCentre) && $0.owner == view.player }!
     let g = geometry(centre.position.x, centre.position.y)

@@ -3,21 +3,20 @@
 
 import GameCore
 
-/// Boats, for the water's fish and rocks (ruled 2026-11-21): a boat house is
+/// Boats, for the water's fish and gold (ruled 2026-11-21): a boat house is
 /// wanted beside the nearest water that holds them (`wanted`), it trains a few
 /// boats, and each idle boat goes to the nearest site in the water.
 extension Turn {
     /// The boats a computer player keeps.
     static let boatsWanted = 3
 
-    /// The nearest site in the water, with something left and of an age the
-    /// player has reached, within `reach` tiles of `point`.
+    /// The nearest site in the water, with something left, within `reach` tiles of `point`.
     func nearestWaterSite(to point: MapPosition, within reach: Double) -> ResourceSite? {
         var best: ResourceSite?
         var bestDistance = reach
-        let width = view.mapWidth, age = view.age
+        let width = view.mapWidth
         view.sites.withUnsafeBufferPointer { sites in
-            for i in 0..<sites.count where sites[i].remaining > 0 && sites[i].kind.firstAge <= age
+            for i in 0..<sites.count where sites[i].remaining > 0
                 && view.terrain[sites[i].tile.y * width + sites[i].tile.x].isWater {
                 let d = sites[i].tile.centre.distance(to: point)
                 if d < bestDistance || (d == bestDistance && best.map { sites[i].id < $0.id } ?? false) {

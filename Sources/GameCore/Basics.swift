@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// The vocabulary of the game: ages, resources, economies, sectors,
-// civilizations, and the identifiers of players, teams and things on the map.
+// The vocabulary of the game: ages, looks, resources, civilizations, and the identifiers of players, teams and things on the map.
 // See docs/requirements.md for what each means in play.
 
 /// The simulation advances in ticks. Every duration in the catalogue is in ticks.
@@ -14,14 +13,49 @@ public enum Tick {
     public static func seconds(_ s: Double) -> Int { Int((s * Double(rate)).rounded()) }
 }
 
-/// The seven ages, in order. `Comparable` follows that order.
+/// The five ages, in order (requirement 5). `Comparable` follows that order.
+/// Each is drawn in the look of an age of Cities of Progress (`Age.look`).
 public enum Age: Int, CaseIterable, Codable, Sendable, Comparable, Hashable {
-    case stone, bronze, iron, alchemy, industrial, silicon, ai
+    case towns, farms, ships, cannons, hospitals
 
     public static func < (a: Age, b: Age) -> Bool { a.rawValue < b.rawValue }
 
-    /// The age after this one, or `nil` for the AI age.
+    /// The age after this one, or `nil` for the age of hospitals.
     public var next: Age? { Age(rawValue: rawValue + 1) }
+
+    /// The age's own word, as in "the age of towns".
+    public var name: String {
+        switch self {
+        case .towns: "towns"
+        case .farms: "farms"
+        case .ships: "ships"
+        case .cannons: "cannons"
+        case .hospitals: "hospitals"
+        }
+    }
+
+    /// The age's name for the interface: "Age of towns".
+    public var title: String { "Age of \(name)" }
+
+    /// The look in which the age is drawn (requirement 7).
+    public var look: Look {
+        switch self {
+        case .towns: .stone
+        case .farms: .bronze
+        case .ships: .iron
+        case .cannons: .alchemy
+        case .hospitals: .industrial
+        }
+    }
+}
+
+/// The looks in which the art is drawn: the ages of Cities of Progress whose
+/// drawings Greatest Conqueror reuses (requirement 7). The art's batches are
+/// named by their look.
+public enum Look: Int, CaseIterable, Codable, Sendable, Comparable, Hashable {
+    case stone, bronze, iron, alchemy, industrial
+
+    public static func < (a: Look, b: Look) -> Bool { a.rawValue < b.rawValue }
 
     public var name: String {
         switch self {
@@ -30,80 +64,21 @@ public enum Age: Int, CaseIterable, Codable, Sendable, Comparable, Hashable {
         case .iron: "Iron"
         case .alchemy: "Alchemy"
         case .industrial: "Industrial"
-        case .silicon: "Silicon"
-        case .ai: "AI"
         }
     }
 }
 
-/// The ten resources a player can hold (requirement 13). Copper and tin are not
-/// resources: they are deposits whose yield becomes bronze (requirement 18).
+/// The three resources a player can hold (requirement 8).
 public enum Resource: Int, CaseIterable, Codable, Sendable, Hashable {
-    case food, wood, stone, bronze, gold, iron, gunpowder, oil, electricity, data
-
-    /// The age in which the resource first appears. Before it, the resource is
-    /// neither shown nor obtainable.
-    public var firstAge: Age {
-        switch self {
-        case .food, .wood, .stone: .stone
-        case .bronze, .gold: .bronze
-        case .iron: .iron
-        case .gunpowder: .alchemy
-        case .oil: .industrial
-        case .electricity: .silicon
-        case .data: .ai
-        }
-    }
-
-    public var economy: Economy {
-        switch self {
-        case .food: .food
-        case .wood, .stone: .buildingMaterials
-        case .bronze, .iron: .metal
-        case .gold: .wealth
-        case .gunpowder: .chemistry
-        case .oil, .electricity: .energy
-        case .data: .information
-        }
-    }
+    case food, wood, gold
 
     public var name: String {
         switch self {
         case .food: "Food"
         case .wood: "Wood"
-        case .stone: "Stone"
-        case .bronze: "Bronze"
         case .gold: "Gold"
-        case .iron: "Iron"
-        case .gunpowder: "Gunpowder"
-        case .oil: "Oil"
-        case .electricity: "Electricity"
-        case .data: "Data"
         }
     }
-}
-
-/// The seven economies (requirement 14).
-public enum Economy: Int, CaseIterable, Codable, Sendable, Hashable {
-    case food, buildingMaterials, metal, wealth, chemistry, energy, information
-
-    public var firstAge: Age {
-        switch self {
-        case .food, .buildingMaterials: .stone
-        case .metal, .wealth: .bronze
-        case .chemistry: .alchemy
-        case .energy: .industrial
-        case .information: .ai
-        }
-    }
-}
-
-/// The five sectors of a civilization (requirement 15).
-public enum Sector: Int, CaseIterable, Codable, Sendable, Hashable {
-    case workers, warfighters, scholars, engineers, merchants
-
-    /// Merchants start in the Bronze age; the others are present from the Stone age.
-    public var firstAge: Age { self == .merchants ? .bronze : .stone }
 }
 
 /// The civilizations (requirement 10). They differ in name and colour only.

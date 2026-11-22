@@ -10,7 +10,7 @@ import Testing
 /// The Stone age's buildings (`StoneBuildingSprites`): which keys they answer,
 /// where their pictures stand, and that they are drawn the same every time.
 @Suite struct StoneBuildingsTests {
-    private static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
+    private static let kinds: [BuildingKind] = [.townCentre, .house, .boatHouse]
     private static let poses: [SpritePose] = [.complete, .underConstruction]
     /// The boat house seen from behind, so that it can face water on any edge (ruled 2026-11-22).
     private static let backKeys = poses.map { SpriteKey(.building(.boatHouse, .stone), $0, view: .back) }
@@ -108,7 +108,7 @@ import Testing
 
     @Test func everyOtherKeyGivesNil() {
         let source = StoneBuildingSprites()
-        var others = SpriteKey.required(through: .bronze).filter { !Self.keys.contains($0) }
+        var others = SpriteKey.required(through: .farms).filter { !Self.keys.contains($0) }
         for kind in Self.kinds {
             for frame in 1..<SpriteKey.framesPerPose {
                 for pose in Self.poses { others.append(SpriteKey(.building(kind, .stone), pose, frame: frame)) }
@@ -116,7 +116,7 @@ import Testing
             for pose in [SpritePose.standing, .walking, .working, .fighting, "ruined"] {
                 others.append(SpriteKey(.building(kind, .stone), pose))
             }
-            for age in Age.allCases where age != .stone {
+            for age in Look.allCases where age != .stone {
                 others.append(SpriteKey(.building(kind, age), .complete))
             }
         }
@@ -138,7 +138,7 @@ import Testing
         for pose in [SpritePose.standing, .walking, .working, .fighting, "ruined"] {
             others.append(SpriteKey(.building(.boatHouse, .stone), pose, view: .back))
         }
-        for age in Age.allCases where age != .stone {
+        for age in Look.allCases where age != .stone {
             others.append(SpriteKey(.building(.boatHouse, age), .complete, view: .back))
         }
         for key in others { #expect(source.sprite(key) == nil, "\(key) should be nil") }
@@ -184,7 +184,7 @@ import Testing
         for kind in BuildingKind.allCases where kind != .boatHouse {
             #expect(!source.drawsViews(of: .building(kind, .stone)), "\(kind)")
         }
-        for age in Age.allCases where age != .stone { #expect(!source.drawsViews(of: .building(.boatHouse, age)), "\(age)") }
+        for age in Look.allCases where age != .stone { #expect(!source.drawsViews(of: .building(.boatHouse, age)), "\(age)") }
         #expect(!source.drawsViews(of: .unit(.boat, .stone)))
         let game = GameSprites()
         for back in Self.backKeys {

@@ -32,23 +32,17 @@ extension Simulation {
         case .move(let units, let to): return move(units, to: to, player: player)
         case .gather(let units, let site): return gather(units, at: site, player: player)
         case .work(let units, let at): return work(units, at: at, player: player)
-        case .exchange(let merchants, let give, let take): return exchange(merchants, give: give, take: take, player: player)
-        case .carry(let merchants, let resource, let to): return carry(merchants, resource, to: to, player: player)
-        case .demolish(let engineers, let building): return demolish(engineers, building, player: player)
-        case .construct(let engineers, let building, let at): return construct(engineers, building, at: at, player: player)
+        case .demolish(let workers, let building): return demolish(workers, building, player: player)
+        case .construct(let workers, let building, let at): return construct(workers, building, at: at, player: player)
         case .attack(let units, let target): return attack(units, target: target, player: player)
         case .train(let at, let unit): return train(unit, at: at, player: player)
         case .cancelTraining(let at): return cancelTraining(at: at, player: player)
-        case .research(let at, let improvement): return research(improvement, at: at, player: player)
-        case .advanceAge: return advanceAge(player: player)
-        case .found(let founder, let at): return found(founder, at: at, player: player)
-        case .upgrade(let units, let to, let at): return upgrade(units, to: to, at: at, player: player)
+        case .advanceAge(let at): return advanceAge(at: at, player: player)
         case .stop(let units): return stop(units, player: player)
         case .dismiss(let units): return dismiss(units, player: player)
         case .reseed(let farm): return reseed(farm, player: player)
         case .summonCar: return summonCar(player: player)
         case .setKillRadius(let cars, let on): return setKillRadius(cars, on: on, player: player)
-        case .buildBridge(let engineers, let from, let to): return buildBridge(engineers, from: from, to: to, player: player)
         case .setPaused: return .accepted
         }
     }
@@ -117,7 +111,6 @@ extension Simulation {
         let workers = people.filter { entities[$0].unitKind == gatherer }
         guard !workers.isEmpty else { return .refused(.invalidTarget) }
         let kind = sites[s].kind
-        guard players[p].age >= kind.firstAge else { return .refused(.ageNotReached(kind.firstAge)) }
         guard catalogue.gathering.perSecond(kind) > 0 else { return .refused(.invalidTarget) }
         for i in workers {
             if let cargo = entities[i].cargo, cargo.kind != kind { entities[i].cargo = nil }
@@ -129,23 +122,14 @@ extension Simulation {
 
     mutating func work(_ ids: [EntityID], at building: EntityID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let able = people.filter { [.worker, .engineer, .scholar].contains(entities[$0].unitKind) }
+        let able = people.filter { entities[$0].unitKind == .worker }
         guard !able.isEmpty else { return .refused(.notYours) }
         guard let b = ownBuilding(building, player) else { return .refused(.invalidTarget) }
-        var busy = able.filter { hasWork(entities[$0].unitKind ?? .worker, at: b, person: $0) }
-        if entities[b].buildingKind == .farm, let first = busy.first(where: { entities[$0].unitKind == .worker }) {
+        var busy = able.filter { hasWork(at: b, person: $0) }
+        if entities[b].buildingKind == .farm, entities[b].complete, entities[b].health >= entities[b].maxHealth,
+           let first = busy.first {
             // One worker tends a farm; the others selected are left as they were.
-            busy.removeAll { entities[$0].unitKind == .worker && $0 != first }
-        }
-        if entities[b].buildingKind == .alchemistsWorkshop, let workshop = catalogue.workshop {
-            // A workshop takes as many craftsmen as it has room for; the rest are left as they were.
-            var room = workshop.workers - crafters(at: b, besides: nil)
-            busy.removeAll { i in
-                guard entities[i].unitKind == .worker else { return false }
-                if entities[i].task == .work(building) { return false }
-                if room > 0 { room -= 1; return false }
-                return true
-            }
+            busy.removeAll { $0 != first }
         }
         guard !busy.isEmpty else { return .refused(.invalidTarget) }
         for i in busy {
@@ -157,17 +141,17 @@ extension Simulation {
 
     mutating func demolish(_ ids: [EntityID], _ building: EntityID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let engineers = people.filter { entities[$0].unitKind == .engineer }
-        guard !engineers.isEmpty else { return .refused(.notYours) }
+        let workers = people.filter { entities[$0].unitKind == .worker }
+        guard !workers.isEmpty else { return .refused(.notYours) }
         guard ownBuilding(building, player) != nil else { return .refused(.invalidTarget) }
-        for i in engineers { assign(i, .demolish(building)) }
+        for i in workers { assign(i, .demolish(building)) }
         return .accepted
     }
 
     mutating func construct(_ ids: [EntityID], _ kind: BuildingKind, at origin: GridPoint, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let engineers = people.filter { entities[$0].unitKind == .engineer }
-        guard !engineers.isEmpty else { return .refused(.notYours) }
+        let workers = people.filter { entities[$0].unitKind == .worker }
+        guard !workers.isEmpty else { return .refused(.notYours) }
         let p = player.rawValue
         let stats = tables.building(kind)
         guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
@@ -175,59 +159,19 @@ extension Simulation {
         if let short = pay(stats.cost, p) { return .refused(short) }
         let b = placeBuilding(kind, owner: player, origin: origin, complete: false)
         let id = entities[b].id
-        for i in engineers { assign(i, .work(id)) }
-        return .accepted
-    }
-
-    /// A bridge (ruled 2026-11-21): two tiles wide, a piece on each water tile
-    /// of both rows (`Placement.bridgeRows`), all paid for at once; the
-    /// engineers begin at the piece beside `from`, and each, on finishing a
-    /// piece, goes on to the next (`nextConstruction`).
-    mutating func buildBridge(_ ids: [EntityID], from: GridPoint, to: GridPoint, player: PlayerID) -> OrderResult {
-        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let engineers = people.filter { entities[$0].unitKind == .engineer }
-        guard !engineers.isEmpty else { return .refused(.notYours) }
-        let p = player.rawValue
-        // Bridges may be forbidden by the match's setup (ruled 2026-11-21).
-        guard noBridges != true else { return .refused(.invalidTarget) }
-        let stats = tables.building(.bridge)
-        guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
-        guard let rows = Placement.bridgeRows(from: from, to: to, width: width, height: height, terrain: terrain),
-              let run = BridgeRun.of(from: from, to: to),
-              (Placement.bridgeEnds(from: from, to: to) + rows.flatMap { $0 }).allSatisfy({ isExplored($0, byPlayer: p) }),
-              rows.flatMap({ $0 }).allSatisfy({ buildingAt[tileIndex($0)] < 0 })
-        else { return .refused(.placementBlocked) }
-        let pieces = rows.flatMap { $0 }
-        var cost = ResourceAmounts()
-        for r in Resource.allCases { cost[r] = stats.cost[r] * pieces.count }
-        if let short = pay(cost, p) { return .refused(short) }
-        var first: EntityID?
-        let count = rows[0].count
-        for (lane, row) in rows.enumerated() {
-            let low = row.map { run == .alongX ? $0.x : $0.y }.min()!
-            for t in row {
-                let b = placeBuilding(.bridge, owner: player, origin: t, complete: false)
-                entities[b].bridgePlace = BridgePlace(run: run, lane: lane, index: (run == .alongX ? t.x : t.y) - low,
-                                                      count: count)
-                if first == nil { first = entities[b].id }
-            }
-        }
-        for i in engineers { assign(i, .work(first!)) }
+        for i in workers { assign(i, .work(id)) }
         return .accepted
     }
 
     /// `Placement`'s rule, applied to the full state and the team's exploration.
     func canPlace(_ kind: BuildingKind, at origin: GridPoint, player p: Int) -> Bool {
-        var occupied = Set<GridPoint>(), wanted = Set<GridPoint>()
-        let needed = Placement.site(for: kind)
+        var occupied = Set<GridPoint>()
         for t in Placement.footprint(kind, at: origin, catalogue: catalogue) where inMap(t) {
             let k = tileIndex(t)
             if buildingAt[k] >= 0 || siteAt[k] >= 0 { occupied.insert(t) }
-            if buildingAt[k] < 0, siteAt[k] >= 0, let needed, sites[Int(siteAt[k])].kind == needed,
-               sites[Int(siteAt[k])].remaining > 0 { wanted.insert(t) }
         }
         return Placement.canPlace(kind, at: origin, width: width, height: height, terrain: terrain, occupied: occupied,
-                                  explored: { isExplored($0, byPlayer: p) }, catalogue: catalogue, wanted: wanted)
+                                  explored: { isExplored($0, byPlayer: p) }, catalogue: catalogue)
     }
 
     mutating func attack(_ ids: [EntityID], target: EntityID, player: PlayerID) -> OrderResult {
@@ -243,9 +187,7 @@ extension Simulation {
         if able.isEmpty && !cars.isEmpty {
             return cars.contains(where: { entities[$0].task == .attack(target) }) ? .accepted : .refused(.cannotAttack)
         }
-        guard !able.isEmpty else {
-            return .refused(people.contains { entities[$0].isFounder } ? .cannotAttack : .notYours)
-        }
+        guard !able.isEmpty else { return .refused(.notYours) }
         guard let t = index(of: target), seesEverything(player.rawValue) || isVisible(entities[t], to: team) else {
             return .refused(.invalidTarget)
         }
@@ -262,33 +204,7 @@ extension Simulation {
 
     mutating func dismiss(_ ids: [EntityID], player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let leaving = people.filter { !entities[$0].isFounder }
-        guard !leaving.isEmpty else { return .refused(.invalidTarget) }
-        for i in leaving {
-            // What a merchant carries goes back to the stock: the person leaves, not the goods.
-            returnCarried(i)
-            kill(i)
-        }
-        return .accepted
-    }
-
-    mutating func upgrade(_ ids: [EntityID], to kind: UnitKind, at building: EntityID, player: PlayerID) -> OrderResult {
-        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        guard let b = ownBuilding(building, player), entities[b].complete, let buildingKind = entities[b].buildingKind,
-              tables.building(buildingKind).trains.contains(kind) else { return .refused(.invalidTarget) }
-        let p = player.rawValue
-        let stats = tables.unit(kind)
-        guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
-        var cost = ResourceAmounts()
-        var able: [(index: Int, time: Int)] = []
-        for i in people where entities[i].upgrade == nil {
-            guard let from = entities[i].unitKind, let upgrade = catalogue.upgrade(from: from), upgrade.to == kind else { continue }
-            cost = cost + upgrade.cost
-            able.append((i, upgrade.time))
-        }
-        guard !able.isEmpty else { return .refused(.notYours) }
-        if let short = pay(cost, p) { return .refused(short) }
-        for (i, time) in able { entities[i].upgrade = PendingUpgrade(to: kind, remaining: max(1, time)) }
+        for i in people { kill(i) }
         return .accepted
     }
 
@@ -318,62 +234,31 @@ extension Simulation {
         return .accepted
     }
 
-    mutating func research(_ improvement: Improvement, at building: EntityID, player: PlayerID) -> OrderResult {
-        guard let b = ownBuilding(building, player) else { return .refused(.notYours) }
-        guard entities[b].complete, let buildingKind = entities[b].buildingKind,
-              tables.building(buildingKind).researches.contains(improvement) else { return .refused(.invalidTarget) }
-        let p = player.rawValue
-        let stats = catalogue.stats(improvement)
-        guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
-        let underWay = entities.contains { $0.alive && $0.owner == player && $0.research == improvement }
-        guard entities[b].research == nil, !players[p].has(improvement), !underWay else { return .refused(.invalidTarget) }
-        if let short = pay(stats.cost, p) { return .refused(short) }
-        entities[b].research = improvement
-        entities[b].researchProgress = 0
-        return .accepted
-    }
-
     // MARK: The player
 
-    mutating func advanceAge(player: PlayerID) -> OrderResult {
+    /// The advance to the next age begins at a complete town centre of the
+    /// player's, paying its cost; one advance at a time (requirement 6).
+    mutating func advanceAge(at building: EntityID, player: PlayerID) -> OrderResult {
         let p = player.rawValue
-        guard let next = players[p].age.next, let advance = catalogue.advance(from: players[p].age) else {
+        guard let b = ownBuilding(building, player) else { return .refused(.notYours) }
+        guard entities[b].buildingKind == .townCentre, entities[b].complete else { return .refused(.invalidTarget) }
+        guard players[p].age.next != nil, let advance = catalogue.advance(from: players[p].age) else {
             return .refused(.invalidTarget)
         }
-        guard players[p].study >= advance.study else { return .refused(.studyIncomplete) }
+        guard !entities.contains(where: { $0.alive && $0.owner == player && $0.advancing != nil }) else {
+            return .refused(.notNow)
+        }
         if let short = pay(advance.cost, p) { return .refused(short) }
-        // Peaceful people change stage at once: their stage follows the owner's age.
-        players[p].age = next
-        players[p].study = 0
-        record(.ageReached(next), for: p)
-        return .accepted
-    }
-
-    /// A founder builds a town centre, free, with `founderPeople` workers beside
-    /// it, and becomes an engineer (requirement 26, ruled 2026-11-21), so that
-    /// the player begins again as every player begins.
-    mutating func found(_ founder: EntityID, at origin: GridPoint, player: PlayerID) -> OrderResult {
-        guard let f = index(of: founder), entities[f].owner == player, entities[f].isFounder else {
-            return .refused(.notYours)
-        }
-        let p = player.rawValue
-        guard canPlace(.townCentre, at: origin, player: p) else { return .refused(.placementBlocked) }
-        finishUpgrade(f, to: .engineer)
-        setIdle(f)
-        let centre = placeBuilding(.townCentre, owner: player, origin: origin, complete: true)
-        record(.constructed(entities[centre].id, .townCentre), for: p)
-        for k in 0..<catalogue.founderPeople {
-            spawnPerson(.worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
-        }
+        entities[b].advancing = 0
         return .accepted
     }
 
     /// A farm that has run dry is sown again, at `GatheringStats.farmReseed`.
     mutating func reseed(_ farm: EntityID, player: PlayerID) -> OrderResult {
         guard let b = index(of: farm), entities[b].owner == player else { return .refused(.notYours) }
-        guard entities[b].buildingKind == .farm, entities[b].complete, let full = catalogue.gathering.farmYield,
-              (entities[b].farmUsed ?? 0) >= full else { return .refused(.invalidTarget) }
-        let cost = catalogue.gathering.farmReseed ?? ResourceAmounts()
+        guard entities[b].buildingKind == .farm, entities[b].complete,
+              (entities[b].farmUsed ?? 0) >= catalogue.gathering.farmYield else { return .refused(.invalidTarget) }
+        let cost = catalogue.gathering.farmReseed
         let held = players[player.rawValue].resources
         guard held.covers(cost) else { return .refused(.notEnough(held.shortfall(for: cost))) }
         players[player.rawValue].resources = held - cost

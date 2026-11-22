@@ -13,28 +13,23 @@ import GameCore
 /// in this order of priority, spending only what the view shows it holds and
 /// holding back the cost of what it is saving for:
 ///
-/// - **Founding.** If it holds only a founder, it founds a town centre on a
-///   placeable site near an ally's town centre, and does nothing else.
-/// - **The next age.** It orders `advanceAge` once `ageProgress` reaches 1 and
-///   the cost is covered; from 0.6 it holds that cost back.
-/// - **Defence.** Where its people or buildings have been struck
+/// - **The next age.** Once it has the workers the difficulty sets, it holds
+///   back the advance's cost and orders `advanceAge` at its town centre when
+///   it is covered; beyond the age of farms, an army comes first.
+/// - **Defence.** Where its units or buildings have been struck
 ///   (`GameEvent.underAttack`), or opponents stand among its buildings, its
 ///   warfighters attack them, each the opponent it is best placed to beat. A
 ///   raid of three or more calls an attacking army home.
-/// - **Building.** Engineers build a house before the population limit stops
-///   training, a town centre if none stands, from the Bronze age a barracks, a
-///   stock pen and a watch tower, from the Iron age farms, a stable, a siege
-///   workshop and a stone wall, from the Alchemy age an alchemist's workshop
-///   and a castle, and a storage pit beside resources gathered
-///   far from any building that accepts them. A place is chosen with
+/// - **Building.** Builders (workers it sets aside to build and repair) build a
+///   house before the population limit stops training, a town centre if none
+///   stands, a boat house by water that holds fish or gold, from the age of
+///   farms a barracks, a watch tower and farms, from the age of ships a
+///   stable, and from the age of cannons a castle. A place is chosen with
 ///   `Placement.canPlace`, with a tile of open ground around each building.
-/// - **Training.** The town centre trains workers, engineers and scholars up to
-///   the numbers the difficulty sets; with no engineer, one comes first, so that
-///   a house can always be built. From the Bronze age the barracks train a mixed
-///   army, leaning toward the kinds that beat the opponents' warfighters it has
-///   seen (`Catalogue.bonuses`), more so at `hard`; warfighters of the Stone age
-///   are upgraded to the kinds of the Bronze age. Under attack in the Stone age,
-///   the town centre trains warfighters enough to answer the intruders.
+/// - **Training.** The town centre trains workers up to the numbers the
+///   difficulty sets, builders included. From the age of farms the barracks
+///   train a mixed army, leaning toward the kinds that beat the opponents'
+///   warfighters it has seen (`Catalogue.bonuses`), more so at `hard`.
 /// - **Attack.** From the difficulty's earliest attack time (fifteen minutes at
 ///   `easy`, ten at `standard`, seven at `hard`), with an army large enough (six,
 ///   nine and ten warfighters, two more after each attack), it attacks the
@@ -44,12 +39,8 @@ import GameCore
 /// - **Scouting.** When it knows no opponent's building, the fastest warfighter,
 ///   or failing that a worker once it has six, explores the unexplored ground.
 /// - **Work.** Idle workers go to the nearest suitable sites that they can
-///   reach, in shares that follow the age and what is being saved for: food,
-///   wood and stone, and from the Bronze age copper and tin in pairs, gold, and
-///   herding at a stock pen; in the Alchemy age up to three craftsmen make
-///   gunpowder at the workshop whilst it runs short and wood allows. Idle
-///   scholars study at the town centre; idle
-///   engineers finish and repair buildings.
+///   reach, in shares that follow the age and what is being saved for: food
+///   (prey, then farms), wood and gold; idle builders finish and repair buildings.
 ///
 /// Its state is Codable, random generator included, so that a saved match
 /// resumes with the same decisions; the same seed and the same views give the

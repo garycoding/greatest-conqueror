@@ -19,19 +19,15 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age, demolish, dismiss, trade, carry, reseed, car
+        case train, build, age, demolish, dismiss, reseed, car
 
         public var heading: String {
             switch self {
             case .train: "Train"
-            case .research: "Research"
             case .build: "Build"
-            case .upgrade: "Upgrade"
             case .age: "Advance"
             case .demolish: "Demolish"
             case .dismiss: "Dismiss"
-            case .trade: "Trade for"
-            case .carry: "Send to"
             case .reseed: "Farm"
             case .car: "Car"
             }
@@ -41,14 +37,10 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Action: Hashable, Sendable {
         case train(at: EntityID, unit: UnitKind)
         case place(BuildingKind)
-        case research(at: EntityID, improvement: Improvement)
-        /// `at` is nil when no building of the player's trains the new kind.
-        case upgrade(units: [EntityID], to: UnitKind, at: EntityID?)
-        case advanceAge
-        case demolish(engineers: [EntityID], building: EntityID)
+        /// The advance to the next age, at a town centre of the player's.
+        case advanceAge(at: EntityID)
+        case demolish(workers: [EntityID], building: EntityID)
         case dismiss(units: [EntityID])
-        case exchange(merchants: [EntityID], give: Resource, take: Resource)
-        case carry(merchants: [EntityID], resource: Resource, to: EntityID)
         case reseed(farm: EntityID)
         /// Turn the kill radius of these cars on or off (ruled 2026-11-21).
         case killRadius(cars: [EntityID], on: Bool)
@@ -71,18 +63,14 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
     public var isAvailable: Bool { unavailable == nil }
 
     /// The order this button issues, or `nil` where it issues none (placing a
-    /// building sets `PlayerSession.placing`; an upgrade without a building).
+    /// building sets `PlayerSession.placing`).
     public var order: Order? {
         switch action {
         case .train(let building, let unit): .train(at: building, unit: unit)
         case .place: nil
-        case .research(let building, let improvement): .research(at: building, improvement: improvement)
-        case .upgrade(let units, let kind, let building): building.map { .upgrade(units: units, to: kind, at: $0) }
-        case .advanceAge: .advanceAge
-        case .demolish(let engineers, let building): .demolish(engineers: engineers, building: building)
+        case .advanceAge(let centre): .advanceAge(at: centre)
+        case .demolish(let workers, let building): .demolish(workers: workers, building: building)
         case .dismiss(let units): .dismiss(units: units)
-        case .exchange(let merchants, let give, let take): .exchange(merchants: merchants, give: give, take: take)
-        case .carry(let merchants, let resource, let building): .carry(merchants: merchants, resource: resource, to: building)
         case .reseed(let farm): .reseed(farm: farm)
         case .killRadius(let cars, let on): .setKillRadius(cars: cars, on: on)
         }
@@ -92,8 +80,6 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
     public var costLine: String {
         if case .demolish = action, let back = refund { return "Returns \(InterfaceText.cost(back))" }
         if case .dismiss(let units) = action { return units.count == 1 ? "Frees 1 place" : "Frees \(units.count) places" }
-        if case .exchange(_, let give, _) = action { return "Gives \(give.name), 3 for 2" }
-        if case .carry(_, let resource, _) = action { return "Your \(resource.name), a load at a time" }
         return InterfaceText.cost(cost)
     }
 
@@ -133,7 +119,7 @@ public struct EntityDetail: Hashable, Sendable {
     public var health: Int
     public var maxHealth: Int
     public var activity: String
-    /// From 0 to 1, for construction, training and research.
+    /// From 0 to 1, for construction, training and an advance.
     public var progress: Double?
 
     public var healthFraction: Double { maxHealth > 0 ? InterfaceText.clamp(Double(health) / Double(maxHealth)) : 0 }
@@ -157,21 +143,17 @@ public struct PanelModel: Sendable {
 
     public var content: Content
     public var train: [ActionOffer] = []
-    public var research: [ActionOffer] = []
     public var build: [ActionOffer] = []
-    public var upgrade: [ActionOffer] = []
     public var demolish: [ActionOffer] = []
     public var dismiss: [ActionOffer] = []
-    public var trade: [ActionOffer] = []
-    public var carry: [ActionOffer] = []
     public var reseed: [ActionOffer] = []
     public var car: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + reseed + car + build + upgrade + trade + carry + demolish + dismiss }
+    public var actions: [ActionOffer] { train + reseed + car + build + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.reseed, reseed), (.car, car), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
+        [(.train, train), (.reseed, reseed), (.car, car), (.build, build), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -225,10 +207,10 @@ public struct PanelModel: Sendable {
         let planner = Planner(view: view, catalogue: catalogue, gate: gate)
         let own = selected.filter { $0.owner == view.player }
 
-        // Train and research at a single own building that stands complete.
+        // Train at a single own building that stands complete.
         if selected.count == 1, let b = own.first, case .building(let kind) = b.kind, !Self.isUnderConstruction(b) {
             let stats = catalogue.stats(kind)
-            train = stats.trains.filter { $0 != .founder && catalogue.stats($0).age <= catalogue.lastAge }.map { unit in
+            train = stats.trains.filter { catalogue.stats($0).age <= catalogue.lastAge }.map { unit in
                 let u = catalogue.stats(unit)
                 let name = unit.stageName(at: view.age)
                 return ActionOffer(
@@ -238,24 +220,12 @@ public struct PanelModel: Sendable {
                     shortcut: Self.trainKey(unit), icon: .unit(unit),
                     iconSubject: planner.subject(.unit(unit)))
             }
-            var researching = false
-            if case .researching = b.activity { researching = true }
-            research = stats.researches.filter { !view.improvements.contains($0) }.map { improvement in
-                let r = catalogue.stats(improvement)
-                var why = planner.check(cost: r.cost, age: r.age)
-                if why == nil && researching { why = Unavailability(.notNow, "Research is already under way here") }
-                return ActionOffer(
-                    id: "research-\(improvement)", section: .research, title: InterfaceText.name(of: improvement),
-                    detail: InterfaceText.effect(of: improvement), cost: r.cost,
-                    action: .research(at: b.id, improvement: improvement), unavailable: why,
-                    shortcut: Self.researchKey(improvement), icon: nil, iconSubject: nil)
-            }
         }
 
         // Reseed a single own farm that has run dry (ruled 2026-11-19); its farmer
         // does so on his own, so the button serves a farm left without one.
-        if selected.count == 1, let b = own.first, b.kind == .building(.farm), let left = b.remaining,
-           let cost = catalogue.gathering.farmReseed {
+        if selected.count == 1, let b = own.first, b.kind == .building(.farm), let left = b.remaining {
+            let cost = catalogue.gathering.farmReseed
             var why = planner.check(cost: cost, age: catalogue.stats(.farm).age)
             if left > 0 { why = Unavailability(.invalidTarget, "\(left) food left to harvest") }
             reseed = [ActionOffer(
@@ -279,52 +249,39 @@ public struct PanelModel: Sendable {
                 shortcut: "z", icon: nil, iconSubject: nil)]
         }
 
-        // Demolish a single own building (requirement 28): the player's idle
-        // engineers do it, or the nearest engineer where none is idle.
+        // Demolish a single own building: the player's idle workers do it, or
+        // the nearest worker where none is idle.
+        let workers = view.entities.filter { $0.owner == view.player && $0.kind == .unit(.worker) }
         if selected.count == 1, let b = own.first, case .building(let kind) = b.kind {
-            let engineers = view.entities.filter { $0.owner == view.player && $0.kind == .unit(.engineer) }
-            let idle = engineers.filter { $0.activity == .idle }.map(\.id)
-            let nearest = engineers.min {
+            let idle = workers.filter { $0.activity == .idle }.map(\.id)
+            let nearest = workers.min {
                 let a = ($0.position.x - b.position.x, $0.position.y - b.position.y)
                 let c = ($1.position.x - b.position.x, $1.position.y - b.position.y)
                 return (a.0 * a.0 + a.1 * a.1, $0.id) < (c.0 * c.0 + c.1 * c.1, $1.id)
             }
             let crew = idle.isEmpty ? nearest.map { [$0.id] } ?? [] : idle
             var why = gate
-            if why == nil && crew.isEmpty { why = Unavailability(.notYours, "Needs an engineer") }
+            if why == nil && crew.isEmpty { why = Unavailability(.notYours, "Needs a worker") }
             let back = catalogue.stats(kind).cost.halved
             demolish = [ActionOffer(
                 id: "demolish", section: .demolish, title: kind.name,
-                detail: "Engineers pull it down and return half its cost (\(InterfaceText.cost(back))).",
-                cost: ResourceAmounts(), action: .demolish(engineers: crew, building: b.id), unavailable: why,
+                detail: "Workers pull it down and return half its cost (\(InterfaceText.cost(back))).",
+                cost: ResourceAmounts(), action: .demolish(workers: crew, building: b.id), unavailable: why,
                 shortcut: "x", icon: nil, iconSubject: nil, refund: back)]
         }
 
-        // A founder founds one town centre, free; it then becomes an engineer (requirement 26).
-        if own.contains(where: { $0.kind == .unit(.founder) }) {
-            build = [ActionOffer(
-                id: "build-townCentre", section: .build, title: BuildingKind.townCentre.name,
-                detail: "The founder builds it where you click, free, with two workers, and becomes an engineer.",
-                cost: ResourceAmounts(), action: .place(.townCentre), unavailable: gate,
-                shortcut: Self.buildKey(.townCentre), icon: .building(.townCentre),
-                iconSubject: planner.subject(.building(.townCentre)))]
-        }
-
-        // Buildings for engineers, of the ages reached.
-        if own.contains(where: { $0.kind == .unit(.engineer) }) {
-            // A bridge only where the match's setup allows bridges (ruled 2026-11-21).
-            build = catalogue.buildings.filter { $0.age <= view.age && ($0.kind != .bridge || view.bridges) }.map { b in
+        // Buildings for workers, of the ages reached.
+        if own.contains(where: { $0.kind == .unit(.worker) }) {
+            build = catalogue.buildings.filter { $0.age <= view.age }.map { b in
                 ActionOffer(
-                    id: "build-\(b.kind)", section: .build, title: b.kind.name, detail: b.kind == .bridge
-                        ? "Engineers build it across water: drag from one bank to the other. The cost is for each water tile."
-                        : "Engineers construct it where you click.",
+                    id: "build-\(b.kind)", section: .build, title: b.kind.name, detail: "Workers construct it where you click.",
                     cost: b.cost, action: .place(b.kind), unavailable: planner.check(cost: b.cost, age: b.age),
                     shortcut: Self.buildKey(b.kind), icon: .building(b.kind), iconSubject: planner.subject(.building(b.kind)))
             }
         }
 
-        // Dismiss the player's own people, founders excepted (requirement 30).
-        let leaving = own.filter { if case .unit(let kind) = $0.kind { return kind != .founder } else { return false } }
+        // Dismiss the player's own units.
+        let leaving = own.filter { if case .unit = $0.kind { return true } else { return false } }
             .map(\.id).sorted()
         if !leaving.isEmpty {
             let what = leaving.count == 1 ? (selected.first.map { InterfaceText.name(of: $0.kind, at: view.age) } ?? "Person")
@@ -336,67 +293,6 @@ public struct PanelModel: Sendable {
                 shortcut: Self.deleteKey, icon: nil, iconSubject: nil)]
         }
 
-        // Merchants trade the player's largest stock for another resource, and
-        // carry resources to an ally's town centre (requirement 15).
-        let merchantIDs = own.filter { $0.kind == .unit(.merchant) }.map(\.id).sorted()
-        if !merchantIDs.isEmpty, catalogue.merchants != nil {
-            let shown = view.shownResources
-            let hasCentre = view.entities.contains {
-                $0.owner == view.player && $0.kind == .building(.townCentre) && !Self.isUnderConstruction($0)
-            }
-            for take in shown {
-                let give = shown.filter { $0 != take }.max { view.resources[$0] < view.resources[$1] }
-                let why: Unavailability? = gate
-                    ?? (hasCentre ? nil : Unavailability(.invalidTarget, "Needs a town centre"))
-                    ?? ((give.map { view.resources[$0] } ?? 0) > 0 ? nil
-                    : Unavailability(.notEnough(ResourceAmounts()), "Nothing to trade"))
-                trade.append(ActionOffer(
-                    id: "trade-\(take)", section: .trade, title: take.name,
-                    detail: "Merchants at the town centre trade your \(give?.name ?? "stock") for \(take.name) until it runs out.",
-                    cost: ResourceAmounts(), action: .exchange(merchants: merchantIDs, give: give ?? take, take: take),
-                    unavailable: why, shortcut: nil, icon: nil, iconSubject: nil))
-            }
-            let me = view.players.first { $0.id == view.player }
-            let allies = view.players.filter { $0.id != view.player && $0.team == me?.team && !$0.isDefeated }
-            for ally in allies {
-                guard let centre = view.entities.first(where: {
-                    $0.owner == ally.id && $0.kind == .building(.townCentre) && !Self.isUnderConstruction($0)
-                }) else { continue }
-                for resource in shown where view.resources[resource] > 0 {
-                    carry.append(ActionOffer(
-                        id: "carry-\(ally.id.rawValue)-\(resource)", section: .carry,
-                        title: "\(ally.civilization.name): \(resource.name)",
-                        detail: "Merchants carry your \(resource.name) to \(ally.civilization.name)'s town centre, a load at a time, until it runs out.",
-                        cost: ResourceAmounts(), action: .carry(merchants: merchantIDs, resource: resource, to: centre.id),
-                        unavailable: gate, shortcut: nil, icon: nil, iconSubject: nil))
-                }
-            }
-        }
-
-        // Upgrades for warfighters where the catalogue has one.
-        var keyGiven = false
-        let warfighters = Dictionary(grouping: own.filter { $0.kind.isWarfighterKind }, by: { $0.kind })
-        for kind in warfighters.keys.sorted(by: { Self.rank($0) < Self.rank($1) }) {
-            guard case .unit(let from) = kind, let up = catalogue.upgrade(from: from), let group = warfighters[kind] else { continue }
-            let ids = group.map(\.id).sorted()
-            var total = ResourceAmounts()
-            for _ in ids { total = total + up.cost }
-            let target = up.to.stageName(at: view.age)
-            let host = view.entities
-                .filter { $0.owner == view.player && !Self.isUnderConstruction($0) }
-                .first { if case .building(let k) = $0.kind { return catalogue.stats(k).trains.contains(up.to) } else { return false } }
-            var why = planner.check(cost: total, age: catalogue.stats(up.to).age)
-            if why == nil && host == nil {
-                let names = catalogue.stats(up.to).trainedAt.map(\.name).joined(separator: " or ").lowercased()
-                why = Unavailability(.invalidTarget, "Needs a \(names) to train the \(target)")
-            }
-            upgrade.append(ActionOffer(
-                id: "upgrade-\(from)", section: .upgrade, title: "\(from.stageName(at: view.age)) to \(target)",
-                detail: "Turns \(ids.count) \(from.stageName(at: view.age)) into \(target).", cost: total,
-                action: .upgrade(units: ids, to: up.to, at: host?.id), unavailable: why,
-                shortcut: keyGiven ? nil : "u", icon: .unit(up.to), iconSubject: planner.subject(.unit(up.to))))
-            keyGiven = true
-        }
     }
 
     // MARK: Shortcuts
@@ -410,26 +306,16 @@ public struct PanelModel: Sendable {
     static func trainKey(_ unit: UnitKind) -> Character? {
         switch unit {
         case .worker: "w"
-        case .scholar: "s"
-        case .engineer: "e"
-        case .merchant: "m"
-        case .clubman: "c"
-        case .slinger: "l"
         case .spearman: "p"
-        case .archer: "a"
-        case .chariot: "h"
         case .swordsman: "q"
         case .horseman: "r"
-        case .catapult: "u"
         case .knight: "k"
         case .musketeer: "m"
         case .cannon: "j"
         case .rifleman: "f"
         case .fieldGun: "d"
-        case .armouredCar: "v"
         case .car: nil
         case .boat: "b"
-        case .founder: nil
         }
     }
 
@@ -437,44 +323,12 @@ public struct PanelModel: Sendable {
         switch kind {
         case .townCentre: "t"
         case .house: "h"
-        case .storagePit: "s"
-        case .stockPen: "k"
         case .barracks: "b"
         case .watchTower: "w"
-        case .palisade: "p"
         case .farm: "f"
         case .stable: "l"
-        case .siegeWorkshop: "g"
-        case .stoneWall: "o"
         case .castle: "c"
-        case .alchemistsWorkshop: "a"
-        case .factory: "y"
-        case .railwayDepot: "d"
-        case .oilWell: "r"
-        // "x" for a crossing: "b" is the barracks.
-        case .bridge: "x"
-        // "i" for an inlet: "b" is the barracks and "o" the stone wall.
         case .boatHouse: "i"
-        }
-    }
-
-    static func researchKey(_ improvement: Improvement) -> Character? {
-        switch improvement {
-        case .betterTools: "t"
-        case .bronzeWeapons: "b"
-        case .shields: "d"
-        case .ironTools: "i"
-        case .ironWeapons: "y"
-        case .mail: "v"
-        case .plough: "o"
-        case .betterPowder: "p"
-        case .plateArmour: "a"
-        case .guilds: "g"
-        case .banking: "b"
-        case .machineTools: "k"
-        case .rifling: "r"
-        case .steelPlate: "s"
-        case .refining: "o"
         }
     }
 
@@ -503,7 +357,7 @@ public struct PanelModel: Sendable {
         func check(cost: ResourceAmounts, age: Age, population places: Int? = nil) -> Unavailability? {
             if let gate { return gate }
             if age > view.age {
-                return Unavailability(.ageNotReached(age), "Needs the \(age.name) age")
+                return Unavailability(.ageNotReached(age), "Needs the age of \(age.name)")
             }
             if !view.resources.covers(cost) {
                 let short = view.resources.shortfall(for: cost)
@@ -521,9 +375,9 @@ public struct PanelModel: Sendable {
             switch kind {
             case .unit(let u):
                 let own = catalogue.stats(u).age
-                return .unit(u, (u.isWarfighter || u == .founder || u == .car) ? own : max(own, view.age))
+                return .unit(u, ((u.isWarfighter || u == .car) ? own : max(own, view.age)).look)
             case .building(let b):
-                return .building(b, max(catalogue.stats(b).age, view.age))
+                return .building(b, max(catalogue.stats(b).age, view.age).look)
             }
         }
     }

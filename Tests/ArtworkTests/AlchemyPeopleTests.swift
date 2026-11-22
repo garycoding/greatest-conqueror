@@ -16,19 +16,19 @@ import Testing
     private let source = AlchemyPeopleSprites()
 
     @Test func theBatchIsTheChecklistsAlchemyPeacefulSectors() {
-        let expected = SpriteKey.required(through: .alchemy).filter { key in
-            if case .unit(let kind, .alchemy) = key.subject { return [.worker, .scholar, .engineer, .merchant].contains(kind) }
+        let expected = SpriteKey.required(through: .cannons).filter { key in
+            if case .unit(let kind, .alchemy) = key.subject { return [.worker].contains(kind) }
             return false
         }
         #expect(source.poses == expected)
         #expect(source.keys.count == expected.count * SpriteKey.framesPerPose)
-        // Standing, walking and working for all four; fighting for the two that can attack.
-        #expect(expected.count == 14)
+        // Standing, walking, working and fighting for the worker.
+        #expect(expected.count == 4)
         let fighting = Set(source.poses.filter { $0.pose == .fighting }.compactMap { key -> UnitKind? in
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(fighting == [.worker, .engineer])
+        #expect(fighting == [.worker])
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -49,14 +49,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -64,10 +64,6 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        // The alchemist and the banker cannot attack, so neither has a fighting pose.
-        for kind in [UnitKind.scholar, .merchant] {
-            #expect(source.sprite(SpriteKey(.unit(kind, .alchemy), .fighting)) == nil, "\(kind)")
-        }
     }
 
     @Test func theSameKeyGivesTheSamePixels() throws {
@@ -94,7 +90,7 @@ import Testing
 
     @Test func theKindsAreToldApartByTheirLooks() throws {
         // At game size, no two kinds' standing pictures are alike.
-        let kinds: [UnitKind] = [.worker, .scholar, .engineer, .merchant]
+        let kinds: [UnitKind] = [.worker]
         let pictures = try kinds.map { kind in
             AlchemyPeoplePixels(try #require(source.sprite(SpriteKey(.unit(kind, .alchemy), .standing))).base)
         }
@@ -123,10 +119,10 @@ import Testing
 struct AlchemyPeopleRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["ALCHEMY_PEOPLE_RENDERS"] ?? "/", isDirectory: true)
     private let sprites = AlchemyPeopleSprites()
-    private static let kinds: [UnitKind] = [.worker, .scholar, .engineer, .merchant]
+    private static let kinds: [UnitKind] = [.worker]
 
     /// A kind's Alchemy-age name, with the sector's name.
-    private static func name(_ kind: UnitKind, _ age: Age = .alchemy) -> String { "\(kind.stageName(at: age)) (\(kind))" }
+    private static func name(_ kind: UnitKind, _ age: Look = .alchemy) -> String { "\(kind.stageName(at: Age(rawValue: age.rawValue)!)) (\(kind))" }
 
     /// What each kind does in each pose, for the animations' captions.
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
@@ -134,11 +130,7 @@ struct AlchemyPeopleRenders {
         case (_, .standing): "standing: a breath, and a blink"
         case (_, .walking): "walking: a 12-frame stride"
         case (.worker, .working): "working: carving oak with mallet and chisel"
-        case (.scholar, .working): "working: swirling the flask until it fumes"
-        case (.engineer, .working): "working: hammering a musket barrel at the anvil"
-        case (.merchant, .working): "working: counting coin into the strongbox"
         case (.worker, .fighting): "fighting: a blow of the mallet"
-        case (.engineer, .fighting): "fighting: a swing of the hammer"
         default: pose.rawValue
         }
     }
@@ -211,7 +203,7 @@ struct AlchemyPeopleRenders {
                     frames.append(context.makeImage()!)
                 }
             }
-            try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(kind.stageName(at: .alchemy).lowercased()).gif"))
+            try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(kind.stageName(at: .cannons).lowercased()).gif"))
         }
     }
 
@@ -229,8 +221,8 @@ struct AlchemyPeopleRenders {
         let iron = IronPeopleSprites()
         let scale = 3.0
         // Each kind's column: its Iron stage on the left (the trader's donkey reaches far behind him), the Alchemy stage on the right.
-        let ironAt: [Double] = Self.kinds.map { $0 == .merchant ? 300 : 140 }
-        let columns: [Double] = Self.kinds.map { $0 == .merchant ? 640 : 470 }
+        let ironAt: [Double] = Self.kinds.map { _ in 140 }
+        let columns: [Double] = Self.kinds.map { _ in 470 }
         let width = Int(columns.reduce(0, +)), largeRow = Int(Canvas.person.height * scale)
         let smallRow = Canvas.person.pixelHeight + 24
         let height = 110 + largeRow * civilizations.count + smallRow * civilizations.count + 50
@@ -245,7 +237,7 @@ struct AlchemyPeopleRenders {
             let ironCanvas = IronPeopleLooks.canvas(kind).scaled(to: scale), canvas = Canvas.person.scaled(to: scale)
             let ironX = left + ironAt[k], alchemyX = ironX + 190
             Preview.label(Self.name(kind), in: context, at: CGPoint(x: alchemyX - 90, y: Double(height) - 88), size: 19)
-            Preview.label(kind.stageName(at: .iron), in: context, at: CGPoint(x: ironX - 60, y: Double(height) - 88), size: 15)
+            Preview.label(kind.stageName(at: .ships), in: context, at: CGPoint(x: ironX - 60, y: Double(height) - 88), size: 15)
             for (row, civilization) in civilizations.enumerated() {
                 let colour = TeamColour.of(civilization)
                 let baseline = Double(height - 104 - largeRow * (row + 1)) + 22

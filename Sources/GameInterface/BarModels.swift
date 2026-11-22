@@ -5,7 +5,7 @@ import CoreGraphics
 import Foundation
 import GameCore
 
-/// What the resource bar shows: the age, each resource of the ages reached,
+/// What the resource bar shows: the age, each resource,
 /// the population, and the civilization.
 public struct ResourceBarModel: Sendable {
     public struct Item: Hashable, Sendable, Identifiable {
@@ -26,7 +26,7 @@ public struct ResourceBarModel: Sendable {
     public var civilizationName: String { civilization?.name ?? "" }
 
     public init(view: PlayerView) {
-        ageName = view.age.name
+        ageName = view.age.title
         items = view.shownResources.map { Item(resource: $0, amount: view.resources[$0]) }
         population = view.population
         populationLimit = view.populationLimit
@@ -34,26 +34,27 @@ public struct ResourceBarModel: Sendable {
     }
 }
 
-/// Study toward the next age and the means of advancing.
+/// The advance to the next age: its progress, and the means of beginning it at
+/// a town centre (requirement 6).
 public struct AgeProgressModel: Sendable {
     public var age: Age
     public var nextAge: Age?
-    /// From 0 to 1.
+    /// The advance under way, from 0 to 1; 0 when none is.
     public var progress: Double
     public var advance: AdvanceStats?
-    /// The Advance button, once the study is complete.
+    /// The Advance button, whilst no advance is under way.
     public var advanceOffer: ActionOffer?
 
-    public var isStudyComplete: Bool { progress >= 1 }
+    public var isAdvancing: Bool { progress > 0 }
 
-    /// Whether the Advance button is shown: the study is complete and the catalogue has the step.
-    public var showsAdvance: Bool { isStudyComplete && advanceOffer != nil }
+    /// Whether the Advance button is shown: no advance is under way and the catalogue has the step.
+    public var showsAdvance: Bool { !isAdvancing && advanceOffer != nil }
 
     public var caption: String {
         guard let nextAge else { return "The last age is reached" }
-        guard advance != nil else { return "The \(nextAge.name) age is not yet part of the game" }
-        if isStudyComplete { return "Study of the \(nextAge.name) age complete" }
-        return "Study toward the \(nextAge.name) age"
+        guard advance != nil else { return "The age of \(nextAge.name) is not yet part of the game" }
+        if isAdvancing { return "Advancing to the age of \(nextAge.name)" }
+        return "Next: the age of \(nextAge.name)"
     }
 
     public var percentText: String { "\(Int((progress * 100).rounded(.down)))%" }
@@ -63,22 +64,27 @@ public struct AgeProgressModel: Sendable {
         nextAge = view.age.next
         progress = InterfaceText.clamp(view.ageProgress)
         advance = catalogue.advance(from: view.age)
-        guard nextAge != nil, let advance else { return }
+        guard nextAge != nil, let advance, progress <= 0 else { return }
+        let centre = view.entities.first {
+            $0.owner == view.player && $0.kind == .building(.townCentre) && !PanelModel.isUnderConstruction($0)
+        }
         var why: Unavailability?
         if view.outcome != nil {
             why = Unavailability(.notNow, "The match is over")
         } else if view.isPaused {
             why = Unavailability(.notNow, "The match is paused")
-        } else if view.ageProgress < 1 {
-            why = Unavailability(.studyIncomplete, "The scholars have not finished their study")
+        } else if centre == nil {
+            why = Unavailability(.invalidTarget, "Needs a town centre")
         } else if !view.resources.covers(advance.cost) {
             let short = view.resources.shortfall(for: advance.cost)
             why = Unavailability(.notEnough(short), "Short of \(InterfaceText.cost(short))")
         }
         let target = nextAge?.name ?? ""
+        let seconds = Int((Double(advance.time) / Double(Tick.rate)).rounded())
         advanceOffer = ActionOffer(
-            id: "advance", section: .age, title: "Advance to the \(target) age", detail: "",
-            cost: advance.cost, action: .advanceAge, unavailable: why,
+            id: "advance", section: .age, title: "Advance to the age of \(target)",
+            detail: "At a town centre, in \(seconds) seconds.",
+            cost: advance.cost, action: .advanceAge(at: centre?.id ?? EntityID(-1)), unavailable: why,
             shortcut: PanelModel.advanceKey, icon: nil, iconSubject: nil)
     }
 }

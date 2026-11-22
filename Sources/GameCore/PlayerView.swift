@@ -18,7 +18,7 @@ public enum Activity: Hashable, Codable, Sendable {
     case gathering(SiteKind)
     /// Carrying a load back to be delivered.
     case carrying(Resource, Int)
-    /// Working at a building (herding, studying, researching, repairing).
+    /// Working at a building (farming, repairing).
     case working
     case constructing
     case fighting
@@ -26,8 +26,8 @@ public enum Activity: Hashable, Codable, Sendable {
     case underConstruction(Double)
     /// A building training a person, from 0 to 1, with the queue's length.
     case training(UnitKind, Double, queued: Int)
-    /// A building where research is in progress, from 0 to 1.
-    case researching(Improvement, Double)
+    /// A town centre at which the advance to the next age is under way, from 0 to 1.
+    case advancing(Double)
 }
 
 /// What a person has been set to do, as its player sees it: the job it keeps
@@ -38,14 +38,12 @@ public enum Job: Hashable, Codable, Sendable {
     case idle
     case moving
     case gathering(SiteKind)
-    /// Working at a building of this kind: tending, farming, crafting, studying, researching.
+    /// Working at a building of this kind: farming.
     case working(BuildingKind)
     case constructing
     case repairing
     case demolishing
     case attacking
-    case trading
-    case carrying
 }
 
 /// A person or building as a player sees it.
@@ -67,8 +65,6 @@ public struct EntityView: Hashable, Codable, Sendable {
     /// For a farm, the food it has left before it must be reseeded; for an oil
     /// well, the oil left beneath it; nil for everything else.
     public var remaining: Int?
-    /// For a bridge piece, its place in its bridge; nil for everything else.
-    public var bridgePlace: BridgePlace?
     /// For a car firing its laser, the centre of the building it burns.
     public var laserTarget: MapPosition?
     /// For a car whose person has turned its kill radius off, true; nil otherwise.
@@ -90,13 +86,11 @@ public struct PlayerSummary: Hashable, Codable, Sendable {
     public var isHuman: Bool
     public var age: Age
     public var isDefeated: Bool
-    /// Whether the player owns nothing but a founder (requirement 26).
-    public var isFounding: Bool
 
     public init(id: PlayerID, civilization: Civilization, team: TeamID, isHuman: Bool, age: Age,
-                isDefeated: Bool, isFounding: Bool) {
+                isDefeated: Bool) {
         self.id = id; self.civilization = civilization; self.team = team; self.isHuman = isHuman
-        self.age = age; self.isDefeated = isDefeated; self.isFounding = isFounding
+        self.age = age; self.isDefeated = isDefeated
     }
 }
 
@@ -104,7 +98,6 @@ public struct PlayerSummary: Hashable, Codable, Sendable {
 public enum GameEvent: Hashable, Codable, Sendable {
     case trained(EntityID, UnitKind)
     case constructed(EntityID, BuildingKind)
-    case researched(Improvement)
     case ageReached(Age)
     case underAttack(EntityID)
     case destroyed(EntityID)
@@ -124,9 +117,7 @@ public enum MatchOutcome: Hashable, Codable, Sendable {
 /// runs a match will send to another Mac in a later milestone.
 ///
 /// Two rules shape it. Sight is shared within a team: a tile is visible if any
-/// ally sees it (docs/requirements.md, "Co-operative play"). Deposits are not
-/// shared: a site appears only if this player has reached its kind's
-/// `firstAge`, whatever an ally can see (requirement 19).
+/// ally sees it (docs/requirements.md, "Co-operative play").
 public struct PlayerView: Hashable, Codable, Sendable {
     public var tick: Int
     public var player: PlayerID
@@ -134,9 +125,9 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public var resources: ResourceAmounts
     public var population: Int
     public var populationLimit: Int
-    /// Study toward the next age, from 0 to 1; 1 means `Order.advanceAge` may be given.
+    /// The advance to the next age under way at one of the player's town
+    /// centres, from 0 to 1; 0 when none is under way.
     public var ageProgress: Double
-    public var improvements: [Improvement]
     public var players: [PlayerSummary]
     /// The map's dimensions and terrain, which never change in a match.
     public var mapWidth: Int
@@ -148,28 +139,23 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public var entities: [EntityView]
     /// The sites on explored tiles whose age this player has reached; ordered by id.
     public var sites: [ResourceSite]
-    /// Explored tiles of deposits whose age this player has not reached: shown
-    /// as plain rock, which blocks the tile without naming what lies there
-    /// (requirement 19); ordered by y, then x.
+    /// Explored tiles of rock that hides what lies there: shown as plain rock,
+    /// which blocks the tile; ordered by y, then x. The simulation leaves it
+    /// empty, since every site can be seen from the age of towns.
     public var outcrops: [GridPoint]
     public var events: [GameEvent]
     public var outcome: MatchOutcome?
     public var isPaused: Bool
-    /// Whether bridges may be built in this match (ruled 2026-11-21); nil is allowed.
-    public var noBridges: Bool?
-
-    /// Whether bridges may be built in this match.
-    public var bridges: Bool { noBridges != true }
 
     public init(tick: Int, player: PlayerID, age: Age, resources: ResourceAmounts, population: Int,
-                populationLimit: Int, ageProgress: Double, improvements: [Improvement], players: [PlayerSummary],
+                populationLimit: Int, ageProgress: Double, players: [PlayerSummary],
                 mapWidth: Int, mapHeight: Int, terrain: [Terrain], visibility: [TileVisibility],
                 entities: [EntityView], sites: [ResourceSite], outcrops: [GridPoint] = [], events: [GameEvent],
                 outcome: MatchOutcome?, isPaused: Bool) {
         self.outcrops = outcrops
         self.tick = tick; self.player = player; self.age = age; self.resources = resources
         self.population = population; self.populationLimit = populationLimit; self.ageProgress = ageProgress
-        self.improvements = improvements; self.players = players; self.mapWidth = mapWidth
+        self.players = players; self.mapWidth = mapWidth
         self.mapHeight = mapHeight; self.terrain = terrain; self.visibility = visibility
         self.entities = entities; self.sites = sites; self.events = events; self.outcome = outcome
         self.isPaused = isPaused
@@ -195,6 +181,6 @@ public struct PlayerView: Hashable, Codable, Sendable {
         return mine == theirs
     }
 
-    /// The resources the interface shows: those of the ages reached (requirement 13).
-    public var shownResources: [Resource] { Resource.allCases.filter { $0.firstAge <= age } }
+    /// The resources the interface shows: all three, from the start (requirement 8).
+    public var shownResources: [Resource] { Resource.allCases }
 }

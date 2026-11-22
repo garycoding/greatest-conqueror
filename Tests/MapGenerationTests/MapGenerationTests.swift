@@ -67,8 +67,8 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 /// Stored values, which a second process reproduces. If a deliberate change to
 /// the generator alters the map, regenerate them and say so in the commit.
 @Test func storedChecksumsMatch() {
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 367_805_829_030_684_542)
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 18_390_609_078_460_926_163)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 3_920_376_032_371_803_565)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 8_816_661_928_020_874_576)
 }
 
 // MARK: - Shape
@@ -91,7 +91,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
         for site in map.sites {
             // Fish live only in the water; rocks may rise from it (ruled 2026-11-21); the rest stand on land.
             if site.kind == .fish { #expect(!map[site.tile].isPassable); continue }
-            if !map[site.tile].isPassable { #expect([.stone, .copper, .tin, .gold, .iron].contains(site.kind)); continue }
+            if !map[site.tile].isPassable { #expect(site.kind == .gold); continue }
             if site.kind == .tree { #expect(map[site.tile] == .forest) }
             else { #expect(map[site.tile] != .forest) }
         }
@@ -104,19 +104,9 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
     for kind in SiteKind.allCases { #expect(maps.allSatisfy { $0.sites.contains { $0.kind == kind } }, "a map has no \(kind)") }
 }
 
-@Test func copperAndTinAreEqualInNumber() {
-    for maps in Maps.byPlayers.values { for map in maps {
-        let copper = map.sites.filter { $0.kind == .copper }.count
-        #expect(copper == map.sites.filter { $0.kind == .tin }.count)
-        #expect(copper > 5 * map.starts.count, "no scattered copper and tin")
-    } }
-}
-
-@Test(arguments: 2...6) func everyStartHasFiveCopperTinAndIron(players: Int) {
+@Test(arguments: 2...6) func everyStartHasGoldNearby(players: Int) {
     for map in Maps.byPlayers[players]! { for start in map.starts {
-        #expect(count(.copper, in: map, within: 14, of: start) >= 5, "copper near \(start)")
-        #expect(count(.tin, in: map, within: 14, of: start) >= 5, "tin near \(start)")
-        #expect(count(.iron, in: map, within: 30, of: start) >= 5, "iron near \(start)")
+        #expect(count(.gold, in: map, within: 14, of: start) >= 2, "gold near \(start)")
     } }
 }
 
@@ -147,7 +137,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
             } }
         }
     } }
-    #expect(kinds == [.stone, .copper, .tin, .gold, .iron])
+    #expect(kinds == [.gold])
 }
 
 @Test func aStartWithWaterInReachHasAShoalAndARockThere() {
@@ -163,7 +153,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
         }
         guard water else { continue }
         let afloat = map.sites.filter { !map[$0.tile].isPassable && distance($0, from: c) <= 31 }
-        #expect(afloat.contains { $0.kind == .fish } || afloat.contains { $0.kind == .stone }, "nothing afloat near \(start)")
+        #expect(afloat.contains { $0.kind == .fish } || afloat.contains { $0.kind == .gold }, "nothing afloat near \(start)")
     } } }
 }
 
@@ -180,16 +170,9 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 }
 
 @Test(arguments: 2...6) func everyStartHasItsNearbyResources(players: Int) {
-    let near: [(SiteKind, Int)] = [(.tree, 6), (.prey, 3), (.stone, 2), (.copper, 2), (.tin, 1), (.gold, 2)]
+    let near: [(SiteKind, Int)] = [(.tree, 6), (.prey, 3), (.gold, 2)]
     for map in Maps.byPlayers[players]! { for start in map.starts {
         for (kind, least) in near { #expect(count(kind, in: map, within: 14, of: start) >= least, "\(kind) near \(start)") }
-    } }
-}
-
-@Test(arguments: 2...6) func everyStartHasIronAndOilWithinThirtyTiles(players: Int) {
-    for map in Maps.byPlayers[players]! { for start in map.starts {
-        #expect(count(.iron, in: map, within: 30, of: start) >= 1)
-        #expect(count(.oilField, in: map, within: 30, of: start) >= 1)
     } }
 }
 
@@ -227,9 +210,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
         #expect(map.width == 64 && map.height == 72)
         for start in map.starts {
             #expect(count(.tree, in: map, within: 14, of: start) >= 6)
-            #expect(count(.tin, in: map, within: 14, of: start) >= 1)
-            #expect(count(.iron, in: map, within: 30, of: start) >= 1)
-            #expect(count(.oilField, in: map, within: 30, of: start) >= 1)
+            #expect(count(.gold, in: map, within: 14, of: start) >= 1)
         }
         let reached = reachableTiles(in: map, from: map.starts[0], ignoringSites: false)
         for start in map.starts { #expect(reached.contains(start)) }
@@ -237,7 +218,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 }
 
 /// The large map (ruled 2026-11-21): twice as wide and twice as tall, and still
-/// fair to every start. The scattered deposits, herds and woods grow with the
+/// fair to every start. The scattered gold mines, herds and woods grow with the
 /// area, four times; each start's own resources are those of the standard map,
 /// so the whole grows less than four times, the less the more players there are.
 @Test(arguments: [2, 6]) func aLargeMapHasFourTimesTheRoomAndTheResources(players: Int) {
@@ -248,7 +229,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
     #expect(ratio > (players == 2 ? 3.3 : 2.5) && ratio < 4.5, "ratio \(ratio)")
     for start in large.starts {
         #expect(count(.tree, in: large, within: 14, of: start) >= 6)
-        #expect(count(.iron, in: large, within: 30, of: start) >= 1)
+        #expect(count(.gold, in: large, within: 14, of: start) >= 1)
     }
     let reached = reachableTiles(in: large, from: large.starts[0], ignoringSites: false)
     for start in large.starts { #expect(reached.contains(start)) }
@@ -284,12 +265,7 @@ private func colour(_ k: SiteKind) -> (UInt8, UInt8, UInt8) {
     switch k {
     case .tree: (20, 70, 30)
     case .prey: (240, 240, 240)
-    case .stone: (130, 130, 130)
-    case .copper: (210, 110, 40)
-    case .tin: (180, 200, 215)
     case .gold: (250, 215, 30)
-    case .iron: (90, 50, 50)
-    case .oilField: (20, 20, 20)
     case .fish: (230, 250, 255)
     }
 }

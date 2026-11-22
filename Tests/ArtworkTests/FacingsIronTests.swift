@@ -48,10 +48,10 @@ import Testing
     /// Every kind of both sources is drawn in views.
     @Test func everyKindIsDrawnInViews() {
         let people = IronPeopleSprites(), warriors = IronWarriorSprites()
-        for kind: UnitKind in [.worker, .scholar, .engineer, .merchant] {
+        for kind: UnitKind in [.worker] {
             #expect(people.drawsViews(of: .unit(kind, .iron)), "\(kind)")
         }
-        for kind: UnitKind in [.swordsman, .horseman, .catapult] {
+        for kind: UnitKind in [.swordsman, .horseman] {
             #expect(warriors.drawsViews(of: .unit(kind, .iron)), "\(kind)")
         }
         #expect(!people.drawsViews(of: .unit(.worker, .bronze)))
@@ -67,9 +67,9 @@ struct FacingsIronRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["FACING_RENDERS"] ?? "/",
                                 isDirectory: true)
 
-    static let kinds: [(UnitKind, String)] = [(.worker, "the farmer (worker)"), (.scholar, "the philosopher (scholar)"),
-                                              (.engineer, "the siege engineer (engineer)"), (.merchant, "the caravan trader (merchant)"),
-                                              (.swordsman, "the swordsman"), (.horseman, "the horseman"), (.catapult, "the catapult")]
+    static let kinds: [(UnitKind, String)] = [(.worker, "the farmer (worker)"), 
+
+                                              (.swordsman, "the swordsman"), (.horseman, "the horseman")]
 
     static func canvas(_ kind: UnitKind) -> Canvas {
         IronPeopleLooks.look(kind) != nil ? IronPeopleLooks.canvas(kind) : IronWarriorsLooks.canvas(kind)

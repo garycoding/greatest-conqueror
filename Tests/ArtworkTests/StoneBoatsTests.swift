@@ -17,8 +17,8 @@ import Testing
 
     @Test func theBatchIsTheDugoutTheFishAndTheRocksAfloat() {
         #expect(source.poses == [SpriteKey(Self.boat, .standing), SpriteKey(Self.boat, .walking), SpriteKey(Self.boat, .working)])
-        #expect(source.keys.count == (3 + 1) * SpriteKey.framesPerPose + 5 + 1)  // the five rocks and the outcrop afloat
-        #expect(StoneBoatSprites.rocks == [.stone, .copper, .tin, .gold, .iron])
+        #expect(source.keys.count == (3 + 1) * SpriteKey.framesPerPose + 1 + 1)  // the gold rock and the outcrop afloat
+        #expect(StoneBoatSprites.rocks == [.gold])
         #expect(source.drawsViews(of: Self.boat))
         #expect(!source.drawsViews(of: .site(.fish)))
     }
@@ -113,14 +113,14 @@ import Testing
 
     @Test func everyOtherKeyHasNone() {
         let batch = Set(source.keys)
-        var others = SpriteKey.required(through: .industrial).filter { !batch.contains($0) }
+        var others = SpriteKey.required(through: .hospitals).filter { !batch.contains($0) }
         for frame in [-1, 12] {
             others.append(SpriteKey(Self.boat, .walking, frame: frame))
             others.append(SpriteKey(.site(.fish), .complete, frame: frame))
         }
         others.append(SpriteKey(Self.boat, .fighting))
-        others += [Age.bronze, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
-        others += [SiteKind.tree, .prey, .fish, .oilField].map { SpriteKey(.site($0), .afloat) }
+        others += [Look.bronze, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
+        others += [SiteKind.tree, .prey, .fish].map { SpriteKey(.site($0), .afloat) }
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .afloat, frame: 1) }
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .complete) }
         others.append(SpriteKey(.site(.fish), .complete, frame: 0, view: .front))

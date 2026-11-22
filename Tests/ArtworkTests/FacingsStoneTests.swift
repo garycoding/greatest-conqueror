@@ -11,7 +11,7 @@ import Testing
 /// kind, in every pose its side view has, at every frame, seen from each side.
 @Suite(.serialized)
 struct FacingsStoneTests {
-    static let kinds: [UnitKind] = [.worker, .scholar, .engineer, .clubman, .slinger, .founder]
+    static let kinds: [UnitKind] = [.worker]
 
     @Test func everyKindIsDrawnInEveryView() {
         let sprites = CartoonSprites()
@@ -54,8 +54,6 @@ struct FacingsStoneRenders {
                                 isDirectory: true)
 
     static let kinds: [(UnitKind, String, String)] = [
-        (.scholar, "scholar", "The elder (scholar)"), (.engineer, "engineer", "The builder (engineer)"),
-        (.clubman, "clubman", "The clubman"), (.slinger, "slinger", "The slinger"), (.founder, "founder", "The founder"),
     ]
 
     @Test(arguments: kinds.map(\.0)) func sheets(_ kind: UnitKind) throws {

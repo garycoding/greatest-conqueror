@@ -105,18 +105,18 @@ import UniformTypeIdentifiers
 
         // The Stone age opening, with the three workers selected.
         do {
-            let view = Samples.stoneAgeOpening()
+            let view = Samples.townsAgeOpening()
             let (session, _) = makeSession(view, camera: Camera(centre: MapPosition(x: 10.5, y: 10.5), zoom: 1))
             session.selection = [EntityID(2), EntityID(3), EntityID(4)]
             let image = render(session: session, sprites: EmptySpriteSource())
             try write(image, to: directory.appendingPathComponent("stone-age-opening.png"))
         }
-        // The Bronze age skirmish, with an engineer and the fighters selected and a house being placed.
+        // The skirmish in the age of farms, with a worker and the fighters selected and a house being placed.
         do {
-            let view = Samples.bronzeAgeSkirmish()
+            let view = Samples.farmsAgeSkirmish()
             let (session, _) = makeSession(view, camera: Camera(centre: MapPosition(x: 15, y: 10), zoom: 1))
             let own = view.entities.filter { $0.owner == view.player }
-            session.selection = own.filter { [.unit(.engineer), .unit(.clubman), .unit(.spearman), .building(.townCentre)].contains($0.kind) }.map(\.id)
+            session.selection = own.filter { [EntityKind.unit(.worker), .unit(.spearman), .building(.townCentre)].contains($0.kind) }.map(\.id)
             session.placing = .house
             let image = render(session: session, sprites: EmptySpriteSource()) { scene in
                 // A house beside the barracks (allowed), pointer over the open ground.
@@ -126,7 +126,7 @@ import UniformTypeIdentifiers
         }
         // The same view with the house over the town centre: not allowed.
         do {
-            let view = Samples.bronzeAgeSkirmish()
+            let view = Samples.farmsAgeSkirmish()
             let (session, _) = makeSession(view, camera: Camera(centre: MapPosition(x: 12, y: 11), zoom: 1.3))
             session.placing = .barracks
             let image = render(session: session, sprites: EmptySpriteSource()) { scene in

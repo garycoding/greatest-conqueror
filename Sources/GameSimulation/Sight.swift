@@ -64,18 +64,17 @@ extension Simulation {
         inMap(t) && (mapRevealed(for: p) || teams[players[p].teamIndex].explored[tileIndex(t)])
     }
 
-    /// What each player owns: anything but a founder, and a founder.
-    func ownership() -> (others: [Bool], founders: [Bool]) {
-        var others = Array(repeating: false, count: players.count)
-        var founders = Array(repeating: false, count: players.count)
+    /// Which players own anything that keeps them in the match.
+    func ownership() -> [Bool] {
+        var owns = Array(repeating: false, count: players.count)
         for e in entities where e.alive {
-            // A person's car keeps nobody in the match (ruled 2026-11-21).
-            if e.unitKind == .car { continue }
-            // Nor does a bridge (the session's decision, 2026-11-21).
-            if e.buildingKind == .bridge { continue }
-            if e.isFounder { founders[e.owner.rawValue] = true } else { others[e.owner.rawValue] = true }
+            // A person's car keeps nobody in the match (ruled 2026-11-21), nor
+            // does a boat, which can neither build nor fight, nor be reached
+            // on the water by any warfighter before the age of cannons.
+            if e.unitKind == .car || e.unitKind == .boat { continue }
+            owns[e.owner.rawValue] = true
         }
-        return (others, founders)
+        return owns
     }
 
     public mutating func view(for player: PlayerID) -> PlayerView { view(for: player, asComputer: false) }
@@ -86,8 +85,8 @@ extension Simulation {
     /// What a player sees: `MapSight` decides for a person, a computer player always explores.
     mutating func view(for player: PlayerID, asComputer: Bool) -> PlayerView {
         guard let p = slot(player) else {
-            return PlayerView(tick: tick, player: player, age: .stone, resources: ResourceAmounts(), population: 0,
-                              populationLimit: 0, ageProgress: 0, improvements: [], players: summaries(),
+            return PlayerView(tick: tick, player: player, age: .towns, resources: ResourceAmounts(), population: 0,
+                              populationLimit: 0, ageProgress: 0, players: summaries(),
                               mapWidth: width, mapHeight: height, terrain: terrain,
                               visibility: Array(repeating: .unexplored, count: width * height), entities: [], sites: [],
                               events: [], outcome: outcome, isPaused: isPaused)
@@ -116,34 +115,30 @@ extension Simulation {
             revealed || (site.tile.x >= 0 && site.tile.y >= 0 && site.tile.x < width && site.tile.y < height
                          && explored[site.tile.y * width + site.tile.x])
         }
-        let shownSites = sites.filter { $0.remaining > 0 && $0.kind.firstAge <= me.age && known($0) }
-        // A deposit not yet revealed still blocks its tile, so the view shows it as plain rock.
-        let outcrops = sites
-            .filter { $0.remaining > 0 && $0.kind.blocksTile && $0.kind.firstAge > me.age && known($0) }
-            .map(\.tile)
-            .sorted { ($0.y, $0.x) < ($1.y, $1.x) }
-        var progress = 0.0
-        if me.age.next != nil, let advance = catalogue.advance(from: me.age) {
-            progress = advance.study > 0 ? min(1, Double(me.study) / Double(advance.study)) : 1
-        }
+        let shownSites = sites.filter { $0.remaining > 0 && known($0) }
+        let progress = advanceProgress(p)
         let events = me.events
         players[p].events = []
-        var view = PlayerView(tick: tick, player: player, age: me.age, resources: me.resources, population: population[p],
-                              populationLimit: populationLimit(p), ageProgress: progress, improvements: me.improvements,
+        return PlayerView(tick: tick, player: player, age: me.age, resources: me.resources, population: population[p],
+                              populationLimit: populationLimit(p), ageProgress: progress,
                               players: summaries(), mapWidth: width, mapHeight: height, terrain: terrain,
-                              visibility: visibility, entities: shown, sites: shownSites, outcrops: outcrops, events: events,
+                              visibility: visibility, entities: shown, sites: shownSites, events: events,
                               outcome: outcome, isPaused: isPaused)
-        view.noBridges = noBridges
-        return view
     }
 
     func summaries() -> [PlayerSummary] {
-        let owned = ownership()
-        return players.map { p in
+        players.map { p in
             PlayerSummary(id: p.id, civilization: p.civilization, team: p.team, isHuman: p.isHuman, age: p.age,
-                          isDefeated: p.isDefeated,
-                          isFounding: !p.isDefeated && owned.founders[p.id.rawValue] && !owned.others[p.id.rawValue])
+                          isDefeated: p.isDefeated)
         }
+    }
+
+    /// The advance under way at one of the player's town centres, from 0 to 1; 0 when none is.
+    func advanceProgress(_ p: Int) -> Double {
+        guard let advance = catalogue.advance(from: players[p].age),
+              let e = entities.first(where: { $0.alive && $0.owner.rawValue == p && $0.advancing != nil }),
+              let done = e.advancing else { return 0 }
+        return min(1, Double(done) / Double(max(1, advance.time)))
     }
 
     /// The job a person has been set, from its task.
@@ -154,12 +149,11 @@ extension Simulation {
         case .gather(_, let kind, _): return .gathering(kind)
         case .work(let building):
             guard let b = index(of: building), let kind = entities[b].buildingKind else { return .idle }
-            if e.unitKind == .engineer { return entities[b].complete ? .repairing : .constructing }
-            return .working(kind)
+            if !entities[b].complete { return .constructing }
+            if kind == .farm && entities[b].health >= entities[b].maxHealth { return .working(kind) }
+            return .repairing
         case .demolish: return .demolishing
         case .attack: return .attacking
-        case .trade: return .trading
-        case .carry: return .carrying
         }
     }
 
@@ -168,7 +162,6 @@ extension Simulation {
                               tile: e.isPerson ? e.position.tile : e.origin, facing: e.facing, health: max(0, e.health),
                               maxHealth: e.maxHealth, activity: activity(of: e),
                               remaining: remaining(of: e))
-        view.bridgePlace = e.bridgePlace
         view.killRadiusOff = e.killRadiusOff
         if e.unitKind == .car, e.doing == .fighting, case .attack(let target) = e.task, let t = index(of: target) {
             view.laserTarget = entities[t].position
@@ -176,15 +169,10 @@ extension Simulation {
         return view
     }
 
-    /// For a farm, the food left before it must be reseeded; for an oil well,
-    /// the oil left beneath it; nil for everything else.
+    /// For a farm, the food left before it must be reseeded; nil for everything else.
     func remaining(of e: Entity) -> Int? {
-        guard e.complete else { return nil }
-        switch e.buildingKind {
-        case .farm: return catalogue.gathering.farmYield.map { max(0, $0 - (e.farmUsed ?? 0)) }
-        case .oilWell: return index(of: e.id).map { oilLeft(under: $0) }
-        default: return nil
-        }
+        guard e.complete, e.buildingKind == .farm else { return nil }
+        return max(0, catalogue.gathering.farmYield - (e.farmUsed ?? 0))
     }
 
     func activity(of e: Entity) -> Activity {
@@ -195,9 +183,8 @@ extension Simulation {
                 let time = max(1, tables.unit(head).trainTime)
                 return .training(head, min(1, Double(e.trainProgress) / Double(time)), queued: e.queue.count)
             }
-            if let research = e.research {
-                let work = max(1, catalogue.stats(research).work)
-                return .researching(research, min(1, Double(e.researchProgress) / Double(work)))
+            if let done = e.advancing, let advance = catalogue.advance(from: players[e.owner.rawValue].age) {
+                return .advancing(min(1, Double(done) / Double(max(1, advance.time))))
             }
             return .idle
         }
@@ -209,7 +196,6 @@ extension Simulation {
             return .working
         case .carrying:
             if let cargo = e.cargo { return .carrying(cargo.kind.yield, cargo.amount) }
-            if case .carry(let resource, _) = e.task, let goods = e.goods, goods > 0 { return .carrying(resource, goods) }
             return .moving
         case .working: return .working
         case .constructing: return .constructing

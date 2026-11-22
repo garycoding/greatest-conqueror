@@ -141,9 +141,7 @@ public struct SelectionPanel: View {
                     }
                 }
                 if let placing = model.placing {
-                    Text(placing == .bridge
-                         ? "Placing a bridge: drag from one bank to the other; Esc to cancel."
-                         : "Placing a \(placing.name.lowercased()): click the map to build; Esc to cancel.")
+                    Text("Placing a \(placing.name.lowercased()): click the map to build; Esc to cancel.")
                         .font(Typeface.text(10.5, bold: true)).foregroundStyle(Palette.teal)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -233,7 +231,8 @@ public struct MiniMap: View {
 
 // MARK: Age progress
 
-/// Study toward the next age and, once it is complete, the Advance button with its cost.
+/// The advance to the next age: the Advance button with its cost, and the
+/// advance's progress once it is under way.
 public struct AgeProgress: View {
     let session: PlayerSession
 
@@ -251,7 +250,7 @@ public struct AgeProgress: View {
                 if let offer = model.advanceOffer, model.showsAdvance {
                     ActionButton(offer: offer, session: session, wide: true)
                 } else {
-                    Text("Scholars at a town centre carry the study forward.")
+                    Text("The town centre carries the advance forward.")
                         .font(Typeface.text(10)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
             }

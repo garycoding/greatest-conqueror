@@ -16,7 +16,7 @@ struct LANTests {}
 let testBuild = "test-build"
 
 /// A stand-in for the rules, which this target does not import. It accepts
-/// every order but `advanceAge` (refused: the study is incomplete), and refuses
+/// every order but `advanceAge` (refused: no town centre of the stub's answers), and refuses
 /// every order but a pause whilst paused, reporting each refusal as an event.
 /// A `move` puts the player's first person (`mark(of:)`) where it was sent.
 /// Every tick gives every player one event, `trained` with the tick's number,
@@ -60,7 +60,7 @@ struct StubSimulation: GameSimulating {
         case _ where isPaused || outcome != nil:
             result = .refused(.notNow)
         case .advanceAge:
-            result = .refused(.studyIncomplete)
+            result = .refused(.invalidTarget)
         case .move(_, let to):
             marks[p] = to
             result = .accepted
@@ -99,10 +99,10 @@ struct StubSimulation: GameSimulating {
         }
         let summaries = players.map {
             PlayerSummary(id: $0.id, civilization: $0.civilization, team: $0.team, isHuman: $0.controller == .human,
-                          age: .stone, isDefeated: false, isFounding: false)
+                          age: .towns, isDefeated: false)
         }
-        return PlayerView(tick: tick, player: player, age: .stone, resources: resources, population: people,
-                          populationLimit: 5, ageProgress: 0.25, improvements: [], players: summaries,
+        return PlayerView(tick: tick, player: player, age: .towns, resources: resources, population: people,
+                          populationLimit: 5, ageProgress: 0.25, players: summaries,
                           mapWidth: map.width, mapHeight: map.height, terrain: map.terrain,
                           visibility: Array(repeating: .visible, count: map.width * map.height), entities: entities,
                           sites: map.sites, events: taken, outcome: outcome, isPaused: isPaused)

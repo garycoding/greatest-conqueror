@@ -8,68 +8,77 @@ import Testing
 
 // MARK: Resource bar
 
-@Test func theResourceBarShowsTheResourcesOfTheAgesReached() {
-    let stone = ResourceBarModel(view: Samples.stoneAgeOpening())
-    #expect(stone.ageName == "Stone")
-    #expect(stone.items.map(\.resource) == [.food, .wood, .stone])
-    #expect(stone.items.map(\.amount) == [180, 140, 50])
-    #expect(stone.populationText == "5 of 5" && stone.isPopulationFull)
-    #expect(stone.civilizationName == "Sumer")
-    let bronze = ResourceBarModel(view: Samples.bronzeAgeSkirmish())
-    #expect(bronze.ageName == "Bronze")
-    #expect(bronze.items.map(\.resource) == [.food, .wood, .stone, .bronze, .gold])
-    #expect(bronze.items.map(\.amount) == [420, 310, 120, 85, 60])
-    #expect(bronze.populationText == "15 of 15")
+@Test func theResourceBarShowsTheThreeResources() {
+    let towns = ResourceBarModel(view: Samples.townsAgeOpening())
+    #expect(towns.ageName == "Age of towns")
+    #expect(towns.items.map(\.resource) == [.food, .wood, .gold])
+    #expect(towns.items.map(\.amount) == [180, 140, 50])
+    #expect(towns.populationText == "5 of 5" && towns.isPopulationFull)
+    #expect(towns.civilizationName == "Sumer")
+    let farms = ResourceBarModel(view: Samples.farmsAgeSkirmish())
+    #expect(farms.ageName == "Age of farms")
+    #expect(farms.items.map(\.resource) == [.food, .wood, .gold])
+    #expect(farms.items.map(\.amount) == [420, 310, 60])
+    #expect(farms.populationText == "15 of 15")
 }
 
 @Test func thePopulationIsNotFullWithRoom() {
-    var view = Samples.stoneAgeOpening()
+    var view = Samples.townsAgeOpening()
     view.populationLimit = 10
     #expect(!ResourceBarModel(view: view).isPopulationFull)
 }
 
 // MARK: Age progress
 
-@Test func studyInProgressShowsNoAdvanceButton() {
-    let m = AgeProgressModel(view: Samples.stoneAgeOpening(), catalogue: .standard)
-    #expect(m.nextAge == .bronze)
+@Test func anAdvanceUnderWayShowsItsProgressAndNoAdvanceButton() {
+    let m = AgeProgressModel(view: Samples.townsAgeOpening(), catalogue: .standard)
+    #expect(m.nextAge == .farms)
     #expect(m.progress == 0.15 && m.percentText == "15%")
-    #expect(!m.showsAdvance)
-    #expect(m.caption == "Study toward the Bronze age")
-    #expect(m.advanceOffer?.unavailable?.refusal == .studyIncomplete)
+    #expect(!m.showsAdvance && m.advanceOffer == nil)
+    #expect(m.caption == "Advancing to the age of farms")
 }
 
-@Test func completedStudyShowsAdvanceWithItsCost() {
-    var view = Samples.stoneAgeOpening()
-    view.ageProgress = 1
+@Test func withNoAdvanceUnderWayTheButtonShowsItsCostAndTheTownCentre() {
+    var view = Samples.townsAgeOpening()
+    view.ageProgress = 0
     view.resources = ResourceAmounts([.food: 400, .wood: 150])
     let m = AgeProgressModel(view: view, catalogue: .standard)
     #expect(m.showsAdvance)
     #expect(m.advanceOffer?.cost == ResourceAmounts([.food: 300, .wood: 100]))
     #expect(m.advanceOffer?.isAvailable == true)
-    #expect(m.advanceOffer?.order == .advanceAge)
-    #expect(m.caption == "Study of the Bronze age complete")
+    #expect(m.advanceOffer?.order == .advanceAge(at: EntityID(1)))
+    #expect(m.advanceOffer?.title == "Advance to the age of farms")
+    #expect(m.caption == "Next: the age of farms")
 }
 
-@Test func completedStudyWithTooLittleStillShowsAdvanceAndSaysWhatIsShort() {
-    var view = Samples.stoneAgeOpening()
-    view.ageProgress = 1   // 180 food, 140 wood held
+@Test func tooLittleStillShowsAdvanceAndSaysWhatIsShort() {
+    var view = Samples.townsAgeOpening()
+    view.ageProgress = 0   // 180 food, 140 wood held
     let m = AgeProgressModel(view: view, catalogue: .standard)
     #expect(m.showsAdvance)
     #expect(m.advanceOffer?.unavailable?.refusal == .notEnough(ResourceAmounts([.food: 120])))
     #expect(m.advanceOffer?.unavailable?.explanation == "Short of 120 Food")
 }
 
-@Test func theCatalogueHasNoStepFromIndustrialYet() {
-    var view = Samples.bronzeAgeSkirmish()
-    view.age = .industrial
+@Test func withoutATownCentreTheAdvanceIsRefused() {
+    var view = Samples.townsAgeOpening()
+    view.ageProgress = 0
+    view.entities.removeAll { $0.kind == .building(.townCentre) }
+    let m = AgeProgressModel(view: view, catalogue: .standard)
+    #expect(m.advanceOffer?.unavailable?.refusal == .invalidTarget)
+    #expect(m.advanceOffer?.unavailable?.explanation == "Needs a town centre")
+}
+
+@Test func theAgeOfHospitalsIsTheLast() {
+    var view = Samples.farmsAgeSkirmish()
+    view.age = .hospitals
     let m = AgeProgressModel(view: view, catalogue: .standard)
     #expect(m.advanceOffer == nil && !m.showsAdvance)
-    #expect(m.caption == "The Silicon age is not yet part of the game")
+    #expect(m.caption == "The last age is reached")
 }
 
 @Test func progressIsHeldWithinZeroAndOne() {
-    var view = Samples.stoneAgeOpening()
+    var view = Samples.townsAgeOpening()
     view.ageProgress = 1.4
     #expect(AgeProgressModel(view: view, catalogue: .standard).progress == 1)
 }
@@ -77,7 +86,7 @@ import Testing
 // MARK: Pause
 
 @Test func pauseTurnsBothWays() {
-    var view = Samples.stoneAgeOpening()
+    var view = Samples.townsAgeOpening()
     #expect(PauseModel(view: view).order == .setPaused(true) && PauseModel(view: view).title == "Pause")
     view.isPaused = true
     #expect(PauseModel(view: view).order == .setPaused(false) && PauseModel(view: view).title == "Resume")
@@ -85,7 +94,7 @@ import Testing
 
 @MainActor
 @Test func thePauseButtonIssuesTheOrderThroughTheSession() {
-    let (session, recorder) = makeSession(Samples.stoneAgeOpening())
+    let (session, recorder) = makeSession(Samples.townsAgeOpening())
     session.issue(PauseModel(view: session.view).order)
     #expect(recorder.orders == [.setPaused(true)])
 }
@@ -93,14 +102,14 @@ import Testing
 // MARK: Match over
 
 @Test func theTeamThatWonSeesVictory() {
-    var view = Samples.stoneAgeOpening()
+    var view = Samples.townsAgeOpening()
     view.outcome = .won(TeamID(0))
     let m = MatchOverModel(view: view)
     #expect(m?.isVictory == true && m?.title == "Victory")
 }
 
 @Test func anotherTeamsWinIsADefeat() {
-    var view = Samples.stoneAgeOpening()
+    var view = Samples.townsAgeOpening()
     view.outcome = .won(TeamID(1))
     let m = MatchOverModel(view: view)
     #expect(m?.isVictory == false && m?.title == "Defeat")
@@ -108,14 +117,14 @@ import Testing
 }
 
 @Test func noOutcomeNoScreen() {
-    #expect(MatchOverModel(view: Samples.stoneAgeOpening()) == nil)
+    #expect(MatchOverModel(view: Samples.townsAgeOpening()) == nil)
 }
 
 // MARK: Refusal banner
 
 @MainActor
 @Test func theBannerClearsTheRefusalAfterItsTime() async {
-    let (session, _) = makeSession(Samples.stoneAgeOpening())
+    let (session, _) = makeSession(Samples.townsAgeOpening())
     session.lastRefusal = .populationLimit
     await RefusalBanner.expire(session, after: 0.05, matching: .populationLimit)
     #expect(session.lastRefusal == nil)
@@ -123,7 +132,7 @@ import Testing
 
 @MainActor
 @Test func theBannerLeavesANewerRefusalAlone() async {
-    let (session, _) = makeSession(Samples.stoneAgeOpening())
+    let (session, _) = makeSession(Samples.townsAgeOpening())
     session.lastRefusal = .populationLimit
     let waiting = Task { await RefusalBanner.expire(session, after: 0.05, matching: .populationLimit) }
     session.lastRefusal = .notNow
@@ -171,7 +180,7 @@ private let square = CGSize(width: 300, height: 150)
 
 @MainActor
 @Test func aClickOnTheSmallMapSetsTheCamerasCentre() {
-    let (session, recorder) = makeSession(Samples.stoneAgeOpening())
+    let (session, recorder) = makeSession(Samples.townsAgeOpening())
     let g = MiniMapGeometry(mapWidth: session.view.mapWidth, mapHeight: session.view.mapHeight, size: square)
     // The point where the map position (9.5, 9.5), the town centre, lies.
     let click = g.point(for: MapPosition(x: 9.5, y: 9.5))
@@ -195,7 +204,7 @@ private let square = CGSize(width: 300, height: 150)
 }
 
 @Test func theRasterBlacksOutWhatIsUnexploredAndDullsWhatIsOutOfSight() {
-    let view = Samples.stoneAgeOpening()
+    let view = Samples.townsAgeOpening()
     #expect(MiniMapRaster.image(for: view)?.width == 32)
     #expect(MiniMapRaster.rgba(for: view, x: 31, y: 31) == [0, 0, 0, 255])               // far corner, unexplored
     let near = MiniMapRaster.rgba(for: view, x: 9, y: 9)                                // visible grass
@@ -206,7 +215,7 @@ private let square = CGSize(width: 300, height: 150)
 }
 
 @Test func theSmallMapMarksOwnAndAlliesAndOnlyOpponentsInSight() {
-    var view = Samples.bronzeAgeSkirmish()
+    var view = Samples.farmsAgeSkirmish()
     #expect(MiniMapRaster.marked(view).count == view.entities.count)
     // Hide the opponents' tiles: their entities drop out, ours stay.
     for e in view.entities where e.owner != view.player {

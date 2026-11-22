@@ -265,3 +265,18 @@ extension IndustrialOldBuildingsPainter {
         sack(at: iso(-1.15, 1.05, h0), size: 0.9)
     }
 }
+
+extension IndustrialOldBuildingsPainter {
+    /// Wisps of straw on the ground at fixed places, each turned by its angle.
+    mutating func strawWisps(_ places: [(Double, Double, Double)], on h: Double) {
+        typealias I = IndustrialOldBuildingsInk
+        var d = PathData()
+        for (x, y, turn) in places {
+            let c = iso(x, y, h)
+            let u = P.direction(90 + turn) * 2.6
+            d.move(c - u); d.line(c + u)
+            d.move(c - u + P(0.8, 1)); d.line(c + u * 0.6 + P(0.8, 1))
+        }
+        svg.path(d, stroke: .colour(I.strawShade), width: 0.8)
+    }
+}

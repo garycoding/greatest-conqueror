@@ -6,13 +6,13 @@ import Testing
 @testable import GameSimulation
 
 @Suite struct Start {
-    @Test func eachPlayerBeginsWithATownCentreWorkersAndTheStartingResourcesInTheStoneAge() {
+    @Test func eachPlayerBeginsWithATownCentreWorkersAndTheStartingResourcesInTheAgeOfTowns() {
         let match = Samples.twoPlayerSetup(seed: 7)
         let catalogue = match.catalogue
         var sim = Simulation(setup: match)
         for (i, player) in match.players.enumerated() {
             let view = sim.view(for: player.id)
-            #expect(view.age == .stone)
+            #expect(view.age == .towns)
             #expect(view.resources == catalogue.startingResources)
             let mine = view.entities.filter { $0.owner == player.id }
             let centres = mine.filter { $0.kind == .building(.townCentre) }
@@ -21,10 +21,8 @@ import Testing
             #expect(centres.first?.activity == .idle)
             let footprint = Goal.tiles(match.map.starts[i], catalogue.stats(.townCentre).footprint, reach: 0)
             let workers = mine.filter { $0.kind == .unit(.worker) }
-            let engineers = mine.filter { $0.kind == .unit(.engineer) }
-            #expect(workers.count == catalogue.startingPeople - 1)
-            #expect(engineers.count == 1)
-            for w in workers + engineers {
+            #expect(workers.count == catalogue.startingPeople)
+            for w in workers {
                 #expect(footprint.distance(to: w.position) <= 1.5)
                 #expect(sim.open(w.tile))
             }
@@ -79,19 +77,19 @@ import Testing
     @Test func speedComesFromTheCatalogue() {
         var sim = duel()
         let worker = sim.add(.worker, me, 10.5, 20.5)
-        let chariot = sim.add(.chariot, me, 10.5, 24.5)
+        let horseman = sim.add(.horseman, me, 10.5, 24.5)
         _ = sim.apply(.move(units: [worker], to: MapPosition(x: 20.5, y: 20.5)), from: me)
-        _ = sim.apply(.move(units: [chariot], to: MapPosition(x: 20.5, y: 24.5)), from: me)
+        _ = sim.apply(.move(units: [horseman], to: MapPosition(x: 20.5, y: 24.5)), from: me)
         var arrival: [EntityID: Int] = [:]
         for _ in 0..<300 {
             sim.step()
-            for id in [worker, chariot] where arrival[id] == nil && sim.living(id).task == .idle { arrival[id] = sim.tick }
+            for id in [worker, horseman] where arrival[id] == nil && sim.living(id).task == .idle { arrival[id] = sim.tick }
         }
         // Ten tiles at 1 and at 2 tiles a second, 20 ticks a second.
         let workerTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.worker).speed
-        let chariotTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.chariot).speed
+        let horsemanTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.horseman).speed
         #expect(abs(Double(arrival[worker] ?? 0) - workerTicks) <= 2)
-        #expect(abs(Double(arrival[chariot] ?? 0) - chariotTicks) <= 2)
+        #expect(abs(Double(arrival[horseman] ?? 0) - horsemanTicks) <= 2)
     }
 
     @Test func peopleDoNotBlockOneAnother() {
@@ -107,7 +105,7 @@ import Testing
 
     @Test func peopleSentTogetherSpreadAroundThePoint() {
         var sim = duel()
-        let group = (0..<9).map { k in sim.add(.clubman, me, 8.5 + Double(k), 16.5) }
+        let group = (0..<9).map { k in sim.add(.spearman, me, 8.5 + Double(k), 16.5) }
         let point = MapPosition(x: 18, y: 18)
         _ = sim.apply(.move(units: group, to: point), from: me)
         do { let reached = sim.run(until: { s in group.allSatisfy { s.living($0).task == .idle } }, limit: 600); #expect(reached) }
@@ -118,7 +116,7 @@ import Testing
 
     @Test func aChaserKeepsToItsRouteWhenNoSearchIsLeftToReplanIt() {
         var sim = Self.walled()
-        let chaser = sim.add(.clubman, me, 10.5, 5.5)
+        let chaser = sim.add(.spearman, me, 10.5, 5.5)
         let target = sim.add(.worker, them, 20.5, 5.5)
         sim.add(.worker, me, 21.5, 6.5)                      // to see the target by
         #expect(sim.apply(.attack(units: [chaser], target: target), from: me) == .accepted)

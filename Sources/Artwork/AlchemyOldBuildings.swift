@@ -43,8 +43,8 @@ private final class Store: Sendable {
 enum AlchemyOldBuildingsArt {
     /// The buildings this batch draws: those of the Stone, Bronze and Iron ages,
     /// the boat house among them (ruled 2026-11-21).
-    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .stockPen, .barracks, .watchTower, .palisade,
-                                        .farm, .stable, .siegeWorkshop, .stoneWall, .boatHouse]
+    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .watchTower,
+                                        .farm, .stable, .boatHouse]
 
     /// The building, pose and view a key names, if it is one of this batch's:
     /// a building of an earlier age in the Alchemy age's look, complete or
@@ -88,18 +88,13 @@ extension AlchemyOldBuildingsPainter {
         switch kind {
         case .townCentre: townCentre(complete: complete)
         case .house: house(complete: complete)
-        case .storagePit: storagePit(complete: complete)
-        case .stockPen: stockPen(complete: complete)
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
-        case .palisade: palisade(complete: complete)
         case .farm: farm(complete: complete)
         case .stable: stable(complete: complete)
-        case .siegeWorkshop: siegeWorkshop(complete: complete)
-        case .stoneWall: stoneWall(complete: complete)
         case .boatHouse: boatHouse(complete: complete)
         // The Alchemy age's own buildings are drawn by their own batch.
-        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
+        case .castle: break
         }
     }
 }

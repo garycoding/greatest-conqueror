@@ -13,7 +13,7 @@ import Testing
     private static let source = AlchemyOldBuildingSprites()
 
     /// The buildings of the Stone, Bronze and Iron ages, the boat house among them: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .iron && $0.kind != .bridge }.map(\.kind)
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .ships }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Alchemy age's
     /// look, complete and under construction, at frame 0.
@@ -31,14 +31,13 @@ import Testing
 
     @Test func theBatchIsTheBuildingsOfTheEarlierAges() {
         #expect(Set(Self.kinds) == Set(AlchemyOldBuildingsArt.kinds))
-        #expect(Self.batch.count == 24)
-        #expect(!Self.kinds.contains(.castle) && !Self.kinds.contains(.alchemistsWorkshop))
+        #expect(Self.batch.count == 14)
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        var keys = SpriteKey.required(through: .ai)
+        var keys = SpriteKey.required(through: .hospitals)
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 keys.append(SpriteKey(.building(kind, age), .complete))
                 keys.append(SpriteKey(.building(kind, age), .underConstruction))
             }
@@ -62,7 +61,7 @@ import Testing
     /// asks the batch for the boat house's back view alone.
     @Test func theBoatHouseAloneIsDrawnFromBehind() throws {
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 #expect(Self.source.drawsViews(of: .building(kind, age)) == (kind == .boatHouse && age == .alchemy), "\(kind) \(age)")
             }
         }
@@ -88,10 +87,10 @@ import Testing
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)
-            let subject = SpriteSubject.of(entity, ownerAge: .alchemy)
+            let subject = SpriteSubject.of(entity, ownerAge: .cannons)
             #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(kind)")
             #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(kind)")
-            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .iron), .complete)) == nil, "\(kind)")
+            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .ships), .complete)) == nil, "\(kind)")
         }
     }
 
@@ -153,19 +152,6 @@ import Testing
             let iron = try #require(ironOld.sprite(ironKey) ?? ironNew.sprite(ironKey), "\(kind) has no Iron look")
             #expect(alchemy.base.width == iron.base.width && alchemy.base.height == iron.base.height, "\(key)")
             #expect(alchemy.anchor == iron.anchor, "\(key)")
-        }
-    }
-
-    /// A stone wall and a palisade join their neighbours: each fills its tile out to the left and right corners.
-    @Test func theWallsFillTheirTilesToTheCorners() throws {
-        for kind in [BuildingKind.stoneWall, .palisade] {
-            let sprite = try #require(Self.source.sprite(SpriteKey(.building(kind, .alchemy), .complete)))
-            let pixels = AlchemyOldBuildingsPixels(sprite.base)
-            let centreX = Int(sprite.anchor.x * Double(pixels.width)), centreY = Int((1 - sprite.anchor.y) * Double(pixels.height))
-            // A little inside each corner of the tile's diamond, at ground level, the wall is drawn.
-            for x in [centreX - 60, centreX + 59] {
-                #expect(pixels.alpha(x, centreY - 2) > 200, "\(kind) leaves its corner at \(x) empty")
-            }
         }
     }
 
@@ -285,7 +271,7 @@ private enum AlchemyOldBuildingsPreview {
     /// and Angkor's colours.
     static func contactSheet(_ kinds: [BuildingKind]) -> CGImage? {
         let cellW = 420, cellH = 380, label = 34
-        let columns: [(age: Age, complete: Bool, civilization: Civilization)] = [
+        let columns: [(age: Look, complete: Bool, civilization: Civilization)] = [
             (.iron, true, .rome), (.iron, false, .rome),
             (.alchemy, true, .rome), (.alchemy, true, .angkor), (.alchemy, false, .rome), (.alchemy, false, .angkor),
         ]
@@ -346,19 +332,13 @@ private enum AlchemyOldBuildingsPreview {
             Placed(kind: .house, x: 7, y: 3, complete: true, civilization: .rome),
             Placed(kind: .house, x: 11, y: 7, complete: true, civilization: .rome),
             Placed(kind: .house, x: 5, y: 4, complete: false, civilization: .rome),
-            Placed(kind: .storagePit, x: 11, y: 4, complete: true, civilization: .rome),
-            Placed(kind: .stockPen, x: 6, y: 11, complete: true, civilization: .rome),
             Placed(kind: .barracks, x: 11, y: 11, complete: true, civilization: .rome),
             Placed(kind: .watchTower, x: 9, y: 2, complete: false, civilization: .rome),
             Placed(kind: .watchTower, x: 15, y: 9, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 8, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 12, complete: false, civilization: .rome),
             Placed(kind: .stable, x: 7, y: 14, complete: true, civilization: .rome),
-            Placed(kind: .siegeWorkshop, x: 12, y: 14, complete: true, civilization: .rome),
         ]
-        for y in 2..<9 { placed.append(Placed(kind: .stoneWall, x: 15, y: y, complete: y != 6, civilization: .rome)) }
-        for x in 10..<15 { placed.append(Placed(kind: .stoneWall, x: x, y: 1, complete: true, civilization: .rome)) }
-        for y in 10..<17 { placed.append(Placed(kind: .palisade, x: 16, y: y, complete: y != 13, civilization: .rome)) }
         func depth(_ p: Placed) -> Double {
             let f = Catalogue.standard.stats(p.kind).footprint
             return Double(p.x) + Double(p.y) + Double(f.x + f.y) / 2

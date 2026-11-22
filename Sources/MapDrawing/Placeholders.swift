@@ -173,10 +173,6 @@ enum Placeholders {
         let lean = pose == .working ? 3.0 : (pose == .fighting ? 2.0 : 0.0)
         let image = render(personCanvas) { c in
             ellipse(c, CGRect(x: fx - 11, y: fy - 4, width: 22, height: 8), fill: colour(0, 0, 0, 0.25), stroke: nil)
-            if kind == .chariot {
-                drawChariot(c, team: t, frame: frame, moving: pose == .walking, fighting: pose == .fighting)
-                return
-            }
             let spread = pose == .walking ? 5.0 * swing : 2.5
             line(c, CGPoint(x: fx - 2, y: fy + 14), CGPoint(x: fx - 3 - spread, y: fy), ink, width: 3)
             line(c, CGPoint(x: fx + 2, y: fy + 14), CGPoint(x: fx + 3 + spread, y: fy), ink, width: 3)
@@ -203,73 +199,13 @@ enum Placeholders {
             // A pick: a haft with a crossbar.
             line(c, CGPoint(x: h.x - 3 + tilt, y: h.y - 6), CGPoint(x: h.x + 3, y: h.y + 14), wood, width: 2.5)
             line(c, CGPoint(x: h.x - 4, y: h.y + 12), CGPoint(x: h.x + 10, y: h.y + 15), colour(0.55, 0.55, 0.58), width: 2.5)
-        case .scholar:
-            // A scroll.
-            polygon(c, [CGPoint(x: h.x - 2, y: h.y - 2), CGPoint(x: h.x + 8, y: h.y - 2),
-                        CGPoint(x: h.x + 8, y: h.y + 11), CGPoint(x: h.x - 2, y: h.y + 11)], fill: colour(0.96, 0.93, 0.80))
-            line(c, CGPoint(x: h.x, y: h.y + 3), CGPoint(x: h.x + 6, y: h.y + 3), ink, width: 1)
-            line(c, CGPoint(x: h.x, y: h.y + 7), CGPoint(x: h.x + 6, y: h.y + 7), ink, width: 1)
-        case .engineer:
-            // A hard hat, and a mallet.
-            ellipse(c, CGRect(x: head.x - 7.5, y: head.y + 1, width: 15, height: 9), fill: colour(0.97, 0.80, 0.15))
-            line(c, CGPoint(x: head.x - 8.5, y: head.y + 1.5), CGPoint(x: head.x + 8.5, y: head.y + 1.5), colour(0.8, 0.6, 0.1), width: 2)
-            line(c, CGPoint(x: h.x, y: h.y - 4), CGPoint(x: h.x + 2, y: h.y + 10), wood, width: 2.5)
-            polygon(c, [CGPoint(x: h.x - 3, y: h.y + 9), CGPoint(x: h.x + 7, y: h.y + 9),
-                        CGPoint(x: h.x + 7, y: h.y + 15), CGPoint(x: h.x - 3, y: h.y + 15)], fill: colour(0.5, 0.5, 0.52))
-        case .merchant:
-            // A sack and a coin.
-            ellipse(c, CGRect(x: h.x - 4, y: h.y - 4, width: 12, height: 13), fill: colour(0.78, 0.66, 0.42))
-            ellipse(c, CGRect(x: h.x - 0.5, y: h.y + 11, width: 6, height: 6), fill: colour(0.98, 0.82, 0.2))
-        case .founder:
-            // A banner on a pole.
-            line(c, CGPoint(x: h.x, y: h.y - 6), CGPoint(x: h.x, y: h.y + 26), wood, width: 2)
-            polygon(c, [CGPoint(x: h.x, y: h.y + 26), CGPoint(x: h.x + 14, y: h.y + 21), CGPoint(x: h.x, y: h.y + 16)],
-                    fill: colour(0.98, 0.90, 0.55))
-        case .clubman:
-            line(c, CGPoint(x: h.x - 2 + tilt, y: h.y - 4), CGPoint(x: h.x + 4, y: h.y + 14), wood, width: 3)
-            ellipse(c, CGRect(x: h.x + 1, y: h.y + 11, width: 7, height: 8), fill: colour(0.35, 0.22, 0.10))
-        case .slinger:
-            ellipse(c, CGRect(x: h.x - 1, y: h.y + 4, width: 11, height: 11), fill: nil, stroke: colour(0.55, 0.40, 0.2), width: 1.5)
-            ellipse(c, CGRect(x: h.x + 7, y: h.y + 12, width: 4, height: 4), fill: colour(0.5, 0.5, 0.5))
         case .spearman:
             line(c, CGPoint(x: h.x, y: h.y - 14), CGPoint(x: h.x + 3 + tilt, y: h.y + 28), wood, width: 2)
             polygon(c, [CGPoint(x: h.x + 1 + tilt, y: h.y + 26), CGPoint(x: h.x + 5 + tilt, y: h.y + 26),
                         CGPoint(x: h.x + 3 + tilt, y: h.y + 35)], fill: colour(0.7, 0.72, 0.75))
-        case .archer:
-            c.setStrokeColor(wood)
-            c.setLineWidth(2)
-            c.beginPath()
-            c.addArc(center: CGPoint(x: h.x - 2, y: h.y + 6), radius: 11, startAngle: -1.1, endAngle: 1.1, clockwise: false)
-            c.strokePath()
-            line(c, CGPoint(x: h.x - 2 + 11 * cos(-1.1), y: h.y + 6 + 11 * sin(-1.1)),
-                 CGPoint(x: h.x - 2 + 11 * cos(1.1), y: h.y + 6 + 11 * sin(1.1)), colour(0.9, 0.9, 0.85), width: 1)
-        case .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car, .boat:
+        case .swordsman, .horseman, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .car, .boat:
             break
         }
-    }
-
-    private static func drawChariot(_ c: CGContext, team t: TeamColour, frame: Int, moving: Bool, fighting: Bool) {
-        let fx = personFoot.x
-        let bob = moving ? (frame % 2 == 0 ? 0.0 : 1.5) : 0.0
-        let horse = colour(0.55, 0.38, 0.22)
-        // The horse, on the right (the chariot faces right).
-        ellipse(c, CGRect(x: fx + 4, y: 20 + bob, width: 22, height: 11), fill: horse)
-        polygon(c, [CGPoint(x: fx + 22, y: 28 + bob), CGPoint(x: fx + 30, y: 38 + bob),
-                    CGPoint(x: fx + 33, y: 34 + bob), CGPoint(x: fx + 27, y: 26 + bob)], fill: horse)
-        for dx in [6.0, 10.0, 20.0, 24.0] {
-            line(c, CGPoint(x: fx + dx, y: 22 + bob), CGPoint(x: fx + dx + (moving ? (frame % 2 == 0 ? 2 : -2) : 0), y: 10), ink, width: 2)
-        }
-        // The car, in the team colour, with a wheel.
-        polygon(c, [CGPoint(x: fx - 20, y: 34), CGPoint(x: fx + 4, y: 34), CGPoint(x: fx + 2, y: 20), CGPoint(x: fx - 18, y: 20)],
-                fill: shade(t, 1))
-        line(c, CGPoint(x: fx + 4, y: 26), CGPoint(x: fx + 10, y: 27 + bob), ink, width: 1.5)
-        ellipse(c, CGRect(x: fx - 17, y: 9, width: 14, height: 14), fill: colour(0.55, 0.38, 0.2))
-        line(c, CGPoint(x: fx - 10, y: 9), CGPoint(x: fx - 10, y: 23), ink, width: 1)
-        line(c, CGPoint(x: fx - 17, y: 16), CGPoint(x: fx - 3, y: 16), ink, width: 1)
-        // The rider.
-        ellipse(c, CGRect(x: fx - 13, y: 41, width: 10, height: 10), fill: colour(0.93, 0.76, 0.58))
-        line(c, CGPoint(x: fx - 8, y: 35), CGPoint(x: fx - 8, y: 41), shade(t, 0.7), width: 5)
-        line(c, CGPoint(x: fx - 4, y: 38), CGPoint(x: fx + 14, y: fighting ? 52 : 40), colour(0.45, 0.3, 0.15), width: 1.5)
     }
 
     // MARK: Buildings
@@ -288,32 +224,15 @@ enum Placeholders {
             let s = Projection.screen(MapPosition(x: x - fx / 2, y: y - fy / 2))
             return CGPoint(x: cx + s.x, y: cy + s.y + lift)
         }
-        let inset = kind == .watchTower ? 0.22 : (kind == .palisade ? 0.08 : 0.12)
+        let inset = kind == .watchTower ? 0.22 : 0.12
         let (x0, y0, x1, y1) = (inset, inset, fx - inset, fy - inset)
 
         let image = render(size) { c in
             // The ground under the footprint.
-            let ground = kind == .stockPen ? colour(0.55, 0.66, 0.36) : colour(0.74, 0.66, 0.50)
+            let ground = colour(0.74, 0.66, 0.50)
             polygon(c, [at(0, 0), at(fx, 0), at(fx, fy), at(0, fy)], fill: ground, stroke: colour(0.35, 0.27, 0.18, 0.8))
             if constructing { c.setAlpha(0.62) }
             switch kind {
-            case .storagePit:
-                polygon(c, [at(0.25, 0.25), at(fx - 0.25, 0.25), at(fx - 0.25, fy - 0.25), at(0.25, fy - 0.25)],
-                        fill: colour(0.22, 0.15, 0.10), stroke: shade(t, 0.9), width: 2.5)
-                for (sx, sy) in [(0.45, 0.5), (0.55, 0.62), (0.7, 0.45)] {
-                    let p = at(fx * sx, fy * sy, lift: 2)
-                    ellipse(c, CGRect(x: p.x - 4, y: p.y - 2, width: 8, height: 7), fill: colour(0.75, 0.62, 0.40))
-                }
-            case .stockPen:
-                let rails = [(at(x0, y0), at(x1, y0)), (at(x1, y0), at(x1, y1)), (at(x1, y1), at(x0, y1)), (at(x0, y1), at(x0, y0))]
-                // The back rails first, then the front ones, over the animals' ground.
-                for (a, b) in rails.prefix(1) + rails.suffix(1) { drawRail(c, a, b, height: height, team: t) }
-                for (sx, sy) in [(0.35, 0.40), (0.6, 0.55)] {
-                    let p = at(fx * sx, fy * sy)
-                    ellipse(c, CGRect(x: p.x - 7, y: p.y, width: 14, height: 8), fill: colour(0.85, 0.82, 0.75))
-                    ellipse(c, CGRect(x: p.x + 4, y: p.y + 4, width: 6, height: 6), fill: colour(0.85, 0.82, 0.75))
-                }
-                for (a, b) in rails.dropFirst().prefix(2) { drawRail(c, a, b, height: height, team: t) }
             default:
                 let top = at(x0, y0, lift: height), right = at(x1, y0, lift: height)
                 let bottom = at(x1, y1, lift: height), left = at(x0, y1, lift: height)
@@ -337,26 +256,12 @@ enum Placeholders {
                 c.setLineDash(phase: 0, lengths: [5, 4])
                 polygon(c, [at(0, 0), at(fx, 0), at(fx, fy), at(0, fy)], fill: nil, stroke: colour(0.35, 0.2, 0.05), width: 2)
                 c.setLineDash(phase: 0, lengths: [])
-                if kind != .storagePit {
-                    line(c, at(x0, y1), at(x1, y1, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
-                    line(c, at(x1, y1), at(x0, y1, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
-                    line(c, at(x1, y1), at(x1, y0, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
-                }
+                line(c, at(x0, y1), at(x1, y1, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
+                line(c, at(x1, y1), at(x0, y1, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
+                line(c, at(x1, y1), at(x1, y0, lift: height), colour(0.4, 0.27, 0.1, 0.8), width: 1.5)
             }
         }
         return DrawnImage(image: image, size: size, anchor: CGPoint(x: cx / size.width, y: cy / size.height))
-    }
-
-    private static func drawRail(_ c: CGContext, _ a: CGPoint, _ b: CGPoint, height: Double, team t: TeamColour) {
-        let wood = colour(0.50, 0.35, 0.18)
-        let posts = 4
-        for i in 0...posts {
-            let f = Double(i) / Double(posts)
-            let p = CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
-            line(c, p, CGPoint(x: p.x, y: p.y + height), wood, width: 2.5)
-        }
-        line(c, CGPoint(x: a.x, y: a.y + height), CGPoint(x: b.x, y: b.y + height), shade(t, 0.95), width: 3)
-        line(c, CGPoint(x: a.x, y: a.y + height * 0.45), CGPoint(x: b.x, y: b.y + height * 0.45), wood, width: 2)
     }
 
     private static func drawDetail(_ c: CGContext, kind: BuildingKind,
@@ -398,13 +303,7 @@ enum Placeholders {
             }
             polygon(c, [onRightFace(0.4, 0.55), onRightFace(0.6, 0.55), onRightFace(0.6, 0.8), onRightFace(0.4, 0.8)],
                     fill: colour(0.15, 0.1, 0.07))
-        case .palisade:
-            for i in 1..<5 {
-                let u = Double(i) / 5
-                line(c, onRightFace(u, 0.05), onRightFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
-                line(c, onLeftFace(u, 0.05), onLeftFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
-            }
-        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse:
+        case .farm, .stable, .castle, .boatHouse:
             break
         }
     }
@@ -448,29 +347,10 @@ enum Placeholders {
                 ellipse(c, CGRect(x: gx - 19, y: gy + 14, width: 18, height: 18), fill: colour(0.18, 0.46, 0.20))
                 ellipse(c, CGRect(x: gx + 1, y: gy + 14, width: 18, height: 18), fill: colour(0.20, 0.50, 0.22))
                 ellipse(c, CGRect(x: gx - 13, y: gy + 22, width: 26, height: 26), fill: colour(0.24, 0.57, 0.26))
-            case .stone:
-                rock(c, colour(0.66, 0.66, 0.64))
-            case .copper:
-                rock(c, colour(0.55, 0.48, 0.42))
-                for (x, y) in [(-8.0, 8.0), (2.0, 14.0), (8.0, 6.0)] {
-                    polygon(c, [CGPoint(x: gx + x, y: gy + y), CGPoint(x: gx + x + 4, y: gy + y + 3),
-                                CGPoint(x: gx + x + 2, y: gy + y + 8), CGPoint(x: gx + x - 2, y: gy + y + 4)], fill: colour(0.86, 0.47, 0.22))
-                }
-            case .tin:
-                rock(c, colour(0.50, 0.53, 0.58))
-                for (x, y) in [(-8.0, 8.0), (2.0, 14.0), (8.0, 6.0)] {
-                    polygon(c, [CGPoint(x: gx + x, y: gy + y), CGPoint(x: gx + x + 4, y: gy + y + 3),
-                                CGPoint(x: gx + x + 2, y: gy + y + 8), CGPoint(x: gx + x - 2, y: gy + y + 4)], fill: colour(0.78, 0.86, 0.95))
-                }
             case .gold:
                 rock(c, colour(0.60, 0.52, 0.38))
                 for (x, y) in [(-9.0, 7.0), (0.0, 13.0), (8.0, 5.0)] {
                     ellipse(c, CGRect(x: gx + x - 3, y: gy + y, width: 7, height: 6), fill: colour(1, 0.82, 0.18))
-                }
-            case .iron:
-                rock(c, colour(0.30, 0.32, 0.38))
-                for (x, y) in [(-8.0, 7.0), (1.0, 12.0)] {
-                    line(c, CGPoint(x: gx + x, y: gy + y), CGPoint(x: gx + x + 9, y: gy + y + 4), colour(0.62, 0.30, 0.20), width: 3)
                 }
             case .prey:
                 let hide = colour(0.64, 0.46, 0.28)
@@ -482,9 +362,6 @@ enum Placeholders {
                             CGPoint(x: gx + 20, y: gy + 24), CGPoint(x: gx + 15, y: gy + 14)], fill: hide)
                 line(c, CGPoint(x: gx + 17, y: gy + 26), CGPoint(x: gx + 15, y: gy + 33), colour(0.4, 0.28, 0.15), width: 1.5)
                 line(c, CGPoint(x: gx + 19, y: gy + 25), CGPoint(x: gx + 21, y: gy + 32), colour(0.4, 0.28, 0.15), width: 1.5)
-            case .oilField:
-                ellipse(c, CGRect(x: gx - 17, y: gy - 3, width: 34, height: 15), fill: colour(0.06, 0.06, 0.08))
-                ellipse(c, CGRect(x: gx - 9, y: gy + 3, width: 10, height: 4), fill: colour(0.3, 0.3, 0.45, 0.8), stroke: nil)
             case .fish:
                 // Silver fish leaping from rings on the water.
                 for (x, y) in [(-9.0, 6.0), (6.0, 10.0)] {

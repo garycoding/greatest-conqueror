@@ -10,23 +10,23 @@ import Testing
 @Suite struct StartingAge {
     private func match(in age: Age) -> Simulation {
         var match = setup(openMap(starts: [GridPoint(4, 4), GridPoint(30, 30)]), teams: [0, 1])
-        match.startingAge = age == .stone ? nil : age
+        match.startingAge = age == .towns ? nil : age
         return Simulation(setup: match)
     }
 
-    @Test func aMatchBegunInTheStoneAgeIsTheStandardStart() {
-        let sim = match(in: .stone)
+    @Test func aMatchBegunInTheAgeOfTownsIsTheStandardStart() {
+        let sim = match(in: .towns)
         for p in sim.players {
-            #expect(p.age == .stone)
+            #expect(p.age == .towns)
             #expect(p.resources == Catalogue.standard.startingResources)
         }
     }
 
-    @Test(arguments: [Age.bronze, .iron, .alchemy, .industrial])
+    @Test(arguments: [Age.farms, .ships, .cannons, .hospitals])
     func everyPlayerBeginsInTheAgeWithWhatTheAdvancesWouldHaveCost(age: Age) {
         var sim = match(in: age)
         var stock = Catalogue.standard.startingResources
-        var a = Age.stone
+        var a = Age.towns
         while a < age { stock = stock + Catalogue.standard.advance(from: a)!.cost; a = a.next! }
         for p in sim.players {
             #expect(p.age == age)
@@ -37,8 +37,9 @@ import Testing
         #expect(sim.entities.filter { $0.buildingKind == .townCentre }.count == 2)
     }
 
-    @Test func aPlayerBegunInTheIndustrialAgeAdvancesNoFurther() {
-        var sim = match(in: .industrial)
-        #expect(sim.apply(.advanceAge, from: PlayerID(0)) == .refused(.invalidTarget))
+    @Test func aPlayerBegunInTheAgeOfHospitalsAdvancesNoFurther() {
+        var sim = match(in: .hospitals)
+        let centre = sim.entities.first { $0.owner == PlayerID(0) && $0.buildingKind == .townCentre }!.id
+        #expect(sim.apply(.advanceAge(at: centre), from: PlayerID(0)) == .refused(.invalidTarget))
     }
 }

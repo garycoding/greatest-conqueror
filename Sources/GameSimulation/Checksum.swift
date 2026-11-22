@@ -42,10 +42,7 @@ extension Simulation {
         var copy = generator
         d.add(copy.next())
         for p in players {
-            d.add(p.id.rawValue); d.add(p.age.rawValue); d.add(p.resources); d.add(p.study)
-            d.add(p.improvements.count)
-            for i in p.improvements { d.add(i.rawValue) }
-            d.add(p.copperOre); d.add(p.tinOre); d.add(p.isDefeated)
+            d.add(p.id.rawValue); d.add(p.age.rawValue); d.add(p.resources); d.add(p.isDefeated)
         }
         for t in teams {
             d.add(t.id.rawValue); d.add(t.isDefeated)
@@ -72,8 +69,6 @@ extension Simulation {
         case .work(let b): d.add(3); d.add(b.rawValue)
         case .attack(let t): d.add(4); d.add(t.rawValue)
         case .demolish(let b): d.add(5); d.add(b.rawValue)
-        case .trade(let b, let give, let take): d.add(6); d.add(b.rawValue); d.add(give.rawValue); d.add(take.rawValue)
-        case .carry(let r, let t): d.add(7); d.add(r.rawValue); d.add(t.rawValue)
         }
         d.add(Int(e.doing.rawValue))
         let r = e.route
@@ -83,20 +78,11 @@ extension Simulation {
         d.add(r.plannedAt); d.add(r.stuck)
         if let c = e.cargo { d.add(c.kind.rawValue); d.add(c.amount) } else { d.add(-1) }
         d.add(e.dropOff?.rawValue ?? -1)
-        // A merchant's goods; nothing is added for others, so that matches without merchants keep their checksums.
-        if let goods = e.goods { d.add(goods) }
-        // A farm's food yielded since sowing; likewise nothing for others.
-        if let used = e.farmUsed { d.add(used) }
-        // A railway journey; likewise nothing for others.
-        if let trip = e.rail {
-            d.add(trip.board.rawValue); d.add(trip.alight.rawValue); d.add(trip.departed ?? -1)
-            d.add(trip.goal.x); d.add(trip.goal.y)
-        }
+        d.add(e.farmUsed ?? -1)
         d.add(e.fraction)
-        if let u = e.upgrade { d.add(u.to.rawValue); d.add(u.remaining) } else { d.add(-1) }
         d.add(e.built); d.add(e.complete); d.add(e.healthCredit); d.add(e.demolished)
         d.add(e.queue.count)
         for k in e.queue { d.add(k.rawValue) }
-        d.add(e.trainProgress); d.add(e.research?.rawValue ?? -1); d.add(e.researchProgress); d.add(e.spawned)
+        d.add(e.trainProgress); d.add(e.advancing ?? -1); d.add(e.spawned)
     }
 }

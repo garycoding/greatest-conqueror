@@ -49,8 +49,8 @@ extension LANTests {
             let sent = clock.now
             if i.isMultiple(of: 2) {
                 session.lastRefusal = nil
-                session.issue(.advanceAge)
-                try await answered { session.lastRefusal == .studyIncomplete }
+                session.issue(.advanceAge(at: EntityID(1)))
+                try await answered { session.lastRefusal == .invalidTarget }
             } else {
                 let to = MapPosition(x: 1.5 + Double(i % 20), y: 4.5)
                 session.issue(.move(units: [mark], to: to))

@@ -26,7 +26,7 @@ public final class IronBoatSprites: ViewedSpriteSource {
     private let cache = Mutex<[SpriteKey: SpriteImage]>([:])
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .iron, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .ships, catalogue: catalogue).filter { key in
             guard case .unit(.boat, .iron) = key.subject else { return false }
             return IronFishingBoat.drawn(key.pose)
         }

@@ -103,19 +103,19 @@ import Testing
 
 @Test func theStartingAgeAndTheMapSizeTravelToTheMatchAndTheLobby() {
     var m = NewMatchModel()
-    #expect(m.startingAge == .stone && m.mapSize == .standard)
+    #expect(m.startingAge == .towns && m.mapSize == .standard)
     #expect(m.choice.setup(map: Samples.map(), seed: 7).startingAge == nil)
-    m.startingAge = .iron
+    m.startingAge = .ships
     m.mapSize = .large
-    #expect(m.choice.setup(map: Samples.map(), seed: 7).firstAge == .iron)
+    #expect(m.choice.setup(map: Samples.map(), seed: 7).firstAge == .ships)
     #expect(m.choice.mapSize == .large)
-    #expect(m.lobby.firstAge == .iron && m.lobby.size == .large)
+    #expect(m.lobby.firstAge == .ships && m.lobby.size == .large)
     var lobby = m.lobby
     lobby.seats = lobby.seats.map { var s = $0; if s.civilization == nil { s.civilization = .rome }; return s }
-    #expect(lobby.setup(map: Samples.map(), seed: 7)?.firstAge == .iron)
-    // A lobby from a Mac without these settings decodes as the Stone age on the standard map.
+    #expect(lobby.setup(map: Samples.map(), seed: 7)?.firstAge == .ships)
+    // A lobby without these settings decodes as the age of towns on the standard map.
     let old = try! JSONDecoder().decode(Lobby.self, from: JSONEncoder().encode(Lobby(name: "Old", seats: lobby.seats)))
-    #expect(old.firstAge == .stone && old.size == .standard)
+    #expect(old.firstAge == .towns && old.size == .standard)
     #expect(MapSize.large.side == 2 * MapSize.standard.side)
 }
 

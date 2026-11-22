@@ -38,13 +38,15 @@ private final class Store: Sendable {
 
 /// What this batch draws, on what canvas, and the drawing of it.
 enum BronzeBuildingsArt {
+    /// The buildings drawn in the Bronze look; the farm's Bronze look is the
+    /// Iron farm's (`IronNewBuildingsArt.lookAlikes`).
+    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .watchTower, .boatHouse]
+
     /// The building, pose and view a key names, if it is one of this batch's: a
-    /// building of the standard catalogue in the Bronze age's look, complete or
-    /// under construction, at frame 0, in the side view, or the boat house in
-    /// the back view.
+    /// building of `kinds` in the Bronze look, complete or under construction,
+    /// at frame 0, in the side view, or the boat house in the back view.
     static func subject(of key: SpriteKey) -> (kind: BuildingKind, complete: Bool, view: SpriteView)? {
-        guard case .building(let kind, .bronze) = key.subject, key.frame == 0,
-              Catalogue.standard.buildings.contains(where: { $0.kind == kind }),
+        guard case .building(let kind, .bronze) = key.subject, key.frame == 0, kinds.contains(kind),
               key.view == .side || (key.view == .back && kind == .boatHouse) else { return nil }
         if key.pose == .complete { return (kind, true, key.view) }
         if key.pose == .underConstruction { return (kind, false, key.view) }
@@ -74,13 +76,10 @@ enum BronzeBuildingsArt {
         switch kind {
         case .townCentre: 118
         case .house: 78
-        case .storagePit: 62
-        case .stockPen: 76
         case .barracks: 96
         case .watchTower: 120
-        case .palisade: 58
         // Iron-age buildings are drawn by their own batch; the boat house fits in their height too.
-        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: 80
+        case .farm, .stable, .castle, .boatHouse: 80
         }
     }
 
@@ -107,14 +106,11 @@ extension BronzeBuildingsPainter {
         switch kind {
         case .townCentre: townCentre(complete: complete)
         case .house: house(complete: complete)
-        case .storagePit: storagePit(complete: complete)
-        case .stockPen: stockPen(complete: complete)
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
-        case .palisade: palisade(complete: complete)
         case .boatHouse: boatHouse(complete: complete)
         // Iron-age buildings are drawn by their own batch.
-        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
+        case .farm, .stable, .castle: break
         }
     }
 }

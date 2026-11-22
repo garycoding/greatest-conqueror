@@ -50,7 +50,7 @@ extension LANTests {
         let hyunGoes = MapPosition(x: 7.5, y: 9.5), miraGoes = MapPosition(x: 11.5, y: 3.5)
         hyun.session?.issue(.move(units: [StubSimulation.mark(of: PlayerID(1))], to: hyunGoes))
         mira.session?.issue(.move(units: [StubSimulation.mark(of: PlayerID(2))], to: miraGoes))
-        mira.session?.issue(.advanceAge)
+        mira.session?.issue(.advanceAge(at: EntityID(1)))
         try await until("the orders are applied") {
             lan.simulation.orders[1].contains(.move(units: [StubSimulation.mark(of: PlayerID(1))], to: hyunGoes))
                 && lan.simulation.orders[2].contains(.move(units: [StubSimulation.mark(of: PlayerID(2))], to: miraGoes))
@@ -60,7 +60,7 @@ extension LANTests {
                 && mira.session?.view.entity(StubSimulation.mark(of: PlayerID(1)))?.position == hyunGoes
                 && mira.session?.view.entity(StubSimulation.mark(of: PlayerID(2)))?.position == miraGoes
         }
-        try await until("Mira sees her refusal") { mira.session?.lastRefusal == .studyIncomplete }
+        try await until("Mira sees her refusal") { mira.session?.lastRefusal == .invalidTarget }
         #expect(hyun.session?.lastRefusal == nil)
 
         // Play on; every event reaches each person once and in order.

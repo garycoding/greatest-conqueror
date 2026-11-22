@@ -3,39 +3,30 @@
 
 import GameCore
 
-/// The work a worker is given: a kind of site, herding at a stock pen or a
-/// farm, or crafting gunpowder at an alchemist's workshop.
+/// The work a worker is given: a kind of site, or farming at a farm.
 enum Task: Int, Codable, Sendable, CaseIterable {
-    case hunting, felling, quarrying, copper, tin, gold, iron, herding, crafting
+    case hunting, felling, gold, herding
 
     init?(site kind: SiteKind) {
         switch kind {
         case .prey: self = .hunting
         case .tree: self = .felling
-        case .stone: self = .quarrying
-        case .copper: self = .copper
-        case .tin: self = .tin
         case .gold: self = .gold
-        case .iron: self = .iron
-        case .oilField, .fish: return nil
+        case .fish: return nil
         }
     }
 
-    /// The kind of site worked; herding and crafting work at a building instead.
+    /// The kind of site worked; farming works at a building instead.
     var site: SiteKind? {
         switch self {
         case .hunting: .prey
         case .felling: .tree
-        case .quarrying: .stone
-        case .copper: .copper
-        case .tin: .tin
         case .gold: .gold
-        case .iron: .iron
-        case .herding, .crafting: nil
+        case .herding: nil
         }
     }
 
-    var resource: Resource { self == .crafting ? .gunpowder : site?.yield ?? .food }
+    var resource: Resource { site?.yield ?? .food }
 }
 
 /// An opponent's building the player has seen, remembered after it passes out of sight.
@@ -52,8 +43,7 @@ struct Plan: Codable, Sendable, Hashable {
     var origin: GridPoint
     var builders: [EntityID]
     var tick: Int
-    /// What the building costs, held back from spending until it is begun;
-    /// nothing for a town centre founded by a founder.
+    /// What the building costs, held back from spending until it is begun.
     var cost: ResourceAmounts
 }
 
@@ -62,7 +52,7 @@ struct Assignment: Codable, Sendable, Hashable {
     var worker: EntityID
     var task: Task
     var site: SiteID?
-    /// The stock pen or farm, for herding; the workshop, for crafting.
+    /// The farm, for farming.
     var building: EntityID?
     var tick: Int
 }
@@ -86,12 +76,6 @@ struct RefusedSite: Codable, Sendable, Hashable {
     var until: Int
 }
 
-/// A warfighter sent to be upgraded, and when to stop waiting for it.
-struct Upgrading: Codable, Sendable, Hashable {
-    var unit: EntityID
-    var until: Int
-}
-
 /// The unit exploring, and where it was sent.
 struct Scouting: Codable, Sendable, Hashable {
     var unit: EntityID
@@ -110,6 +94,9 @@ struct Campaign: Codable, Sendable, Hashable {
     var size: Int
     var launched: Int
     var stance: Stance
+    /// The tick at which the army was last sent to `destination` with no
+    /// target, hunting; nil before it hunts.
+    var aimed: Int?
 }
 
 /// What the computer player keeps from one view to the next. Every collection
@@ -129,7 +116,6 @@ struct Memory: Codable, Sendable, Hashable {
     var assignments: [Assignment] = []
     var avoidedSites: [AvoidedSite] = []
     var refusedSites: [RefusedSite] = []
-    var upgrading: [Upgrading] = []
     var campaign: Campaign?
     /// Attacks ended so far; each makes the next wait for a larger army.
     var waves = 0
@@ -141,12 +127,8 @@ struct Memory: Codable, Sendable, Hashable {
     /// A fading count of the opponents' warfighters seen, by `UnitKind.rawValue`.
     var seen: [Double] = Array(repeating: 0, count: UnitKind.allCases.count)
     /// Where opponents' people were last seen, newest last, for an army hunting
-    /// the last of them; optional so that older saves open.
+    /// the last of them.
     var lastSeenPeople: [MapPosition]?
-    /// Scholars sent to research away from the town centre, and where; optional so that older saves open.
-    var researchers: [Researcher]?
-    /// The trade its merchants are carrying on, if any; optional so that older saves open.
-    var trade: Trade?
 
     /// Takes in a view: its events, the opponents' buildings in sight, and what
     /// has become of the player's plans, assignments and scout.
@@ -203,7 +185,6 @@ struct Memory: Codable, Sendable, Hashable {
         assignments.removeAll { view.entity($0.worker)?.owner != view.player }
         avoidedSites.removeAll { $0.until <= tick }
         refusedSites.removeAll { $0.until <= tick }
-        upgrading.removeAll { $0.until <= tick || view.entity($0.unit)?.owner != view.player }
         if let scout, view.entity(scout.unit)?.owner != view.player { self.scout = nil }
         if seen.count != UnitKind.allCases.count { seen = Array(repeating: 0, count: UnitKind.allCases.count) }
     }
@@ -270,16 +251,4 @@ struct Memory: Codable, Sendable, Hashable {
         }
         return out
     }
-}
-
-/// A scholar sent to research at a building.
-struct Researcher: Codable, Sendable, Hashable {
-    var scholar: EntityID
-    var building: EntityID
-}
-
-/// What the merchants are trading: `give` for `take`.
-struct Trade: Codable, Sendable, Hashable {
-    var give: Resource
-    var take: Resource
 }

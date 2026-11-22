@@ -47,7 +47,7 @@ extension Turn {
             guard p.x >= low.x, p.y >= low.y, p.x <= high.x, p.y <= high.y else { return false }
             return buildings.contains { $0.position.distance(to: p) <= 10 } || recent.contains { $0.position.distance(to: p) <= 8 }
         }
-        // An opponent's worker or scholar among the buildings is attacked, but
+        // An opponent's worker among the buildings is attacked, but
         // only warfighters, or a strike, make the player threatened.
         raiders = intruders.filter { Turn.unitKind($0)?.isWarfighter ?? false }.count
         threatened = raiders > 0 || !recent.isEmpty
@@ -63,7 +63,7 @@ extension Turn {
             let ids = defenders.filter { $0.activity == .idle && $0.position.distance(to: focus) > 3 }.map(\.id)
             if !ids.isEmpty { give(.move(units: ids, to: clamped(focus)), to: ids) }
         } else if raiders == 0 {
-            // A worker or scholar alone is seen off by the two nearest.
+            // A worker alone is seen off by the two nearest.
             let nearest = defenders.sorted {
                 let a = $0.position.distance(to: focus), b = $1.position.distance(to: focus)
                 return a != b ? a < b : $0.id < $1.id
@@ -77,7 +77,7 @@ extension Turn {
     /// Each unit attacks the opponent it is best placed to beat: near it, and
     /// weak against it by `Catalogue.bonuses`, warfighters before other people.
     func attack(_ targets: [EntityView], with units: [EntityView]) {
-        // The targets come from `enemyUnits`, which holds opponents' people alone, founders left out.
+        // The targets come from `enemyUnits`, which holds opponents' units alone, cars left out.
         let kinds = targets.map { Turn.unitKind($0) ?? .worker }
         let positions = targets.map(\.position)
         var groups: [(target: Int, units: [EntityID])] = []
@@ -103,20 +103,17 @@ extension Turn {
 
     // MARK: The army
 
-    /// From the Bronze age, or when attacked, buildings that train warfighters
-    /// train a mixed army. The town centre does so only when attacked and no
-    /// barracks stands, and then only enough to answer the raiders.
+    /// From the age of farms, buildings that train warfighters train a mixed army.
     func trainArmy() {
-        guard view.age >= .bronze || threatened else { return }
+        guard view.age >= .farms else { return }
         var army = Turn.warfighterKinds.reduce(warfighters.count) { $0 + training[$1.rawValue] }
         let barracks = buildings.filter { building in
             guard Turn.isComplete(building), case .building(let kind) = building.kind else { return false }
             let trains = catalogue.stats(kind).trains
             return trains.contains(where: \.isWarfighter) && !trains.contains(.worker)
         }
-        let producers = barracks.isEmpty ? (threatened ? completeBuildings(.townCentre) : []) : barracks
-        let cap = barracks.isEmpty ? raiders + 2 : tuning.armyCap
-        for building in producers where isFree(building) && queueLength(building) < tuning.queue {
+        let cap = tuning.armyCap
+        for building in barracks where isFree(building) && queueLength(building) < tuning.queue {
             guard army < cap else { return }
             guard let kind = nextWarfighter(at: building) else { continue }
             guard projectedPopulation + catalogue.stats(kind).population <= view.populationLimit else { return }
@@ -133,7 +130,7 @@ extension Turn {
         guard case .building(let kind) = building.kind else { return nil }
         let trainable = catalogue.stats(kind).trains.filter { $0.isWarfighter && catalogue.stats($0).age <= view.age }
         let ages = Set(trainable.map { catalogue.stats($0).age }).sorted(by: >)
-        for age in ages.prefix(view.age >= .iron ? 2 : 1) {
+        for age in ages.prefix(view.age >= .ships ? 2 : 1) {
             if let kind = nextWarfighter(of: trainable.filter { catalogue.stats($0).age == age }) { return kind }
         }
         return nil
@@ -167,34 +164,6 @@ extension Turn {
         }
     }
 
-    /// Warfighters of an earlier age are upgraded to the kind a later one
-    /// brings, as many as can be paid for, whilst no attack is under way at home.
-    func upgrade() {
-        guard !threatened else { return }
-        for step in catalogue.upgrades where catalogue.stats(step.to).age <= view.age {
-            let places = buildings.filter { building in
-                guard Turn.isComplete(building), case .building(let kind) = building.kind else { return false }
-                return catalogue.stats(kind).trains.contains(step.to)
-            }
-            guard let place = Turn.nearest(places, to: base) else { continue }
-            var units: [EntityID] = []
-            var cost = ResourceAmounts()
-            for unit in warfighters where unit.kind == .unit(step.from) && isFree(unit) && unit.activity != .fighting
-                && !memory.upgrading.contains(where: { $0.unit == unit.id }) {
-                let next = cost + step.cost
-                guard canPay(next) else { break }
-                cost = next
-                units.append(unit.id)
-            }
-            guard !units.isEmpty else { continue }
-            give(.upgrade(units: units, to: step.to, at: place.id), to: units)
-            pay(cost)
-            for id in units {
-                memory.upgrading.append(Upgrading(unit: id, until: view.tick + step.time + Tick.seconds(20)))
-            }
-        }
-    }
-
     // MARK: Attack
 
     /// From the difficulty's earliest attack time, with an army large enough,
@@ -221,13 +190,20 @@ extension Turn {
                 current.target = next.id
                 current.destination = next.position
                 retarget = true
-            } else if current.target != nil || army.filter({ $0.activity == .idle }).count * 2 >= army.count {
+            } else if current.target != nil || army.filter({ $0.activity == .idle }).count * 2 >= army.count
+                        || centre.distance(to: current.destination) < 6
+                        || view.tick - (current.aimed ?? current.launched) > Tick.seconds(90) {
+                // A hunt goes on to new ground once the army is there, or after a
+                // minute and a half, so that ground it cannot reach holds it no longer.
                 guard let destination = huntingGround(from: centre) else {
                     withdraw(army)
                     return
                 }
                 current.target = nil
                 current.destination = destination
+                current.aimed = view.tick
+                memory.scouted.append(destination)
+                if memory.scouted.count > 24 { memory.scouted.removeFirst(memory.scouted.count - 24) }
                 retarget = true
             }
         }
@@ -244,7 +220,7 @@ extension Turn {
     }
 
     private func launch(_ army: [EntityView]) {
-        guard view.age >= .bronze, view.tick >= tuning.firstAttack, !threatened else {
+        guard view.age >= .farms, view.tick >= tuning.firstAttack, !threatened else {
             rally(army)
             return
         }
@@ -358,16 +334,17 @@ extension Turn {
         give(.move(units: [unit.id], to: Turn.unitKind(unit) == .worker ? clamped(base) : rallyPoint), to: [unit.id])
     }
 
-    /// An unexplored point to explore: of the centres of six-tile cells not yet
-    /// explored nor already given to a scout, one of the three nearest to `point`
-    /// and farthest from the base, chosen at random.
+    /// A point to explore: of the centres of six-tile cells not yet explored
+    /// (with `orFog`, or not in sight) nor already given to a scout, one of the
+    /// three nearest to `point` and farthest from the base, chosen at random.
     func frontier(from point: MapPosition, orFog: Bool = false) -> MapPosition? {
-        if let found = frontier(from: point, seeking: .unexplored) { return found }
-        // Every tile seen: an army hunting the last of an opponent sweeps the ground out of sight.
-        return orFog ? frontier(from: point, seeking: .explored) : nil
+        // An army hunting the last of an opponent sweeps the ground out of sight
+        // as well as the unexplored: a building begun and left stands on ground
+        // the army may have seen before it.
+        frontier(from: point, seeking: orFog ? [.unexplored, .explored] : [.unexplored])
     }
 
-    private func frontier(from point: MapPosition, seeking wanted: TileVisibility) -> MapPosition? {
+    private func frontier(from point: MapPosition, seeking wanted: Set<TileVisibility>) -> MapPosition? {
         let step = 6
         var best: [(score: Double, point: MapPosition)] = []
         var y = step / 2
@@ -376,7 +353,7 @@ extension Turn {
             while x < view.mapWidth {
                 let tile = GridPoint(x, y)
                 x += step
-                guard view.visibility(at: tile) == wanted else { continue }
+                guard wanted.contains(view.visibility(at: tile)) else { continue }
                 let candidate = tile.centre
                 guard !memory.scouted.contains(where: { $0.distance(to: candidate) < 4 }) else { continue }
                 let score = point.distance(to: candidate) - 0.5 * base.distance(to: candidate)

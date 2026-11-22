@@ -6,10 +6,10 @@ import GameCore
 
 /// The warfighters of the Iron age, drawn in the Cartoon Modern style of
 /// docs/art-style.md on the jointed figure every age shares (Figure.swift): the
-/// swordsman, the horseman and the catapult with its crew of two.
+/// swordsman and the horseman.
 ///
 /// A warfighter keeps the look of its own age (`SpriteSubject.of(_:ownerAge:)`),
-/// so this source supplies `SpriteSubject.unit(kind, .iron)` for those three
+/// so this source supplies `SpriteSubject.unit(kind, .iron)` for those two
 /// kinds in the poses standing, walking and fighting, each a cycle of 12 frames
 /// (`SpriteKey.frame` 0 to 11). The warfighters never work, and the drawing
 /// falls back to standing where a pose is missing, so the working pose is not
@@ -25,7 +25,7 @@ public struct IronWarriorSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .iron, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .ships, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .iron) = key.subject, key.pose != .working else { return false }
             return IronWarriorsLooks.look(kind) != nil
         }
@@ -38,7 +38,7 @@ public struct IronWarriorSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.swordsman, .horseman, .catapult]
+    static let viewed: Set<UnitKind> = [.swordsman, .horseman]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .iron) = subject { return Self.viewed.contains(kind) }
@@ -62,7 +62,6 @@ enum IronWarriorsLooks {
         switch kind {
         case .swordsman: IronWarriorsSwordsman()
         case .horseman: IronWarriorsHorseman()
-        case .catapult: IronWarriorsCatapult()
         default: nil
         }
     }
@@ -70,7 +69,6 @@ enum IronWarriorsLooks {
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
         case .horseman: IronWarriorsHorseman.canvas
-        case .catapult: IronWarriorsCatapult.canvas
         default: .person
         }
     }
