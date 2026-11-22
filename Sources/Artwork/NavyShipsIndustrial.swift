@@ -150,14 +150,14 @@ enum NavyShipIndustrial {
         svg.line(nearRim.map { $0 + P(0, 0.7) }, stroke: .colour(K.light), width: 0.8)
     }
 
-    /// The ram: the stem raking forward from the rail to a point at the waterline.
+    /// The ram: an iron beak at the waterline, ahead of the stem, with the stem's edge drawn down to it.
     static func ram(_ svg: inout SVG, _ space: Space) {
         let h = halfLength
         let tip = V(h + 9, 0.8, 0)
-        let points = [V(h * 0.9, hull.gunwale(h * 0.9), -1.6), V(h * 0.9, hull.gunwale(h * 0.9), 1.6), V(h + 0.6, hull.gunwale(h), 0),
-                      V(h * 0.86, 2.4, -2.4), V(h * 0.86, 2.4, 2.4), tip]
+        let points = [V(h * 0.9, -5, -2.2), V(h * 0.9, -5, 2.2), V(h + 1, -5.6, 0), V(h * 0.88, 2.4, -2.4), V(h * 0.88, 2.4, 2.4), tip]
         NavyKit.shape(&svg, StoneDugout.outline(points.map(space.at)), .colour(K.black), width: 1.2)
-        svg.line([space.at(h + 0.6, hull.gunwale(h), 0), space.at(tip)], stroke: .colour(K.blackSheen), width: 0.8)
+        svg.line([space.at(h + 1, -5.6, 0), space.at(tip)], stroke: .colour(K.blackSheen), width: 0.8)
+        svg.line([space.at(h, hull.gunwale(h), 0), space.at(h + 1, -5.6, 0)], stroke: NavyKit.line, width: 1.6)
     }
 
     // MARK: On deck
