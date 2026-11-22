@@ -13,7 +13,7 @@ A real-time strategy game in which players gather food, wood and gold, build a t
 - **Player:** one participant in a match, a person or a computer, with a base of its own.
 - **Civilization:** what a player plays as; it gives the player a name and a colour.
 - **Team:** a group of players who are allies. A team may consist of one player.
-- **Unit:** anything a player makes that moves: a person, a boat, a ship, a cannon or the car.
+- **Unit:** something that moves: a worker, soldier, knight, cannon, fishing boat, navy ship or doctor (ruled 2026-11-22). A founder is not a unit, nor is the Tesla.
 - **Kind:** one line of the tables: a unit kind (soldier 2, say), or a building kind.
 - **Tier:** one of the successive kinds of soldier, knight or cannon (soldier 1, soldier 2, and so on).
 - **Maker:** the building, or the navy ship, at which a unit is made.
@@ -27,7 +27,7 @@ These come from the person for whom the game is made and are settled (2026-11-21
 1. The game is called Greatest Conqueror. It is made from Cities of Progress, in a repository of its own, public under AGPL 3.0, with a fresh history.
 2. It keeps from Cities of Progress the setup of a match (seats, teams, civilizations, difficulty, "What you see", the starting age and the map size), the maps, the drawing of the map and the animation of movement, play across the LAN, saving and resuming, and the controls.
 3. It keeps the Tesla as it is in Cities of Progress: up to five cars a person, summoned with Shift-C beside a town centre, unharmed, with a kill radius that can be turned off and on, car by car, and a laser that burns down an opponent's building.
-4. It has none of the following from Cities of Progress: bridges and engineers, founders, scholars and research, merchants and trade, walls, the stock pen, the storage pit, and the resources stone, bronze, iron, gunpowder, oil, electricity and data, with their deposits. The setup has no "Bridges" setting.
+4. It has none of the following from Cities of Progress: bridges and engineers, scholars and research, merchants and trade, walls, the stock pen, the storage pit, and the resources stone, bronze, iron, gunpowder, oil, electricity and data, with their deposits. The setup has no "Bridges" setting.
 
 ### Ages
 
@@ -101,6 +101,14 @@ These come from the person for whom the game is made and are settled (2026-11-21
 ### Play
 
 30. A player can pause the match, and resume it, as well as setting its speed. The pause holds for every player in the match.
+
+### Founders, defeat and demolition
+
+These were ruled on 2026-11-22.
+
+31. **Founder.** A person (never a computer player) who has zero workers and zero town centres, while at least one teammate is undefeated, receives a founder beside one of an ally's town centres. The founder cannot be killed and cannot attack; it can build one town centre free of charge. When that town centre is finished, two workers appear beside it and the founder becomes a worker. Pressing F while the player has a founder selects it and scrolls the view to centre it.
+32. **Units and defeat.** A unit is something that moves: a worker, soldier, knight, cannon, fishing boat, navy ship or doctor; a founder is not a unit, nor is the Tesla. A player is defeated with no units and no building that can make a unit; a team is defeated when all its members are. A defeated person whose team still lives receives a founder and comes back into the match through it.
+33. **Demolition.** Workers can be told to demolish their player's own buildings, to recover resources; more workers demolish faster, as they build and repair faster. A demolished building returns a share of its cost (`demolish_return`, 0.5 by default) after a number of man-seconds (`demolish_seconds`, half its build man-seconds by default), both columns of its row in `stats.csv`.
 
 ## Consequences of the stated requirements
 
