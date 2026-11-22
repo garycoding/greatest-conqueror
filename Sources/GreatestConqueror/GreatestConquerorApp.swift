@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import AppKit
+import GameInterface
 import SwiftUI
 
 /// The app: one window, which shows the new-match screen until a match starts
@@ -54,6 +55,12 @@ struct GreatestConquerorApp: App {
                 // The tables the game reads when it starts (requirement 26).
                 Button("Show the tables in Finder") { game.showTables() }
             }
+        }
+        // The settings (requirements 27 and 28): the editor during play, and the tables as a zip.
+        Settings {
+            TableSettingsView(model: game.tableSettings, folder: game.tableFolder.folder.path,
+                              onEdit: { game.openTableEditor() }, onSaveZip: { game.saveTablesAsZip() },
+                              onLoadZip: { game.loadTablesFromZip() }, onShowFolder: { game.showTables() })
         }
     }
 }

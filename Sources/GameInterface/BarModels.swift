@@ -99,6 +99,48 @@ public struct PauseModel: Sendable {
     public init(view: PlayerView) { isPaused = view.isPaused }
 }
 
+/// The sign over the map whilst the match is paused (requirement 30): that it
+/// is paused, and who paused it, named as the others know them: "you", a
+/// person's name in a match across the network, or else a civilization.
+public struct PauseSignModel: Hashable, Sendable {
+    public var title = "Paused"
+    /// "Paused by Hyun"; nil where the match is held for a person whose Mac has left.
+    public var byLine: String?
+
+    /// Nil whilst the match runs, or once it is over.
+    public init?(view: PlayerView, names: [PlayerID: String] = [:]) {
+        guard view.isPaused, view.outcome == nil else { return nil }
+        guard let by = view.pausedBy else {
+            byLine = nil
+            return
+        }
+        if by == view.player {
+            byLine = "Paused by you"
+        } else if let name = names[by], !name.isEmpty {
+            byLine = "Paused by \(name)"
+        } else {
+            byLine = "Paused by " + (view.players.first { $0.id == by }?.civilization.name ?? "another player")
+        }
+    }
+}
+
+/// The speed beside the pause button: one step slower or faster among the
+/// speeds the match allows, which the Speed menu also sets.
+public struct SpeedControlModel {
+    public var speed: Double
+    public var speeds: [Double]
+    public var slower: () -> Void
+    public var faster: () -> Void
+
+    public init(speed: Double, speeds: [Double], slower: @escaping () -> Void, faster: @escaping () -> Void) {
+        self.speed = speed; self.speeds = speeds; self.slower = slower; self.faster = faster
+    }
+
+    public var text: String { speed.formatted() + "\u{00D7}" }
+    public var canGoSlower: Bool { speeds.first.map { speed > $0 } ?? false }
+    public var canGoFaster: Bool { speeds.last.map { speed < $0 } ?? false }
+}
+
 /// Victory or defeat, from the outcome and the player's team.
 public struct MatchOverModel: Hashable, Sendable {
     public var isVictory: Bool

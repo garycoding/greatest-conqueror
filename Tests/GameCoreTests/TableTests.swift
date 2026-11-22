@@ -183,7 +183,7 @@ private func fault(_ texts: TableTexts) -> TableError? {
         let back = try JSONDecoder().decode(NetMessage.self, from: JSONEncoder().encode(NetMessage.start(start)))
         guard case .start(let received) = back else { Issue.record("not a start"); return }
         #expect(received.catalogue == tuned && received.catalogue != Catalogue.standard)
-        #expect(NetMessage.protocolVersion == 4)
+        #expect(NetMessage.protocolVersion == 5)
     }
 }
 

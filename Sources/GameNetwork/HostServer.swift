@@ -231,6 +231,18 @@ public final class HostServer {
     /// The person at this Mac changes the speed; everyone is told.
     public func setSpeed(_ speed: Double) { changeSpeed(to: speed, by: hostName) }
 
+    /// The host's new tables (requirements 27 and 29): the match plays by them
+    /// from the next tick, and every Mac in it is sent them. A Mac that joins
+    /// later receives them in the match's start.
+    @discardableResult
+    public func adopt(_ catalogue: Catalogue) -> Bool {
+        guard phase == .playing, let match else { return false }
+        match.adopt(catalogue)
+        let from = match.tick + 1
+        for guest in guests where guest.started { guest.link.send(.tables(catalogue, from: from)) }
+        return true
+    }
+
     /// "Continue with a computer player": a computer player at `difficulty`
     /// plays the seat of a person who is not connected, until they return.
     @discardableResult
@@ -296,7 +308,8 @@ public final class HostServer {
             changeSpeed(to: speed, by: name)
         case .ping(let n):
             guest.link.send(.pong(n))
-        case .welcome, .turnedAway, .lobby, .start, .view, .notice, .pong:
+        // Only the host changes the tables (requirement 29): a joining Mac's are ignored.
+        case .welcome, .turnedAway, .lobby, .start, .view, .notice, .pong, .tables:
             break
         }
     }

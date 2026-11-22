@@ -56,7 +56,14 @@ struct RootView: View {
                 }
             }
         }
+        .settingsGear()
         .onChange(of: game.client?.state) { _, _ in game.clientStateChanged() }
+        .sheet(isPresented: Binding(get: { game.editor != nil }, set: { if !$0 { game.closeTableEditor() } })) {
+            if let editor = game.editor {
+                TableEditorView(editor: editor, onApply: { game.applyTables($0, $1) }, onClose: { game.closeTableEditor() })
+                    .frame(minWidth: 1000, idealWidth: 1240, minHeight: 560, idealHeight: 700)
+            }
+        }
         .alert("Greatest Conqueror", isPresented: Binding(get: { game.problem != nil }, set: { if !$0 { game.problem = nil } })) {
             Button("OK") { game.problem = nil }
         } message: {
@@ -97,8 +104,13 @@ struct MatchScreen: View {
     let game: GameController
 
     var body: some View {
-        GameHUD(session: session, sprites: game.sprites, onMatchOver: { game.endMatch() }) {
-            MapView(session: session, sprites: game.sprites)
+        // Drawn by the match's own tables: the host's on a joining Mac (requirement 29).
+        let sprites = game.sprites(for: session.catalogue)
+        let speed = SpeedControlModel(speed: game.speed, speeds: Match.speeds,
+                                      slower: { game.changeSpeed(by: -1) }, faster: { game.changeSpeed(by: 1) })
+        GameHUD(session: session, sprites: sprites, names: game.isOnNetwork ? game.notices.names : [:], speed: speed,
+                onMatchOver: { game.endMatch() }) {
+            MapView(session: session, sprites: sprites).id(session.tablesRevision)
         } overlay: {
             if game.isOnNetwork {
                 MatchNoticeLayer(notices: game.notices,

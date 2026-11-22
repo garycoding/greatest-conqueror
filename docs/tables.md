@@ -1,6 +1,6 @@
 # The tables
 
-Every figure that requirement 25 names is read from three CSV files when the game starts. Their defaults are in `Sources/GameCore/Tables/`, and the app copies each into `~/Library/Application Support/Greatest Conqueror/` the first time it runs, or whenever one is missing there; File > Show the tables in Finder opens that folder. The game reads the folder's files at every start. A file that is missing, cannot be read or holds a fault leaves all three defaults in use, and the fault is shown once, as the app opens, with its file, line and column.
+Every figure that requirement 25 names is read from four CSV files, the tables, when the game starts. Their defaults are in `Sources/GameCore/Tables/`, and the app copies each into `~/Library/Application Support/Greatest Conqueror/` the first time it runs, or whenever one is missing there; File > Show the tables in Finder opens that folder. The game reads the folder's files at every start. A file that is missing, cannot be read or holds a fault leaves every default in use, and the fault is shown once, as the app opens, with its file, line and column.
 
 Each file begins with a header row naming its columns; the columns may come in any order, and each must be present once. A cell may be quoted with double quotes, a doubled quote standing for one. Kinds and ages are named as in the code: `worker`, `doctor`, `fishingBoat`, `soldier1` to `soldier4`, `knight1` to `knight3`, `cannon1` and `cannon2`, `navyShip`, `car`, `founder`; `townCentre`, `house`, `farm`, `boatHouse`, `barracks`, `tower`, `stable`, `castle`, `cannonFactory`, `hospital`; `towns`, `farms`, `ships`, `cannons`, `hospitals`. An empty cost cell is 0.
 
@@ -32,10 +32,31 @@ One row for each maker and each unit it makes: `maker`, `unit`, the `age` from w
 
 One row for each advance: `from` and `to` (the next age), its cost in `food`, `wood` and `gold`, and its duration in `seconds` at a town centre.
 
+## resources.csv
+
+Ruled 2026-11-22. One row for each figure of the resources, with the columns `name` and `value`; every row is required, each value a whole number of at least 0.
+
+| Name | Meaning | Default |
+|---|---|---|
+| `tree_holds`, `deer_holds`, `gold_holds`, `fish_holds`, `bush_holds` | What one site of the kind holds when the map is made, in its resource: wood, food, gold, food, food. | 100, 150, 400, 200, 150 |
+| `farm_yield` | The food a farm yields before it runs dry and must be reseeded. | 300 |
+| `farm_reseed_wood` | The wood reseeding a farm costs. | 60 |
+| `start_food`, `start_wood`, `start_gold` | The stock each player begins a match with. | 200, 250, 0 |
+
+## During play
+
+The settings (the gear in the window's title bar, or Command-comma) hold the tables (requirements 27 and 28):
+
+- **Edit the tables…** opens the editor, during play only: each file as a grid, its columns named as above, one file shown at a time. Opening it pauses the match, unless it was paused already, and closing it resumes it. Every edit is read again by the reader the game uses at start-up, and the first fault is shown with its file, line and column, its cell outlined; until it is corrected nothing can be applied. Apply saves every file to the folder and puts the new tables into the match from the next tick; each unit and building whose kind's maximum health has changed is set to the new maximum (ruled 2026-11-22). New matches on this Mac are played by them too.
+- **Save the tables as a zip…** writes every file of the tables into one zip file, wherever the player chooses.
+- **Load tables from a zip…** reads such a file, the files at its top or in one folder inside it, with the same reader. Before a match it replaces the folder's files, and the next match is played by them; in a match it acts as an Apply from the editor.
+
+In a match across the network only the host may open the editor or load a zip (requirement 29). The host's new tables go to every Mac in the match (`NetMessage.tables`), which plays and draws by them, and the match's checksum counts them from the tick they take effect.
+
 ## What the code still holds
 
-The figures requirement 25 does not name stay in `CatalogueShape` (`Sources/GameCore/CatalogueShape.swift`): each kind's speed, sight, armour, population places and footprint, a building's housing, the radius of a cannon's shot, the damage bonuses between kinds, what each kind of site holds (a fruit bush 150 food, ruled 2026-11-22), a farm's yield and the cost of reseeding it, the start of a match, the workers who come with a founder's town centre (two), the troops a navy ship carries (twenty), the population maximum, and the car.
+The figures requirement 25 does not name stay in `CatalogueShape` (`Sources/GameCore/CatalogueShape.swift`): each kind's speed, sight, armour, population places and footprint, a building's housing, the radius of a cannon's shot, the damage bonuses between kinds, the workers a match begins with (three), the workers who come with a founder's town centre (two), the troops a navy ship carries (twenty), the population maximum, and the car.
 
 ## In a match
 
-The tables are part of the match: the host's travel to every joining Mac in the message that starts the match (`MatchStart.catalogue`), a saved match keeps the tables it was played with, and the match's checksum counts every figure of them.
+The tables are part of the match: the host's travel to every joining Mac in the message that starts the match (`MatchStart.catalogue`), and those the host applies during play in `NetMessage.tables`; a saved match keeps the tables it was played with, and the match's checksum counts every figure of them.

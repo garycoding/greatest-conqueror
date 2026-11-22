@@ -38,6 +38,9 @@ final class Match: HostedMatch {
     weak var server: HostServer?
     /// The lobby the hosted match began from, kept in its saves so that it can be hosted again.
     var lobby: Lobby?
+    /// The texts of the tables the match plays by, for the editor; nil for a
+    /// match saved before the editor existed.
+    var tables: TableTexts?
 
     /// At most this many frames' worth of ticks are run at once, so that a stall
     /// (the Mac asleep, a window being dragged) does not make the match race.
@@ -131,6 +134,11 @@ final class Match: HostedMatch {
     func drop(_ player: PlayerID) { host.drop(player) }
     func rejoin(_ player: PlayerID) { host.rejoin(player) }
     func handToComputer(_ player: PlayerID, difficulty: Difficulty) { host.handToComputer(player, difficulty: difficulty) }
+    func adopt(_ catalogue: Catalogue) {
+        host.adopt(catalogue)
+        session.catalogue = catalogue
+    }
+    var tick: Int { host.tick }
     func takeBack(_ player: PlayerID) { host.takeBack(player) }
     func isComputer(_ player: PlayerID) -> Bool { host.isComputer(player) }
 
@@ -145,9 +153,19 @@ final class Match: HostedMatch {
         var name: String?
         /// The lobby a match hosted across the LAN began from; absent for a match on one Mac.
         var lobby: Lobby?
+        /// The texts of the tables played by; absent in saves made before the editor existed.
+        var tables: TableTexts?
     }
 
-    var saved: Saved { Saved(host: host, player: player, camera: session.camera, speed: speed, name: name, lobby: lobby) }
+    var saved: Saved {
+        Saved(host: host, player: player, camera: session.camera, speed: speed, name: name, lobby: lobby, tables: tables)
+    }
+
+    /// Whether the match is paused, by a person or for one who dropped out.
+    var isPaused: Bool { host.isPaused }
+
+    /// The person's order, as a button of the app gives it.
+    func give(_ order: Order) { issue(order) }
 }
 
 /// The app's state: the screen shown, the match in play, if any, and the
@@ -170,8 +188,20 @@ final class GameController {
     /// The player's folder of tables, and the catalogue read from it at the start
     /// (requirements 25 and 26), by which every new match on this Mac is played.
     let tableFolder = TableFolder()
-    let catalogue: Catalogue
-    let sprites: GameSprites
+    /// The tables every new match on this Mac is played by: those read at the
+    /// start, or those last applied or loaded from a zip.
+    private(set) var catalogue: Catalogue
+    /// The texts of `catalogue`, for the editor and the zip.
+    private(set) var tableTexts: TableTexts
+    /// The artwork for this Mac's own tables.
+    private(set) var sprites: GameSprites
+    /// The artwork for another catalogue: a joining Mac's is made from the
+    /// host's tables (requirement 29), and a match's anew when its tables change.
+    @ObservationIgnored private var otherSprites: (catalogue: Catalogue, sprites: GameSprites)?
+    /// The table editor, whilst it is open (requirement 27).
+    private(set) var editor: TableEditor?
+    /// Whether opening the editor paused the match, so that closing it resumes it.
+    @ObservationIgnored private var editorPaused = false
     var problem: String?
     let autosaves = Autosaves()
     /// The automatic saves, newest first, for the File menu.
@@ -194,6 +224,7 @@ final class GameController {
         recentAutosaves = autosaves.entries()
         let tables = tableFolder.load()
         catalogue = tables.catalogue
+        tableTexts = tables.texts
         sprites = GameSprites(catalogue: tables.catalogue)
         // A fault in the tables is told once, as the app opens.
         problem = tables.problem
@@ -271,11 +302,14 @@ final class GameController {
         let setup = choice.setup(map: map, seed: seed, catalogue: catalogue)
         guard let person = setup.players.first(where: { $0.controller == .human }) else { return }
         let new = Match(host: Host(setup: setup), player: person.id, name: Self.newName())
+        new.tables = tableTexts
         new.speed = speed
         begin(new)
     }
 
     private func begin(_ new: Match) {
+        editor = nil
+        editorPaused = false
         match?.stop()
         new.autosave = { [weak self] match in self?.write(automatic: match) }
         match = new
@@ -293,6 +327,8 @@ final class GameController {
         }
         guard mayLeaveMatch(to: "start a new match") else { return }
         autosaveNow()
+        editor = nil
+        editorPaused = false
         match?.stop()
         match = nil
         closeNetwork()
@@ -377,12 +413,14 @@ final class GameController {
         let new: Match
         if let saved = resuming {
             new = Match(host: saved.host, player: saved.player, camera: saved.camera, name: saved.name ?? lobby.name)
+            new.tables = saved.tables
         } else {
             let seed = UInt64.random(in: 1...UInt64.max)
             let map = MapGenerator().generate(MapRequest(size: lobby.size, playerCount: lobby.seats.count, seed: seed,
                                                          catalogue: catalogue))
             guard let setup = lobby.setup(map: map, seed: seed, catalogue: catalogue) else { return }
             new = Match(host: Host(setup: setup), player: seat, name: lobby.name)
+            new.tables = tableTexts
         }
         new.server = server
         new.lobby = resuming?.lobby ?? lobby
@@ -562,8 +600,122 @@ final class GameController {
             return
         }
         let opened = Match(host: saved.host, player: saved.player, camera: saved.camera, name: name)
+        opened.tables = saved.tables
         opened.speed = saved.speed ?? 1
         localSpeed = opened.speed
         begin(opened)
+    }
+}
+
+// MARK: The tables during play
+
+extension GameController {
+    /// The artwork to draw a match by: made from the match's own tables, the
+    /// host's on a joining Mac (requirement 29).
+    func sprites(for catalogue: Catalogue) -> GameSprites {
+        if catalogue == self.catalogue { return sprites }
+        if let other = otherSprites, other.catalogue == catalogue { return other.sprites }
+        let made = GameSprites(catalogue: catalogue)
+        otherSprites = (catalogue, made)
+        return made
+    }
+
+    /// What the settings offer for the tables now.
+    var tableSettings: TableSettingsModel {
+        if match != nil { return TableSettingsModel(place: .hosting) }
+        if client?.session != nil { return TableSettingsModel(place: .joined) }
+        return TableSettingsModel(place: .noMatch)
+    }
+
+    /// Opens the editor on the match's tables and pauses the match, unless it
+    /// was paused already (requirement 27). Only the host may: a joining Mac
+    /// has no match of its own to edit (requirement 29).
+    func openTableEditor() {
+        guard editor == nil, let match, !match.isOver else { return }
+        let texts = match.tables ?? tableTexts
+        do {
+            editor = try TableEditor(texts: texts)
+        } catch {
+            problem = "The tables could not be opened: \(error)"
+            return
+        }
+        editorPaused = !match.isPaused
+        if editorPaused { match.give(.setPaused(true)) }
+    }
+
+    /// Closes the editor; the match resumes if opening the editor paused it.
+    func closeTableEditor() {
+        guard editor != nil else { return }
+        editor = nil
+        if editorPaused, let match, match.isPaused { match.give(.setPaused(false)) }
+        editorPaused = false
+    }
+
+    /// The editor's Apply, or a zip loaded during play: the three files are
+    /// saved to the folder, and the match plays by the new tables from the
+    /// next tick, on every Mac in it when hosted across the network.
+    func applyTables(_ texts: TableTexts, _ catalogue: Catalogue) {
+        do {
+            try tableFolder.write(texts)
+        } catch {
+            problem = "The tables could not be saved to \(tableFolder.folder.path): \(error.localizedDescription)"
+            return
+        }
+        useForNewMatches(texts, catalogue)
+        guard let match else { return }
+        match.tables = texts
+        if let server { server.adopt(catalogue) } else { match.adopt(catalogue) }
+    }
+
+    private func useForNewMatches(_ texts: TableTexts, _ catalogue: Catalogue) {
+        tableTexts = texts
+        self.catalogue = catalogue
+        sprites = GameSprites(catalogue: catalogue)
+        otherSprites = nil
+    }
+
+    /// "Save the tables as a zip…": the tables in use (a match's, during
+    /// one), wherever the person chooses (requirement 28).
+    func saveTablesAsZip() {
+        let texts = match?.tables ?? tableTexts
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Greatest Conqueror tables.zip"
+        panel.allowedContentTypes = [.zip]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try TableZip.write(texts, to: url)
+        } catch {
+            problem = "The tables could not be saved as a zip: \(error)"
+        }
+    }
+
+    /// "Load tables from a zip…": read with the reader used at the start; in
+    /// place of the folder's files, and in a match as an Apply from the editor,
+    /// for the host alone (requirement 28).
+    func loadTablesFromZip() {
+        if let why = tableSettings.loadUnavailable { problem = why; return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.zip]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let texts: TableTexts, catalogue: Catalogue
+        do {
+            texts = try TableZip.read(from: url)
+            catalogue = try Catalogue(tables: texts)
+        } catch {
+            problem = "The tables in \(url.lastPathComponent) were not loaded: \(error)."
+            return
+        }
+        if match != nil {
+            applyTables(texts, catalogue)
+            return
+        }
+        do {
+            try tableFolder.write(texts)
+        } catch {
+            problem = "The tables could not be saved to \(tableFolder.folder.path): \(error.localizedDescription)"
+            return
+        }
+        useForNewMatches(texts, catalogue)
     }
 }

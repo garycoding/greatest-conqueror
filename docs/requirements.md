@@ -89,13 +89,14 @@ These come from the person for whom the game is made and are settled (2026-11-21
 
 ### Tables
 
-25. Every number that governs the play is held in three CSV files, which the game reads when it starts:
+25. Every number that governs the play is held in four CSV files, the tables, which the game reads when it starts (the fourth, `resources.csv`, ruled 2026-11-22):
     - `stats.csv`, one row for each unit kind and building kind (each tier, and each age's upgrade of towers, castles and navy ships, a row of its own): the cost in food, wood and gold; the maximum health; the damage per hit, the hits a second and the range of an attacker; the man-seconds to build a building; and the rates a second of gathering, healing and repairing, with the radius within which idle workers repair and idle doctors heal.
     - `production.csv`, one row for each maker and unit it makes: the age from which it makes that unit, and the seconds each one takes.
     - `ages.csv`, one row for each advance: its cost in food, wood and gold and its duration in seconds.
-26. The files live in a folder the player can open (Application Support/Greatest Conqueror). The game seeds the folder from its built-in defaults the first time it runs.
-27. During play, the settings offer an editor of the three tables. Opening it pauses the game; what is changed there is saved to the files and takes effect in the match.
-28. The settings can save all the CSV files together as one zip file, anywhere on the disk, and can load any such zip file in their place.
+    - `resources.csv`, one row for each figure of the resources: what one site of each kind holds, what a farm yields before it must be reseeded and the wood reseeding costs, and the food, wood and gold each player begins with.
+26. The tables live in a folder the player can open (Application Support/Greatest Conqueror). The game seeds the folder from its built-in defaults the first time it runs.
+27. During play, the settings offer an editor of the tables. Opening it pauses the game; what is changed there is saved to the files and takes effect in the match.
+28. The settings can save the tables together as one zip file, anywhere on the disk, and can load any such zip file in their place.
 29. In a match across the network, the host's tables are sent to every Mac that joins, and only the host may open the table editor during the match.
 
 ### Play

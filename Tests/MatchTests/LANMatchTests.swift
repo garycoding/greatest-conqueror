@@ -29,6 +29,8 @@ private final class HostedRealMatch: HostedMatch {
     func drop(_ player: PlayerID) { host.drop(player) }
     func rejoin(_ player: PlayerID) { host.rejoin(player) }
     func handToComputer(_ player: PlayerID, difficulty: Difficulty) { host.handToComputer(player, difficulty: difficulty) }
+    func adopt(_ catalogue: Catalogue) { host.adopt(catalogue) }
+    var tick: Int { host.tick }
 }
 
 /// A person's seat played by a computer player that decides from the views the

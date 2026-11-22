@@ -45,6 +45,10 @@ The rules a reader could take two ways are settled in the documentation of `Orde
 
 The simulation advances in ticks, `Tick.rate` (20) a second. Every duration in the catalogue is in ticks. The match is held by `MatchHost` (in `GameNetwork`), which the app and the match tests both drive: each tick it gives each computer player its own view four times a second, spread across the ticks, applies the orders, and steps the simulation. The app advances it 20 ticks a second from a timer, times the speed chosen in the Speed menu (1× to 4×, requirement 29), running at most five ticks in one frame after a stall, and hands the person's session a fresh view each frame. `MatchHost` is `Codable`, so a saved match holds the computer players as well as the simulation (requirement 23).
 
+The pause (requirement 30) is the simulation's `isPaused`, with `pausedBy`, the person who paused, in every view; `setPaused` is the one order taken whilst paused, from any person in the match, and the sign over the map names who paused it. The speed control beside the pause button and the Speed menu set the clock's speed.
+
+New tables during play (requirement 27) enter through `GameSimulating.adopt`, between two ticks: the match plays by them from the next tick, and its checksum counts them from then. The host's editor applies them through `HostServer.adopt`, which sends them to every Mac in the match as `NetMessage.tables`; a joining Mac's session plays by them, and the app makes the Mac's sprite source from the match's tables, the host's, not its own.
+
 ## Determinism
 
 The same setup and the same orders at the same ticks give the same result, in any process. Saving and resuming depend on it, and so do the tests that play whole matches.

@@ -24,13 +24,16 @@ import GameCore
 public struct Simulation: GameSimulating {
     // MARK: The state, encoded and covered by the checksum
 
-    let catalogue: Catalogue
+    /// The tables played by; the host's editor may replace them during play (`adopt`).
+    internal(set) var catalogue: Catalogue
     let width: Int
     let height: Int
     let terrain: [Terrain]
     public internal(set) var tick = 0
     public internal(set) var outcome: MatchOutcome?
     public var isPaused = false
+    /// The person who paused the match, whilst it is paused by one (requirement 30).
+    public internal(set) var pausedBy: PlayerID?
     /// What the people see of the map; nil is `.explore` (`MapSight`).
     public internal(set) var sight: MapSight?
     /// In player order; `players[i].id == PlayerID(i)`.
@@ -124,7 +127,7 @@ public struct Simulation: GameSimulating {
 
     enum CodingKeys: String, CodingKey {
         case catalogue, width, height, terrain, tick, outcome, isPaused, players, teams, entities, sites, nextEntity, generator
-        case sight
+        case sight, pausedBy
     }
 
     public init(from decoder: any Decoder) throws {
@@ -136,6 +139,7 @@ public struct Simulation: GameSimulating {
         tick = try c.decode(Int.self, forKey: .tick)
         outcome = try c.decodeIfPresent(MatchOutcome.self, forKey: .outcome)
         isPaused = try c.decode(Bool.self, forKey: .isPaused)
+        pausedBy = try c.decodeIfPresent(PlayerID.self, forKey: .pausedBy)
         sight = try c.decodeIfPresent(MapSight.self, forKey: .sight)
         players = try c.decode([PlayerState].self, forKey: .players)
         teams = try c.decode([TeamState].self, forKey: .teams)

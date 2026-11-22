@@ -3,46 +3,91 @@
 
 import Foundation
 
-// The catalogue built from the three tables (docs/requirements.md, requirement
-// 25): `stats.csv`, `production.csv` and `ages.csv`. The defaults are the
+// The catalogue built from the tables (docs/requirements.md, requirement 25):
+// `stats.csv`, `production.csv`, `ages.csv` and `resources.csv` (the fourth
+// ruled 2026-11-22). The defaults are the
 // package's own copies of the files (`Tables/` in this module), which the app
 // copies into the player's folder the first time it runs.
 
-/// The three files of the tables.
+/// The files of the tables (requirement 25), in the order in which they are
+/// shown and written.
 public enum TableFile: String, CaseIterable, Hashable, Sendable {
     case stats = "stats.csv"
     case production = "production.csv"
     case ages = "ages.csv"
+    /// What the sites hold, the farm, and the stock a match begins with (ruled 2026-11-22).
+    case resources = "resources.csv"
 
     public var name: String { rawValue }
 }
 
-/// The text of the three tables, by file.
-public struct TableTexts: Hashable, Sendable {
-    public var stats: String
-    public var production: String
-    public var ages: String
+/// The figures of `resources.csv`, one row each, in the order of the defaults.
+public enum ResourceFigure: String, CaseIterable, Hashable, Sendable {
+    case treeHolds = "tree_holds"
+    case deerHolds = "deer_holds"
+    case goldHolds = "gold_holds"
+    case fishHolds = "fish_holds"
+    case bushHolds = "bush_holds"
+    case farmYield = "farm_yield"
+    case farmReseedWood = "farm_reseed_wood"
+    case startFood = "start_food"
+    case startWood = "start_wood"
+    case startGold = "start_gold"
 
-    public init(stats: String, production: String, ages: String) {
-        self.stats = stats; self.production = production; self.ages = ages
+    /// The figure that says what one site of a kind holds, in its resource.
+    public static func holds(_ kind: SiteKind) -> ResourceFigure {
+        switch kind {
+        case .tree: .treeHolds
+        case .prey: .deerHolds
+        case .gold: .goldHolds
+        case .fish: .fishHolds
+        case .fruit: .bushHolds
+        }
+    }
+
+    /// The figure of the stock a match begins with, of a resource.
+    public static func start(_ resource: Resource) -> ResourceFigure {
+        switch resource {
+        case .food: .startFood
+        case .wood: .startWood
+        case .gold: .startGold
+        }
+    }
+}
+
+/// The text of each table, by file. The files are a list (`TableFile.allCases`),
+/// not a fixed three, so that the editor, the zip and the folder take a new
+/// file without change.
+public struct TableTexts: Hashable, Codable, Sendable {
+    /// In the order of `TableFile.allCases`; an array, not a dictionary, so
+    /// that it encodes the same in every process.
+    private var texts: [String]
+
+    /// Every file's text; a file left out is empty.
+    public init(_ texts: [TableFile: String]) {
+        self.texts = TableFile.allCases.map { texts[$0] ?? "" }
+    }
+
+    public init(stats: String, production: String, ages: String, resources: String = TableTexts.defaults.resources) {
+        self.init([.stats: stats, .production: production, .ages: ages, .resources: resources])
     }
 
     public subscript(file: TableFile) -> String {
         get {
-            switch file {
-            case .stats: stats
-            case .production: production
-            case .ages: ages
-            }
+            let i = TableFile.allCases.firstIndex(of: file)!
+            return i < texts.count ? texts[i] : ""
         }
         set {
-            switch file {
-            case .stats: stats = newValue
-            case .production: production = newValue
-            case .ages: ages = newValue
-            }
+            let i = TableFile.allCases.firstIndex(of: file)!
+            while texts.count <= i { texts.append("") }
+            texts[i] = newValue
         }
     }
+
+    public var stats: String { get { self[.stats] } set { self[.stats] = newValue } }
+    public var production: String { get { self[.production] } set { self[.production] = newValue } }
+    public var ages: String { get { self[.ages] } set { self[.ages] = newValue } }
+    public var resources: String { get { self[.resources] } set { self[.resources] = newValue } }
 
     /// The defaults, as the package holds them.
     public static let defaults: TableTexts = {
@@ -53,7 +98,7 @@ public struct TableTexts: Hashable, Sendable {
             }
             return text
         }
-        return TableTexts(stats: read(.stats), production: read(.production), ages: read(.ages))
+        return TableTexts(Dictionary(uniqueKeysWithValues: TableFile.allCases.map { ($0, read($0)) }))
     }()
 }
 
@@ -65,7 +110,8 @@ extension Catalogue {
         let stats = try CSVTable(file: TableFile.stats.name, text: tables.stats)
         let production = try CSVTable(file: TableFile.production.name, text: tables.production)
         let ages = try CSVTable(file: TableFile.ages.name, text: tables.ages)
-        self = try TableReader.catalogue(stats: stats, production: production, ages: ages)
+        let resources = try CSVTable(file: TableFile.resources.name, text: tables.resources)
+        self = try TableReader.catalogue(stats: stats, production: production, ages: ages, resources: resources)
     }
 }
 
@@ -77,6 +123,7 @@ public enum TableColumns {
                                "heal_per_second", "repair_per_second", "radius"]
     public static let production = ["maker", "unit", "age", "seconds"]
     public static let ages = ["from", "to", "food", "wood", "gold", "seconds"]
+    public static let resources = ["name", "value"]
 }
 
 /// Reads the cells of a table by column name, with errors that name the cell.
@@ -175,7 +222,7 @@ extension BuildingKind {
 }
 
 enum TableReader {
-    static func catalogue(stats: CSVTable, production: CSVTable, ages: CSVTable) throws -> Catalogue {
+    static func catalogue(stats: CSVTable, production: CSVTable, ages: CSVTable, resources: CSVTable) throws -> Catalogue {
         let shape = CatalogueShape.standard
         let s = try CellReader(stats, columns: TableColumns.stats)
         var units: [UnitKind: UnitStats] = [:], buildings: [BuildingKind: BuildingStats] = [:]
@@ -324,9 +371,32 @@ enum TableReader {
         }
         advances.sort { $0.from < $1.from }
 
+        // What the sites hold, the farm and the stock at the start: every figure
+        // a row, a whole number of at least 0 (ruled 2026-11-22).
+        let r = try CellReader(resources, columns: TableColumns.resources)
+        var figures: [ResourceFigure: Int] = [:]
+        for row in resources.rows {
+            let name = r.text(row, "name")
+            guard let figure = ResourceFigure(rawValue: name) else {
+                throw r.fault(row, "name", "\"\(name)\" is not a figure of this table (\(ResourceFigure.allCases.map(\.rawValue).joined(separator: ", ")))")
+            }
+            guard figures[figure] == nil else { throw r.fault(row, "name", "\(name) has a row already") }
+            figures[figure] = try r.count(row, "value")
+        }
+        for figure in ResourceFigure.allCases where figures[figure] == nil {
+            throw TableError(file: resources.file, line: resources.rows.last.map { $0.line + 1 } ?? 2, column: 0,
+                             message: "the figure \(figure.rawValue) has no row")
+        }
+        let gathering = GatheringStats(farmYield: figures[.farmYield]!,
+                                       farmReseed: ResourceAmounts([.wood: figures[.farmReseedWood]!]),
+                                       siteAmount: Dictionary(uniqueKeysWithValues: SiteKind.allCases.map {
+                                           ($0, figures[ResourceFigure.holds($0)]!)
+                                       }))
+        let start = ResourceAmounts(Dictionary(uniqueKeysWithValues: Resource.allCases.map { ($0, figures[ResourceFigure.start($0)]!) }))
+
         return Catalogue(units: UnitKind.allCases.map { units[$0]! }, buildings: BuildingKind.allCases.map { buildings[$0]! },
-                         production: made, advances: advances, gathering: shape.gathering, bonuses: shape.bonuses,
-                         startingResources: shape.startingResources, startingPeople: shape.startingPeople,
+                         production: made, advances: advances, gathering: gathering, bonuses: shape.bonuses,
+                         startingResources: start, startingPeople: shape.startingPeople,
                          founderPeople: shape.founderPeople, shipCargo: shape.shipCargo, populationMaximum: shape.populationMaximum, car: shape.car)
     }
 }

@@ -76,7 +76,7 @@ extension Simulation {
                               populationLimit: 0, ageProgress: 0, players: summaries(),
                               mapWidth: width, mapHeight: height, terrain: terrain,
                               visibility: Array(repeating: .unexplored, count: width * height), entities: [], sites: [],
-                              events: [], outcome: outcome, isPaused: isPaused)
+                              events: [], outcome: outcome, isPaused: isPaused, pausedBy: pausedBy)
         }
         let me = players[p]
         let team = me.teamIndex
@@ -110,7 +110,7 @@ extension Simulation {
                               populationLimit: populationLimit(p), ageProgress: progress,
                               players: summaries(), mapWidth: width, mapHeight: height, terrain: terrain,
                               visibility: visibility, entities: shown, sites: shownSites, events: events,
-                              outcome: outcome, isPaused: isPaused)
+                              outcome: outcome, isPaused: isPaused, pausedBy: pausedBy)
     }
 
     func summaries() -> [PlayerSummary] {

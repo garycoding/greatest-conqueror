@@ -33,7 +33,9 @@ import GameCore
 // 5. The host's own person gives orders through `server.issue(_:)` (the
 //    session's sink) and changes the speed with `server.setSpeed(_:)`, so that
 //    a pause or a change of speed is told to everyone. The server sets
-//    `match.speed` whenever anyone changes it.
+//    `match.speed` whenever anyone changes it. New tables from the host's
+//    editor go through `server.adopt(_:)`, which puts them into the match and
+//    sends them to every Mac in it (`NetMessage.tables`).
 // 6. `server.notices` (observable) and `server.onNotice` give every notice,
 //    those about the host's own person included; `server.dropped` lists the
 //    seats of people whose Macs have left; `server.handToComputer(_:difficulty:)`
@@ -52,7 +54,9 @@ import GameCore
 //    arrives updates it at once, so the app's frame has nothing to call on the
 //    client: it draws the session as it does on the host.
 // 4. `client.setSpeed(_:)` changes the speed for everyone; `client.speed`,
-//    `client.notices` and `client.onNotice` follow the host.
+//    `client.notices` and `client.onNotice` follow the host, and so does
+//    `client.catalogue`, the host's tables, which the session plays by and from
+//    which the app makes the Mac's sprite source.
 // 5. If the connection drops, the client reconnects to the same host by
 //    itself, a few times over about a minute, and the host gives back the
 //    seat held under the same name. `client.state` is `.reconnecting` meanwhile,
@@ -83,6 +87,10 @@ public protocol HostedMatch: AnyObject {
     func rejoin(_ player: PlayerID)
     /// `MatchHost.handToComputer(_:difficulty:)`.
     func handToComputer(_ player: PlayerID, difficulty: Difficulty)
+    /// `MatchHost.adopt(_:)`: the host's new tables, from the next tick.
+    func adopt(_ catalogue: Catalogue)
+    /// `MatchHost.tick`.
+    var tick: Int { get }
     /// The match has an outcome; a person who leaves then is not waited for.
     var isOver: Bool { get }
 }

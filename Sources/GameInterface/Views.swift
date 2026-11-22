@@ -290,6 +290,52 @@ public struct PauseButton: View {
     }
 }
 
+/// The sign over the map whilst the match is paused, and who paused it.
+struct PauseSign: View {
+    let model: PauseSignModel
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(model.title).font(Typeface.text(34, bold: true))
+            if let by = model.byLine { Text(by).font(Typeface.text(15)) }
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 28).padding(.vertical, 10)
+        .cartoonBox(fill: Palette.paper.opacity(0.92), radius: 10, lineWidth: 1.8)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The match's speed, one step slower or faster, beside the pause button.
+public struct SpeedControl: View {
+    let model: SpeedControlModel
+
+    public init(model: SpeedControlModel) { self.model = model }
+
+    public var body: some View {
+        HStack(spacing: 4) {
+            step("\u{2212}", enabled: model.canGoSlower, help: "Slower (\u{2212})", action: model.slower)
+            Text(model.text).font(Typeface.text(13, bold: true)).monospacedDigit().frame(minWidth: 34)
+                .help("The match's speed; the Speed menu sets it too")
+            step("+", enabled: model.canGoFaster, help: "Faster (=)", action: model.faster)
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 6).frame(height: 34)
+        .cartoonBox(fill: Palette.paper, radius: 17, lineWidth: 1.3)
+    }
+
+    private func step(_ title: String, enabled: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Button { if enabled { action() } } label: {
+            Text(title).font(Typeface.text(15, bold: true)).frame(width: 22, height: 22)
+                .foregroundStyle(enabled ? Palette.ink : Palette.inkSoft)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
 struct PauseSymbol: View {
     let paused: Bool
 
@@ -392,16 +438,23 @@ public struct GameHUD<MapSlot: View, Overlay: View>: View {
     let overlay: Overlay
     let sprites: any SpriteSource
     let onClose: (() -> Void)?
+    /// The people's names by seat, for the pause sign, in a match across the network.
+    var names: [PlayerID: String]
+    /// The speed beside the pause button, where the app gives one.
+    var speed: SpeedControlModel?
 
-    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(),
+    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(), names: [PlayerID: String] = [:],
+                speed: SpeedControlModel? = nil,
                 onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot, @ViewBuilder overlay: () -> Overlay) {
-        self.session = session; self.sprites = sprites; self.onClose = onMatchOver; self.map = map(); self.overlay = overlay()
+        self.session = session; self.sprites = sprites; self.names = names; self.speed = speed
+        self.onClose = onMatchOver; self.map = map(); self.overlay = overlay()
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 ResourceBar(session: session)
+                if let speed { SpeedControl(model: speed) }
                 PauseButton(session: session).padding(.trailing, 8)
             }
             .background(Palette.paper)
@@ -411,10 +464,8 @@ public struct GameHUD<MapSlot: View, Overlay: View>: View {
                     RefusalBanner(session: session).padding(.top, 14)
                     Spacer()
                 }
-                if session.view.isPaused && session.view.outcome == nil {
-                    Text("Paused").font(Typeface.text(34, bold: true)).foregroundStyle(Palette.ink)
-                        .padding(.horizontal, 28).padding(.vertical, 10)
-                        .cartoonBox(fill: Palette.paper.opacity(0.92), radius: 10, lineWidth: 1.8)
+                if let sign = PauseSignModel(view: session.view, names: names) {
+                    PauseSign(model: sign)
                 }
                 overlay
                 if session.view.outcome != nil {
@@ -446,8 +497,9 @@ public struct GameHUD<MapSlot: View, Overlay: View>: View {
 }
 
 extension GameHUD where Overlay == EmptyView {
-    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(),
-                onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot) {
-        self.init(session: session, sprites: sprites, onMatchOver: onMatchOver, map: map, overlay: { EmptyView() })
+    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(), names: [PlayerID: String] = [:],
+                speed: SpeedControlModel? = nil, onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot) {
+        self.init(session: session, sprites: sprites, names: names, speed: speed, onMatchOver: onMatchOver, map: map,
+                  overlay: { EmptyView() })
     }
 }

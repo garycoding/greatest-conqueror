@@ -28,10 +28,13 @@ struct StubSimulation: GameSimulating {
     private(set) var tick = 0
     var outcome: MatchOutcome?
     var isPaused = false
+    private(set) var pausedBy: PlayerID?
     let map: GameMap
     let players: [PlayerSetup]
     let people: Int
     let resources: ResourceAmounts
+    /// The tables played by, which the host's editor may replace (`adopt`).
+    private(set) var catalogue: Catalogue
     /// The orders each player gave that were accepted, by player number.
     private(set) var orders: [[Order]]
     private var events: [[GameEvent]]
@@ -42,6 +45,7 @@ struct StubSimulation: GameSimulating {
         players = setup.players
         people = setup.catalogue.startingPeople
         resources = setup.catalogue.startingResources
+        catalogue = setup.catalogue
         orders = Array(repeating: [], count: setup.players.count)
         events = Array(repeating: [], count: setup.players.count)
         marks = setup.players.indices.map { MapPosition(x: 2.5 + 3 * Double($0), y: 2.5) }
@@ -56,6 +60,7 @@ struct StubSimulation: GameSimulating {
         switch order {
         case .setPaused(let paused):
             isPaused = paused
+            pausedBy = paused ? player : nil
             result = .accepted
         case _ where isPaused || outcome != nil:
             result = .refused(.notNow)
@@ -73,6 +78,8 @@ struct StubSimulation: GameSimulating {
         }
         return result
     }
+
+    mutating func adopt(_ catalogue: Catalogue) { self.catalogue = catalogue }
 
     mutating func step() {
         guard !isPaused, outcome == nil else { return }
@@ -105,12 +112,12 @@ struct StubSimulation: GameSimulating {
                           populationLimit: 5, ageProgress: 0.25, players: summaries,
                           mapWidth: map.width, mapHeight: map.height, terrain: map.terrain,
                           visibility: Array(repeating: .visible, count: map.width * map.height), entities: entities,
-                          sites: map.sites, events: taken, outcome: outcome, isPaused: isPaused)
+                          sites: map.sites, events: taken, outcome: outcome, isPaused: isPaused, pausedBy: pausedBy)
     }
 
     func checksum() -> UInt64 {
         var sum = StableChecksum()
-        sum.add("\(tick) \(isPaused) \(orders.map(\.count))")
+        sum.add("\(tick) \(isPaused) \(orders.map(\.count)) \(catalogue.units.map(\.health)) \(catalogue.units.map(\.cost))")
         return sum.value
     }
 }
@@ -146,6 +153,8 @@ final class StubMatch: HostedMatch {
     func drop(_ player: PlayerID) { host.drop(player) }
     func rejoin(_ player: PlayerID) { host.rejoin(player) }
     func handToComputer(_ player: PlayerID, difficulty: Difficulty) { host.handToComputer(player, difficulty: difficulty) }
+    func adopt(_ catalogue: Catalogue) { host.adopt(catalogue) }
+    var tick: Int { host.tick }
 }
 
 /// The match of the tests: the host's seat (Gary), two seats open for people,

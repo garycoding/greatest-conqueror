@@ -133,7 +133,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 4
+    public static let protocolVersion = 5
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`
@@ -162,6 +162,10 @@ public enum NetMessage: Hashable, Codable, Sendable {
     case view(PlayerView)
     case notice(Notice)
     case pong(UInt64)
+    /// The host's new tables, from its editor (requirements 27 and 29), by
+    /// which the match plays from tick `from`. Only the host sends them; a
+    /// host ignores any a joining Mac sends.
+    case tables(Catalogue, from: Int)
 }
 
 extension PlayerView {
