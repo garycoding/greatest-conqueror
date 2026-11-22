@@ -363,6 +363,12 @@ enum Placeholders {
                             CGPoint(x: gx + 20, y: gy + 24), CGPoint(x: gx + 15, y: gy + 14)], fill: hide)
                 line(c, CGPoint(x: gx + 17, y: gy + 26), CGPoint(x: gx + 15, y: gy + 33), colour(0.4, 0.28, 0.15), width: 1.5)
                 line(c, CGPoint(x: gx + 19, y: gy + 25), CGPoint(x: gx + 21, y: gy + 32), colour(0.4, 0.28, 0.15), width: 1.5)
+            case .fruit:
+                // A low bush with red fruit.
+                ellipse(c, CGRect(x: gx - 13, y: gy + 1, width: 26, height: 16), fill: colour(0.22, 0.50, 0.24))
+                for (x, y) in [(-7.0, 8.0), (1.0, 12.0), (6.0, 6.0)] {
+                    ellipse(c, CGRect(x: gx + x - 2, y: gy + y - 2, width: 4, height: 4), fill: colour(0.80, 0.16, 0.22))
+                }
             case .fish:
                 // Silver fish leaping from rings on the water.
                 for (x, y) in [(-9.0, 6.0), (6.0, 10.0)] {

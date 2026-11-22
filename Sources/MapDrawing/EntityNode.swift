@@ -331,8 +331,9 @@ final class EntityNode: SKNode {
 
 /// A resource site: a sprite on its tile, hidden on a tile never seen and
 /// darkened on one not in sight. A site on a water tile shows its `afloat`
-/// picture, and a site that moves (the fish) shows the frame of its cycle
-/// for its tile, offset from its neighbours' (`frameOffset`).
+/// picture, a site drawn in each look shows the look of the viewer's age, and
+/// a site that moves (the fish) shows the frame of its cycle for its tile,
+/// offset from its neighbours' (`frameOffset`).
 @MainActor
 final class SiteNode: SKSpriteNode {
     var generation = 0
@@ -347,9 +348,11 @@ final class SiteNode: SKSpriteNode {
         return ((n % SpriteKey.framesPerPose) + SpriteKey.framesPerPose) % SpriteKey.framesPerPose
     }
 
-    func apply(_ site: ResourceSite, afloat: Bool, frame: Int, visibility: TileVisibility, cache: SpriteCache) {
+    func apply(_ site: ResourceSite, afloat: Bool, look: Look = .stone, frame: Int, visibility: TileVisibility,
+               cache: SpriteCache) {
         let shown = (frame + Self.frameOffset(site.tile)) % SpriteKey.framesPerPose
-        let sprite = cache.sprite(forSite: site.kind, afloat: afloat, frame: shown)
+        // A site drawn in each look (the fruit bush) shows the look of the viewer's age.
+        let sprite = cache.sprite(forSite: site.kind, afloat: afloat, look: look, frame: shown)
         if texture !== sprite.texture {
             texture = sprite.texture
             size = sprite.size

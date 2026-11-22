@@ -53,7 +53,7 @@ public enum Samples {
         add(.building(.townCentre), me, 9.5, 9.5)
         add(.unit(.worker), me, 12, 9, .gathering(.prey))
         add(.unit(.worker), me, 5, 6, .gathering(.tree))
-        add(.unit(.worker), me, 11, 12, .carrying(.food, 6))
+        add(.unit(.worker), me, 11, 12, .moving)
         add(.unit(.worker), me, 8, 12, .gathering(.gold))
         add(.unit(.worker), me, 13, 11, .moving)
         var visibility = Array(repeating: TileVisibility.unexplored, count: map.width * map.height)

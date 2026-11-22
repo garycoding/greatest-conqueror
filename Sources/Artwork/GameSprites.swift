@@ -17,6 +17,7 @@ public final class GameSprites: SpriteSource {
         batches = [
             CartoonSprites(catalogue: catalogue),
             TerrainSprites(),
+            FruitBushSprites(),
             StoneBuildingSprites(),
             StoneBoatSprites(catalogue: catalogue),
             BronzeBuildingSprites(),
@@ -35,7 +36,10 @@ public final class GameSprites: SpriteSource {
             IndustrialOldBuildingSprites(),
             IndustrialPeopleSprites(catalogue: catalogue),
             IndustrialWarriorSprites(catalogue: catalogue),
+            IndustrialNewPeopleSprites(catalogue: catalogue),
             IndustrialBoatSprites(catalogue: catalogue),
+            NavyShipSprites(catalogue: catalogue),
+            LateBuildingSprites(),
             CarSprites(),
         ]
     }

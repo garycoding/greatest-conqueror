@@ -358,6 +358,8 @@ struct MapBuilder {
         let items = [
             KitItem(kind: .tree, count: 14, minDistance: 6, maxDistance: 8.5, radius: 3),
             KitItem(kind: .prey, count: 4, minDistance: 6.5, maxDistance: 9, radius: 2),
+            // Fruit bushes, a small cluster placed as the deer are (ruled 2026-11-22).
+            KitItem(kind: .fruit, count: 4, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .gold, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
         ]
         var slots = Array(0..<items.count)

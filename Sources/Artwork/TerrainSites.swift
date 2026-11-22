@@ -24,7 +24,8 @@ extension TerrainSprites {
         case .tree: drawTree(&svg)
         case .prey: drawDeer(&svg)
         case .gold: drawGold(&svg, shadow: shadow)
-        case .fish: break
+        // The fish belong to the boats' batch; the fruit bush to its own (`FruitBushSprites`).
+        case .fish, .fruit: break
         }
     }
 

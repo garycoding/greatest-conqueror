@@ -133,7 +133,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 3
+    public static let protocolVersion = 4
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`

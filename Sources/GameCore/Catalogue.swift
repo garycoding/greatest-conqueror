@@ -96,8 +96,6 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     public var attack: Attack?
     /// Population places it provides.
     public var housing: Int
-    /// Resources that workers (or boats, at a boat house) may deliver here.
-    public var accepts: [Resource]
     /// What may be made here (`Catalogue.production`).
     public var trains: [UnitKind]
     /// For a tower or a castle, its upgrade in each later age that `stats.csv`
@@ -107,12 +105,12 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     public init(kind: BuildingKind, age: Age, cost: ResourceAmounts, buildTime: Int, demolishTime: Int? = nil,
                 demolishReturn: Double = 0.5, health: Int, armour: Int,
                 footprint: GridPoint, sight: Double, attack: Attack? = nil, housing: Int = 0,
-                accepts: [Resource] = [], trains: [UnitKind] = [], levels: [AgeUpgrade] = []) {
+                trains: [UnitKind] = [], levels: [AgeUpgrade] = []) {
         self.kind = kind; self.age = age; self.cost = cost; self.buildTime = buildTime
         self.demolishTime = demolishTime ?? max(1, buildTime / 2); self.demolishReturn = demolishReturn
         self.health = health
         self.armour = armour; self.footprint = footprint; self.sight = sight; self.attack = attack
-        self.housing = housing; self.accepts = accepts; self.trains = trains; self.levels = levels
+        self.housing = housing; self.trains = trains; self.levels = levels
     }
 }
 
@@ -194,14 +192,12 @@ public struct GatheringStats: Hashable, Codable, Sendable {
     public var farmYield: Int
     /// What reseeding a farm that has run dry costs.
     public var farmReseed: ResourceAmounts
-    /// How much a worker carries before returning to deliver it.
-    public var load: Int
     /// What each kind of site holds when the map is made, by site kind.
     public var amountBySite: [Int]
 
-    public init(farmYield: Int, farmReseed: ResourceAmounts, load: Int, siteAmount: [SiteKind: Int]) {
+    public init(farmYield: Int, farmReseed: ResourceAmounts, siteAmount: [SiteKind: Int]) {
         amountBySite = SiteKind.allCases.map { siteAmount[$0] ?? 0 }
-        self.farmYield = farmYield; self.farmReseed = farmReseed; self.load = load
+        self.farmYield = farmYield; self.farmReseed = farmReseed
     }
 
     public func amount(_ kind: SiteKind) -> Int {

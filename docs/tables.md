@@ -18,7 +18,7 @@ One row for each unit kind and each building kind, the car and the founder inclu
 | `build_seconds` | For a building, the seconds of one worker's work to build it; more workers build it sooner. |
 | `demolish_seconds` | For a building, the seconds of one worker's work to demolish it; more workers demolish it sooner. By default half of `build_seconds`. |
 | `demolish_return` | For a building, the share of its cost, from 0 to 1, that demolishing it returns, rounded down. By default 0.5. |
-| `gather_food`, `gather_wood`, `gather_gold` | For a worker or a boat, what it takes from a site a second: food from deer or fish, wood from trees, gold from gold mines. |
+| `gather_food`, `gather_wood`, `gather_gold` | For a worker or a boat, what it takes from a site a second, added at once to its player's resources: food from fruit bushes, deer or fish, wood from trees, gold from gold mines. |
 | `farm_food` | For a worker, the food a second it earns at a farm. |
 | `heal_per_second` | For a doctor, the health points a second it restores to a wounded unit of its player; several doctors add up. |
 | `repair_per_second` | For a worker, the health points a second it restores to a damaged building of its player; several workers add up. |
@@ -34,7 +34,7 @@ One row for each advance: `from` and `to` (the next age), its cost in `food`, `w
 
 ## What the code still holds
 
-The figures requirement 25 does not name stay in `CatalogueShape` (`Sources/GameCore/CatalogueShape.swift`): each kind's speed, sight, armour, population places and footprint, a building's housing and the resources it accepts, the radius of a cannon's shot, the damage bonuses between kinds, a worker's load, what each kind of site holds, a farm's yield and the cost of reseeding it, the start of a match, the workers who come with a founder's town centre (two), the troops a navy ship carries (twenty), the population maximum, and the car.
+The figures requirement 25 does not name stay in `CatalogueShape` (`Sources/GameCore/CatalogueShape.swift`): each kind's speed, sight, armour, population places and footprint, a building's housing, the radius of a cannon's shot, the damage bonuses between kinds, what each kind of site holds (a fruit bush 150 food, ruled 2026-11-22), a farm's yield and the cost of reseeding it, the start of a match, the workers who come with a founder's town centre (two), the troops a navy ship carries (twenty), the population maximum, and the car.
 
 ## In a match
 

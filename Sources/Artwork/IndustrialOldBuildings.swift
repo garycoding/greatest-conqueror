@@ -117,7 +117,7 @@ extension IndustrialOldBuildingsPainter {
         case .boatHouse: boatHouse(complete: complete, turn: .side)
         // Drawn with the kit of the larger works, or by another batch.
         case .castle: break
-        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        // Drawn by their own batch (`LateBuildingSprites`).
         case .cannonFactory, .hospital: break
         }
     }

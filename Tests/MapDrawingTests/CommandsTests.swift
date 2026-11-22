@@ -42,6 +42,20 @@ import Testing
                 == .move(units: [spearman], to: tree.tile.centre))
     }
 
+    /// A right-click on a fruit bush with workers selected gathers it (ruled 2026-11-22).
+    @Test func aFruitBushGivesGatherForWorkers() {
+        var view = self.view
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
+        var bush = view.sites.first { $0.kind == .tree }!
+        bush.id = SiteID(9_001)
+        bush.kind = .fruit
+        view.sites.append(bush)
+        #expect(MapCommands.contextualOrder(on: .site(bush), view: view, selection: [worker, spearman])
+                == .gather(units: [worker], site: bush.id))
+        #expect(MapCommands.contextualOrder(on: .site(bush), view: view, selection: [spearman])
+                == .move(units: [spearman], to: bush.tile.centre))
+    }
+
     @Test func aSiteInTheWaterGivesGatherForBoatsOnly() {
         var view = self.view
         let worker = id(.unit(.worker))
@@ -108,7 +122,7 @@ import Testing
         for i in v.entities.indices where v.entities[i].id == workers[0] { v.entities[i].job = .gathering(.tree) }
         let clubman = id(.unit(.soldier1))
         let onScreen = [workers[0], extra, idle, clubman]   // `far` is off the screen
-        // Lumberjacks on the screen, whether chopping or carrying; not the idle one, the clubman or the one off the screen.
+        // Lumberjacks on the screen, whether chopping or walking; not the idle one, the clubman or the one off the screen.
         #expect(MapCommands.selection(afterDoubleClickOn: workers[0], onScreen: onScreen, view: v) == [workers[0], extra])
         #expect(MapCommands.selection(afterDoubleClickOn: idle, onScreen: onScreen, view: v) == [idle])
         // A building, an opponent or nothing: as a single click.

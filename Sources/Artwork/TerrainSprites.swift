@@ -31,7 +31,7 @@ public final class TerrainSprites: SpriteSource {
         for terrain in Terrain.allCases {
             for variant in 0..<variantCount { keys.append(SpriteKey(.terrain(terrain, variant: variant), .complete)) }
         }
-        for kind in SiteKind.allCases where kind != .fish { keys.append(SpriteKey(.site(kind), .complete)) }
+        for kind in SiteKind.allCases where kind != .fish && kind != .fruit { keys.append(SpriteKey(.site(kind), .complete)) }
         keys.append(SpriteKey(.outcrop, .complete))
         return keys
     }()
@@ -56,7 +56,8 @@ public final class TerrainSprites: SpriteSource {
         guard key.pose == .complete, key.frame == 0 else { return false }
         switch key.subject {
         case .terrain(_, let variant): return (0..<variantCount).contains(variant)
-        case .site(let kind): return kind != .fish  // the fish: drawn by `StoneBoatSprites`
+        // The fish: drawn by `StoneBoatSprites`; the fruit bush: by `FruitBushSprites`, in each look.
+        case .site(let kind): return kind != .fish && kind != .fruit
         case .outcrop: return true
         case .unit, .building: return false
         }

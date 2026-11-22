@@ -13,21 +13,23 @@ import Testing
 @Test func everyKeyThroughTheLastAgeComesFromItsApprovedBatch() {
     let all = GameSprites()
     let approved: [Look: [any SpriteSource]] = [
-        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites()],
+        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites(),
+                NavyShipSprites()],
         .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(),
-                   AlchemyBoatSprites()],
-        .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(),
-                      IndustrialBoatSprites()],
+                   AlchemyBoatSprites(), NavyShipSprites(), LateBuildingSprites()],
+        .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(), IndustrialNewPeopleSprites(),
+                      IndustrialBoatSprites(), NavyShipSprites(), LateBuildingSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []
-    // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn.
+    // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn; nor need a navy ship's, which never works.
     let keys = SpriteKey.required(through: .hospitals).filter { key in
-        if case .unit(let kind, _) = key.subject, kind.isWarfighter, key.pose == .working { return false }
+        if case .unit(let kind, _) = key.subject, kind.isWarfighter || kind == .navyShip, key.pose == .working { return false }
         return true
     }
     for key in keys {
         guard let image = all.sprite(key) else { missing.append(key); continue }
+        if key.subject == .site(.fruit), let own = FruitBushSprites().sprite(key), !sameImage(own, image) { wrong.append(key) }
         let age: Look? = {
             switch key.subject {
             case .unit(_, let look), .building(_, let look): return look

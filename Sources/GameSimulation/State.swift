@@ -75,15 +75,9 @@ struct TeamState: Codable, Sendable, Hashable {
     var isDefeated = false
 }
 
-/// What a worker carries home.
-struct Cargo: Codable, Sendable, Hashable {
-    var kind: SiteKind
-    var amount: Int
-}
-
 /// What a person is doing this tick, for the view's `Activity`.
 enum Doing: UInt8, CaseIterable, Codable, Sendable, Hashable {
-    case idle, moving, gathering, carrying, working, constructing, fighting
+    case idle, moving, gathering, working, constructing, fighting
 }
 
 /// What a person has been told to do.
@@ -149,9 +143,6 @@ struct Entity: Codable, Sendable, Hashable {
     var task: Task = .idle
     var doing: Doing = .idle
     var route = Route()
-    var cargo: Cargo?
-    /// The building a worker is carrying its load to.
-    var dropOff: EntityID?
     /// Part of a unit gathered or herded, carried over between ticks.
     var fraction = 0.0
 

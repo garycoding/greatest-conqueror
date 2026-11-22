@@ -8,9 +8,9 @@
 public enum Order: Hashable, Codable, Sendable {
     /// Walk to a point.
     case move(units: [EntityID], to: MapPosition)
-    /// Workers gather at a site: fell a tree, hunt prey or mine gold; boats
-    /// fish or mine gold in the water. They carry each load to the nearest
-    /// town centre (boats to the nearest boat house).
+    /// Workers gather at a site: fell a tree, hunt prey, gather fruit or mine
+    /// gold; boats fish or mine gold in the water. What they gather is added
+    /// to their player's resources as they gather (ruled 2026-11-22).
     case gather(units: [EntityID], site: SiteID)
     /// Workers work at a building: they construct it, repair it, or tend it if
     /// it is a farm. Repair costs nothing; each worker restores

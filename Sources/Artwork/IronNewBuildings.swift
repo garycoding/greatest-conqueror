@@ -6,9 +6,10 @@ import GameCore
 import Synchronization
 
 /// The buildings the Iron age brings, complete and under construction (the
-/// farm and the stable), drawn in the Iron age's palette in the manner of the
-/// Bronze-age buildings (docs/art-style.md). The buildings carry the owner's
-/// colour in a mask. Every other key gives nil.
+/// farm, the stable and the castle, of the age of ships now), drawn in the
+/// Iron age's palette in the manner of the Bronze-age buildings
+/// (docs/art-style.md). The buildings carry the owner's colour in a mask.
+/// Every other key gives nil.
 public struct IronNewBuildingSprites: SpriteSource {
     private let store = Store()
 
@@ -39,7 +40,7 @@ enum IronNewBuildingsSubject: Hashable, Sendable {
 /// What this batch draws, on what canvas, and the drawing of it.
 enum IronNewBuildingsArt {
     /// The Iron age's new buildings.
-    static let kinds: [BuildingKind] = [.farm, .stable]
+    static let kinds: [BuildingKind] = [.farm, .stable, .castle]
 
     /// The buildings whose Iron drawing serves for the Bronze look too: the
     /// farm, which Greatest Conqueror brings in the age of farms, drawn in the
@@ -66,8 +67,11 @@ enum IronNewBuildingsArt {
     /// The area a building's sprite covers, in points with the origin on the
     /// ground at the centre of its footprint, drawn at two pixels a point. The
     /// footprint's diamond fills the width, with a small margin; above it
-    /// there is room for the building's height.
+    /// there is room for the building's height. The castle takes the canvas
+    /// of its Alchemy look, so that it keeps its size and anchor from one age
+    /// to the next.
     static func canvas(_ kind: BuildingKind) -> Canvas {
+        if kind == .castle { return AlchemyNewBuildingsArt.canvas(kind) }
         let footprint = Catalogue.standard.stats(kind).footprint
         let halfWidth = Double(footprint.x + footprint.y) * 16, halfHeight = Double(footprint.x + footprint.y) * 8
         let margin = 4.0
@@ -91,9 +95,16 @@ enum IronNewBuildingsArt {
         case .building(let kind, let complete):
             let canvas = canvas(kind)
             let rendered = Raster.render(on: canvas) { svg in
-                var painter = IronNewBuildingsPainter(layer: svg.layer)
-                painter.building(kind, complete: complete)
-                svg = painter.svg
+                if kind == .castle {
+                    // The castle is drawn with the kit of the Iron-age looks of the older buildings.
+                    var painter = IronOldBuildingsPainter(layer: svg.layer)
+                    painter.castle(complete: complete)
+                    svg = painter.svg
+                } else {
+                    var painter = IronNewBuildingsPainter(layer: svg.layer)
+                    painter.building(kind, complete: complete)
+                    svg = painter.svg
+                }
             }
             return rendered?.sprite(anchor: canvas.anchor)
         }

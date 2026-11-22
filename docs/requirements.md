@@ -56,9 +56,9 @@ These come from the person for whom the game is made and are settled (2026-11-21
 
 ### Units
 
-12. Workers gather fruit, hunt deer and farm (food), cut wood (wood), mine gold (gold), build buildings and repair them. An idle worker repairs any damaged building of its player within a set radius, moving to stand beside it.
+12. Workers gather fruit, hunt deer and farm (food), cut wood (wood), mine gold (gold), build buildings and repair them. What a worker gathers is added to its player's resources as it gathers, at its gathering rate; it carries nothing back, and stays at the site until the site is used up or it is ordered elsewhere (ruled 2026-11-22). An idle worker repairs any damaged building of its player within a set radius, moving to stand beside it.
 13. Doctors heal wounded units up to their maximum health. Each doctor adds a set number of health points a second, so more doctors heal a unit faster. An idle doctor heals any wounded unit of its player within a set radius, moving to stand beside it.
-14. Fishing boats catch fish (food) and mine gold in the water.
+14. Fishing boats catch fish (food) and mine gold in the water. As with workers, what a boat gathers is added to its player's resources as it gathers, and it carries nothing back (ruled 2026-11-22).
 15. Soldiers, knights and cannons attack.
 16. Navy ships carry up to 20 troops and attack with guns. Troops are soldiers, knights, cannons, workers and doctors (ruled 2026-11-22). Troops board a navy ship that is at the shore when the player right-clicks the ship with them selected, and land when the player right-clicks the shore with the ship selected. Troops aboard are lost if the ship is destroyed.
 17. The units, by the age in which each maker can first make them:
@@ -117,7 +117,7 @@ These follow from the requirements above; they are stated so that they can be co
 - Since every number is in the tables, the balance of the game is set by editing them, not by changing the code; a table that is missing a row the game needs, or holds a value it cannot use, is refused with the file, line and column named, and the defaults are used instead.
 - A saved match carries the tables it was being played with, so it resumes with them.
 - The computer players play by the tables in use, whatever they hold.
-- Workers carry what they gather to a town centre, and fishing boats to a boathouse, since no storage building remains.
+- Since what is gathered is added to the player's resources at once (ruled 2026-11-22, in place of trips to a town centre or a boathouse), a player needs no building to gather at, and a farm's food is added in the same way.
 
 ## Constraint: an original work
 
