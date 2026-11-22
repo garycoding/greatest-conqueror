@@ -503,7 +503,8 @@ extension IndustrialNewPeopleCavalryman {
         // The plume of the team's colour at the poll, as the horse wears it from the side.
         let sway = horse.pose.mane * 6
         // Seen from the front, the feathers fan out to the sides, clear of the rider's face behind.
-        for (i, angle) in (front ? [-62.0, 62] : [-24.0, 0, 24]).enumerated() {
+        let angles: [Double] = front ? [-62, 62] : [-24, 0, 24]
+        for (i, angle) in angles.enumerated() {
             svg.group(at: P(0, poll - 1), turned: angle + (i == 1 && !front ? 0 : sway * 0.3)) { svg in
                 svg.ellipse(P(-0.5, -6.4), 2.3, 6, fill: .team)
                 svg.ellipse(P(0, -7), 2.3, 6, fill: .none, stroke: ink, width: 0.9)
