@@ -79,10 +79,10 @@ private func lakeside() -> Simulation {
         #expect(sim.apply(.gather(units: [boat], site: rock), from: me) == .accepted)
         let landed = sim.run(until: { $0.resources(me)[.gold] > gold }, limit: 90 * Tick.rate)
         #expect(landed, "no gold was landed from the rock")
-        // Workers never take their loads to a boat house, nor boats to a town centre.
+        // The worker mines the quarry on land, its gold added as it mines (ruled 2026-11-22).
+        let mined = sim.resources(me)[.gold]
         #expect(sim.apply(.gather(units: [worker], site: quarry), from: me) == .accepted)
-        let delivered = sim.run(until: { $0.living(worker).dropOff != nil }, limit: 60 * Tick.rate)
-        #expect(delivered)
-        #expect(sim.entity(sim.living(worker).dropOff!)?.buildingKind == .townCentre)
+        let more = sim.run(until: { $0.resources(me)[.gold] > mined + 20 }, limit: 120 * Tick.rate)
+        #expect(more)
     }
 }

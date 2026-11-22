@@ -60,16 +60,20 @@ public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// One tile of a shoal of fish in the water, 2 × 2 tiles to a shoal
     /// (ruled 2026-11-21); only boats gather it, and they sail over it.
     case fish
+    /// A fruit bush on land, gathered by workers for food (ruled 2026-11-22).
+    /// Last, so that the other kinds keep their raw values.
+    case fruit
 
     /// Whether the site occupies its tile, so that nothing walks or is built
-    /// there whilst it remains. Prey and fish do not; trees and gold do (`Placement`).
+    /// there whilst it remains. Prey and fish do not; trees, gold and fruit
+    /// bushes do (`Placement`; the bush ruled 2026-11-22).
     public var blocksTile: Bool { self != .prey && self != .fish }
 
     /// What gathering at the site yields.
     public var yield: Resource {
         switch self {
         case .tree: .wood
-        case .prey, .fish: .food
+        case .prey, .fish, .fruit: .food
         case .gold: .gold
         }
     }

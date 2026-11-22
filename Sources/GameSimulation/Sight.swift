@@ -191,9 +191,6 @@ extension Simulation {
         case .gathering:
             if case .gather(_, let kind, _) = e.task { return .gathering(kind) }
             return .working
-        case .carrying:
-            if let cargo = e.cargo { return .carrying(cargo.kind.yield, cargo.amount) }
-            return .moving
         case .working: return .working
         case .constructing: return .constructing
         case .fighting: return .fighting

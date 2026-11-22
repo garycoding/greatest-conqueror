@@ -262,8 +262,7 @@ enum TableReader {
                                                 demolishReturn: demolishReturn,
                                                 health: health, armour: buildingShape.armour,
                                                 footprint: buildingShape.footprint, sight: buildingShape.sight,
-                                                attack: attack, housing: buildingShape.housing,
-                                                accepts: buildingShape.accepts)
+                                                attack: attack, housing: buildingShape.housing)
             } else {
                 throw s.fault(row, "kind", "\"\(name)\" is not a kind of unit or building")
             }

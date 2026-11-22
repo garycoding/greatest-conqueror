@@ -27,7 +27,6 @@ public struct BuildingShape: Hashable, Sendable {
     public var footprint: GridPoint
     public var sight: Double
     public var housing: Int
-    public var accepts: [Resource]
 }
 
 /// Everything in the catalogue that the tables leave to the code.
@@ -71,20 +70,20 @@ public struct CatalogueShape: Sendable {
             UnitShape(kind: .founder, armour: 0, speed: 1.2, sight: 5, population: 0),
         ]
         let buildings: [BuildingShape] = [
-            BuildingShape(kind: .townCentre, armour: 2, footprint: GridPoint(3, 3), sight: 8, housing: 5, accepts: [.food, .wood, .gold]),
-            BuildingShape(kind: .house, armour: 0, footprint: GridPoint(2, 2), sight: 3, housing: 5, accepts: []),
-            // A boat house on the shore (ruled 2026-11-21): it takes in the boats' loads.
-            BuildingShape(kind: .boatHouse, armour: 0, footprint: GridPoint(2, 2), sight: 4, housing: 0, accepts: [.food, .gold]),
-            BuildingShape(kind: .barracks, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
-            BuildingShape(kind: .tower, armour: 2, footprint: GridPoint(1, 1), sight: 9, housing: 0, accepts: []),
-            BuildingShape(kind: .farm, armour: 0, footprint: GridPoint(3, 3), sight: 2, housing: 0, accepts: []),
-            BuildingShape(kind: .stable, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
-            BuildingShape(kind: .castle, armour: 4, footprint: GridPoint(4, 4), sight: 10, housing: 10, accepts: []),
-            BuildingShape(kind: .cannonFactory, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
-            BuildingShape(kind: .hospital, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
+            BuildingShape(kind: .townCentre, armour: 2, footprint: GridPoint(3, 3), sight: 8, housing: 5),
+            BuildingShape(kind: .house, armour: 0, footprint: GridPoint(2, 2), sight: 3, housing: 5),
+            // A boat house on the shore (ruled 2026-11-21), where boats are made.
+            BuildingShape(kind: .boatHouse, armour: 0, footprint: GridPoint(2, 2), sight: 4, housing: 0),
+            BuildingShape(kind: .barracks, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
+            BuildingShape(kind: .tower, armour: 2, footprint: GridPoint(1, 1), sight: 9, housing: 0),
+            BuildingShape(kind: .farm, armour: 0, footprint: GridPoint(3, 3), sight: 2, housing: 0),
+            BuildingShape(kind: .stable, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
+            BuildingShape(kind: .castle, armour: 4, footprint: GridPoint(4, 4), sight: 10, housing: 10),
+            BuildingShape(kind: .cannonFactory, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
+            BuildingShape(kind: .hospital, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
         ]
-        let gathering = GatheringStats(farmYield: 300, farmReseed: cost([.wood: 60]), load: 10,
-                                       siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200])
+        let gathering = GatheringStats(farmYield: 300, farmReseed: cost([.wood: 60]),
+                                       siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200, .fruit: 150])
         let bonuses: [Bonus] = [
             Bonus(.soldier1, against: .knight1, 3),
             Bonus(.soldier2, against: .soldier1, 1.5),

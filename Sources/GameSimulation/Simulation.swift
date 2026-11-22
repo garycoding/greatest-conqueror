@@ -11,7 +11,7 @@ import GameCore
 ///
 /// Determinism: entities are kept in an array ordered by `EntityID` and sites in
 /// one ordered by `SiteID`; each tick processes them in that order, and the
-/// effect of a blow, a delivery or a death is immediate, so a later entity in
+/// effect of a blow, a harvest or a death is immediate, so a later entity in
 /// the same tick sees it. No outcome depends on the order of a `Dictionary` or a
 /// `Set`. Within a tick: people and buildings act in ID order; the dead are then
 /// removed; then defeat and the outcome are settled.

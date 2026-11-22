@@ -325,7 +325,7 @@ extension Turn {
         }
         if let fastest { return fastest }
         guard workers.count >= 6, view.tick >= Tick.seconds(90) else { return nil }
-        return workers.last { isFree($0) && $0.activity != .fighting && !Turn.isCarrying($0) }
+        return workers.last { isFree($0) && $0.activity != .fighting }
     }
 
     private func release() {
@@ -369,10 +369,5 @@ extension Turn {
         }
         guard !best.isEmpty else { return nil }
         return best[Int(generator.next() % UInt64(best.count))].point
-    }
-
-    static func isCarrying(_ entity: EntityView) -> Bool {
-        if case .carrying = entity.activity { return true }
-        return false
     }
 }

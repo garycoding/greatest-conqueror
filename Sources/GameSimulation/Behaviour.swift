@@ -35,7 +35,6 @@ extension Simulation {
     mutating func assign(_ i: Int, _ task: Task) {
         entities[i].task = task
         entities[i].route = Route()
-        entities[i].dropOff = nil
     }
 
     // MARK: Moving
@@ -54,20 +53,18 @@ extension Simulation {
         tables.unit(unit).gathers(kind.yield) / Double(Tick.rate)
     }
 
+    /// A worker or boat gathers at its site, and what it gathers is added
+    /// straight to its player's resources as it gathers (ruled 2026-11-22: no
+    /// trips to carry it back). It stays at the site until the site is used up,
+    /// and then turns to the nearest other of its kind, or goes idle.
     mutating func gatherTask(_ i: Int, site: SiteID, kind: SiteKind, tile: GridPoint) {
         let owner = entities[i].owner.rawValue
-        let load = catalogue.gathering.load
         var siteIndex = self.siteIndex(of: site)
         if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner, afloat: entities[i].isAfloat) {
             // The site is exhausted: the worker turns to the nearest other of its kind.
             entities[i].task = .gather(site: sites[next].id, kind: kind, tile: sites[next].tile)
             entities[i].route = Route()
             siteIndex = next
-        }
-        let carried = entities[i].cargo?.amount ?? 0
-        if carried >= load || (siteIndex == nil && carried > 0) {
-            carryHome(i, kind: kind, thenIdle: siteIndex == nil)
-            return
         }
         guard let s = siteIndex else { setIdle(i); return }
         let target = sites[s]
@@ -79,64 +76,17 @@ extension Simulation {
         entities[i].doing = .gathering
         face(i, dx: target.tile.centre.x - entities[i].position.x, dy: target.tile.centre.y - entities[i].position.y)
         var fraction = entities[i].fraction + gatheringRate(kind, by: entities[i].unitKind ?? .worker)
-        var amount = carried, remaining = target.remaining
-        while fraction >= 1 && amount < load && remaining > 0 {
+        var whole = 0, remaining = target.remaining
+        while fraction >= 1 && remaining > 0 {
             fraction -= 1
-            amount += 1
+            whole += 1
             remaining -= 1
         }
-        entities[i].fraction = amount >= load ? 0 : fraction
-        entities[i].cargo = Cargo(kind: kind, amount: amount)
-        if remaining != target.remaining {
-            sites[s].remaining = remaining
-            if remaining == 0 { exhaust(s) }
-        }
-    }
-
-    /// Walk a load to the nearest own building that accepts it, and deliver it.
-    mutating func carryHome(_ i: Int, kind: SiteKind, thenIdle: Bool) {
-        entities[i].doing = .carrying
-        var drop = entities[i].dropOff.flatMap { index(of: $0) }
-        if let d = drop, !accepts(d, kind.yield, from: entities[i].owner)
-            || (entities[d].buildingKind == .boatHouse) != entities[i].isAfloat { drop = nil }
-        if drop == nil {
-            drop = nearestDropOff(for: i, accepting: kind.yield)
-            entities[i].dropOff = drop.map { entities[$0].id }
-            entities[i].route = Route()
-        }
-        guard let d = drop else { return }
-        switch approach(i, .tiles(entities[d].origin, entities[d].size, reach: Rule.besideReach)) {
-        case .moving: return
-        case .unreachable: setIdle(i); return
-        case .arrived: break
-        }
-        deliver(i)
-        if thenIdle {
-            setIdle(i)
-        } else {
-            entities[i].route = Route()
-            entities[i].doing = .moving
-        }
-    }
-
-    func accepts(_ building: Int, _ resource: Resource, from owner: PlayerID) -> Bool {
-        let e = entities[building]
-        guard e.alive, e.complete, e.owner == owner, let kind = e.buildingKind else { return false }
-        return tables.building(kind).accepts.contains(resource)
-    }
-
-    /// The nearest complete own building that accepts a resource; ties go to the lower id.
-    func nearestDropOff(for i: Int, accepting resource: Resource) -> Int? {
-        let owner = entities[i].owner, position = entities[i].position
-        var best: Int?
-        var bestDistance = Double.infinity
-        let boat = entities[i].isAfloat
-        for j in entities.indices where !entities[j].isPerson && accepts(j, resource, from: owner)
-            && (entities[j].buildingKind == .boatHouse) == boat {
-            let d = Goal.tiles(entities[j].origin, entities[j].size, reach: 0).distance(to: position)
-            if d < bestDistance { best = j; bestDistance = d }
-        }
-        return best
+        entities[i].fraction = fraction
+        guard whole > 0 else { return }
+        players[owner].resources[kind.yield] += whole
+        sites[s].remaining = remaining
+        if remaining == 0 { exhaust(s) }
     }
 
     /// The nearest site of a kind with something left, near where the last one was,
@@ -154,15 +104,6 @@ extension Simulation {
 
     /// Whether a site stands in the water, where only boats gather (ruled 2026-11-21).
     func isAfloat(_ site: ResourceSite) -> Bool { inMap(site.tile) && terrain[tileIndex(site.tile)].isWater }
-
-    /// Credit a worker's load to its owner.
-    mutating func deliver(_ i: Int) {
-        guard let cargo = entities[i].cargo else { return }
-        let p = entities[i].owner.rawValue
-        players[p].resources[cargo.kind.yield] += cargo.amount
-        entities[i].cargo = nil
-        entities[i].dropOff = nil
-    }
 
     /// A site has run out: it vanishes from views and no longer blocks its tile.
     mutating func exhaust(_ s: Int) {

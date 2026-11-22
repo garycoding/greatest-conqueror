@@ -3,15 +3,17 @@
 
 import GameCore
 
-/// The work a worker is given: a kind of site, or farming at a farm.
+/// The work a worker is given: a kind of site, or farming at a farm. Fruit
+/// gathering is last, so that the others keep their raw values.
 enum Task: Int, Codable, Sendable, CaseIterable {
-    case hunting, felling, gold, herding
+    case hunting, felling, gold, herding, picking
 
     init?(site kind: SiteKind) {
         switch kind {
         case .prey: self = .hunting
         case .tree: self = .felling
         case .gold: self = .gold
+        case .fruit: self = .picking
         case .fish: return nil
         }
     }
@@ -22,6 +24,7 @@ enum Task: Int, Codable, Sendable, CaseIterable {
         case .hunting: .prey
         case .felling: .tree
         case .gold: .gold
+        case .picking: .fruit
         case .herding: nil
         }
     }

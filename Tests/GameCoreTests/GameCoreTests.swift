@@ -47,9 +47,6 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     for stats in c.buildings {
         for unit in stats.trains { #expect(c.stats(unit).trainedAt.contains(.building(stats.kind)), "\(unit) at \(stats.kind)") }
     }
-    // Workers deliver food, wood and gold to the town centre; boats food and gold to the boat house.
-    #expect(c.stats(.townCentre).accepts == [.food, .wood, .gold])
-    #expect(c.stats(.boatHouse).accepts == [.food, .gold])
 }
 
 @Test func theFiveAgesAndTheThreeResources() {
@@ -148,7 +145,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum EncodingFixture { static let expected: UInt64 = 0x49C5_5E08_68C3_5139 }
+enum EncodingFixture { static let expected: UInt64 = 0x3BC1_1A4B_C1B7_4CCB }
 
 @Test func samplesAreConsistent() {
     for view in [Samples.townsAgeOpening(), Samples.farmsAgeSkirmish()] {

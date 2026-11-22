@@ -35,7 +35,7 @@ A module uses another only through the types in `GameCore` and the protocols nam
   - `GameInterface` owns the panels: its buttons issue orders and set `placing`; a click on the small map moves the camera; it shows `lastRefusal`.
   - Both issue orders through `PlayerSession.issue`, never to the simulation directly. Orders flow one way: `issue` returns nothing, and a refusal comes back as `GameEvent.refused` in a later view, which `PlayerSession.update` turns into `lastRefusal`. The simulation therefore need not run on the main actor, and a second Mac can send orders across the LAN in the same way.
 
-`Placement` in `GameCore` is the one rule for where things may stand: a tile is blocked by impassable terrain, a building's footprint, or a tree or gold mine that remains (`SiteKind.blocksTile`); a building may be placed where every tile of its footprint is inside the map, buildable, unblocked and explored. The simulation, the drawing's placement outline and the computer player all use it.
+`Placement` in `GameCore` is the one rule for where things may stand: a tile is blocked by impassable terrain, a building's footprint, or a tree, gold mine or fruit bush that remains (`SiteKind.blocksTile`); a building may be placed where every tile of its footprint is inside the map, buildable, unblocked and explored. The simulation, the drawing's placement outline and the computer player all use it.
 
 The rules a reader could take two ways are settled in the documentation of `Order` (what workers do at a building, the advance to the next age) and of `GameSimulating` (refusals, the checksum).
 
