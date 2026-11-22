@@ -45,9 +45,8 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
 public enum StandIn {
     public static func unit(_ kind: UnitKind) -> UnitKind {
         switch kind {
-        case .doctor, .founder: .worker
+        case .founder: .worker
         case .navyShip: .fishingBoat
-        case .knight3: .knight2
         default: kind
         }
     }
