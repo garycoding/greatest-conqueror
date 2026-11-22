@@ -100,7 +100,7 @@ enum FruitBushPainter {
     static func lobedLeaf(_ svg: inout SVG, at p: P, degrees: Double, size: Double, colour: String, lobes: Int = 5) {
         svg.group(turned: degrees, about: p) { svg in
             var d = PathData()
-            let spread = lobes == 3 ? [-55.0, 0, 55] : [-100.0, -50, 0, 50, 100]
+            let spread: [Double] = lobes == 3 ? [-55, 0, 55] : [-100, -50, 0, 50, 100]
             d.move(p)
             for (i, angle) in spread.enumerated() {
                 let reach = size * (i == spread.count / 2 ? 1 : 0.78)
