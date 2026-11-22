@@ -14,7 +14,8 @@ let package = Package(
     targets: [
         // The types every module shares: the map, players, people, buildings,
         // orders, the state one Mac reports, and the protocols at each seam.
-        .target(name: "GameCore"),
+        // The default tables (stats.csv, production.csv, ages.csv) are its resources.
+        .target(name: "GameCore", resources: [.copy("Tables")]),
         // The rules of the game. Plain Swift: no Apple frameworks.
         .target(name: "GameSimulation", dependencies: ["GameCore"]),
         .target(name: "MapGeneration", dependencies: ["GameCore"]),

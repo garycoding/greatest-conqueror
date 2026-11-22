@@ -1,0 +1,13 @@
+maker,unit,age,seconds
+townCentre,worker,towns,12
+boatHouse,boat,towns,15
+barracks,spearman,farms,14
+barracks,swordsman,ships,14
+barracks,musketeer,cannons,16
+barracks,rifleman,hospitals,16
+stable,horseman,ships,18
+stable,knight,cannons,20
+castle,knight,cannons,20
+castle,musketeer,cannons,16
+castle,cannon,cannons,35
+castle,fieldGun,hospitals,35

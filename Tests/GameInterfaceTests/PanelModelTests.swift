@@ -283,7 +283,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let d = offer(m, "demolish")
     #expect(d.order == .demolish(workers: [EntityID(2)], building: centre))
     #expect(d.isAvailable && d.shortcut == "x")
-    #expect(d.detail.contains(InterfaceText.cost(catalogue.stats(.townCentre).cost.halved)))
+    #expect(d.detail.contains(InterfaceText.cost(catalogue.stats(.townCentre).cost.share(0.5))))
 }
 
 @Test func idleWorkersDemolishTogetherAndWithoutOneDemolitionIsRefused() {

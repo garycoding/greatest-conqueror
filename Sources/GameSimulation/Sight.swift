@@ -180,7 +180,7 @@ extension Simulation {
             let stats = tables.building(kind)
             if !e.complete { return .underConstruction(min(1, Double(e.built) / Double(max(1, stats.buildTime)))) }
             if let head = e.queue.first {
-                let time = max(1, tables.unit(head).trainTime)
+                let time = tables.trainTime(head, at: kind)
                 return .training(head, min(1, Double(e.trainProgress) / Double(time)), queued: e.queue.count)
             }
             if let done = e.advancing, let advance = catalogue.advance(from: players[e.owner.rawValue].age) {

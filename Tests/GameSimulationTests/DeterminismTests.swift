@@ -134,7 +134,7 @@ enum Script {
 @Suite struct Determinism {
     /// The checksum at the end of the scripted match. A second process must
     /// reproduce it; a change to the rules that changes the match changes it.
-    static let storedChecksum: UInt64 = 0x9EBB_C067_B33B_549D
+    static let storedChecksum: UInt64 = 0x36D0_5518_D548_E1AF
 
     @Test func theScriptedMatchEndsWithTheStoredChecksum() {
         var sim = Simulation(setup: Samples.twoPlayerSetup(seed: 7))

@@ -128,10 +128,10 @@ extension Turn {
     /// (a new age's warfighters may cost a resource not yet mined).
     private func nextWarfighter(at building: EntityView) -> UnitKind? {
         guard case .building(let kind) = building.kind else { return nil }
-        let trainable = catalogue.stats(kind).trains.filter { $0.isWarfighter && catalogue.stats($0).age <= view.age }
-        let ages = Set(trainable.map { catalogue.stats($0).age }).sorted(by: >)
+        let made = catalogue.production.filter { $0.maker == kind && $0.unit.isWarfighter && $0.age <= view.age }
+        let ages = Set(made.map(\.age)).sorted(by: >)
         for age in ages.prefix(view.age >= .ships ? 2 : 1) {
-            if let kind = nextWarfighter(of: trainable.filter { catalogue.stats($0).age == age }) { return kind }
+            if let kind = nextWarfighter(of: made.filter { $0.age == age }.map(\.unit)) { return kind }
         }
         return nil
     }

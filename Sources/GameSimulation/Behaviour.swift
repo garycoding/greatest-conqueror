@@ -43,9 +43,9 @@ extension Simulation {
 
     // MARK: Gathering
 
-    /// Units of a site's yield a worker takes per tick.
-    func gatheringRate(_ kind: SiteKind, player: Int) -> Double {
-        catalogue.gathering.perSecond(kind) / Double(Tick.rate)
+    /// Units of a site's yield a unit of a kind takes per tick (`UnitStats.gathering`).
+    func gatheringRate(_ kind: SiteKind, by unit: UnitKind) -> Double {
+        tables.unit(unit).gathers(kind.yield) / Double(Tick.rate)
     }
 
     mutating func gatherTask(_ i: Int, site: SiteID, kind: SiteKind, tile: GridPoint) {
@@ -72,7 +72,7 @@ extension Simulation {
         }
         entities[i].doing = .gathering
         face(i, dx: target.tile.centre.x - entities[i].position.x, dy: target.tile.centre.y - entities[i].position.y)
-        var fraction = entities[i].fraction + gatheringRate(kind, player: owner)
+        var fraction = entities[i].fraction + gatheringRate(kind, by: entities[i].unitKind ?? .worker)
         var amount = carried, remaining = target.remaining
         while fraction >= 1 && amount < load && remaining > 0 {
             fraction -= 1
@@ -214,7 +214,7 @@ extension Simulation {
             players[p].resources = players[p].resources - cost
             entities[b].farmUsed = 0
         }
-        let earned = entities[i].fraction + catalogue.gathering.farmingPerSecond / Double(Tick.rate)
+        let earned = entities[i].fraction + tables.unit(entities[i].unitKind ?? .worker).farming / Double(Tick.rate)
         var whole = Int(earned.rounded(.down))
         entities[i].fraction = earned - Double(whole)
         whole = min(whole, full - (entities[b].farmUsed ?? 0))
@@ -234,18 +234,15 @@ extension Simulation {
         face(i, dx: entities[b].position.x - entities[i].position.x, dy: entities[b].position.y - entities[i].position.y)
         entities[i].doing = .constructing
         entities[b].demolished += 1
-        if entities[b].demolished >= Self.demolitionTime(tables.building(kind).buildTime) { demolish(b) }
+        if entities[b].demolished >= tables.building(kind).demolishTime { demolish(b) }
     }
 
-    /// Worker-ticks to pull down a building: half its construction time.
-    static func demolitionTime(_ buildTime: Int) -> Int { max(1, buildTime / 2) }
-
-    /// A building comes down: half its cost back, and whatever was under way
+    /// A building comes down: its share of its cost back (`demolish_return`), and whatever was under way
     /// there cancelled and refunded.
     mutating func demolish(_ b: Int) {
         guard let kind = entities[b].buildingKind else { return }
         let p = entities[b].owner.rawValue
-        var back = tables.building(kind).cost.halved
+        var back = tables.building(kind).cost.share(tables.building(kind).demolishReturn)
         for unit in entities[b].queue { back = back + tables.unit(unit).cost }
         if entities[b].advancing != nil, let advance = catalogue.advance(from: players[p].age) { back = back + advance.cost }
         entities[b].queue = []
@@ -323,9 +320,10 @@ extension Simulation {
         }
         if let head = entities[b].queue.first {
             let stats = tables.unit(head)
-            if entities[b].trainProgress < stats.trainTime { entities[b].trainProgress += 1 }
+            let time = tables.trainTime(head, at: kind)
+            if entities[b].trainProgress < time { entities[b].trainProgress += 1 }
             let p = entities[b].owner.rawValue
-            if entities[b].trainProgress >= stats.trainTime && population[p] + stats.population <= populationLimit(p) {
+            if entities[b].trainProgress >= time && population[p] + stats.population <= populationLimit(p) {
                 entities[b].queue.removeFirst()
                 entities[b].trainProgress = 0
                 // A boat comes out on the water beside its boat house (ruled 2026-11-21).

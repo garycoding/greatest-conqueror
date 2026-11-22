@@ -80,7 +80,7 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.living(workers[1]).task != .work(farm))
         #expect(sim.apply(.work(units: [workers[1]], at: farm), from: me) == .refused(.invalidTarget))
         do { let reached = sim.run(until: { $0.living(workers[0]).doing == .working }, limit: 300); #expect(reached) }
-        let perSecond = Catalogue.standard.gathering.farmingPerSecond
+        let perSecond = Catalogue.standard.stats(.worker).farming
         let food = sim.resources(me)[.food]
         sim.run(60 * Tick.rate)
         #expect(abs(Double(sim.resources(me)[.food] - food) - 60 * perSecond) <= 1)
@@ -133,7 +133,7 @@ private let load = Catalogue.standard.gathering.load
             sim.step()
             if sim.living(worker).doing == .gathering { ticks += 1 }
         }
-        let expected = Double(load) / (Catalogue.standard.gathering.perSecond(.tree) / Double(Tick.rate))
+        let expected = Double(load) / (Catalogue.standard.stats(.worker).gathers(.wood) / Double(Tick.rate))
         #expect(abs(Double(ticks) - expected) <= 1)
     }
 
@@ -274,7 +274,7 @@ private let load = Catalogue.standard.gathering.load
         while sim.entity(house) != nil, ticks < stats.buildTime { sim.step(); ticks += 1 }
         #expect(sim.entity(house) == nil)
         #expect(ticks == max(1, stats.buildTime / 2))
-        #expect(sim.resources(me) == before + stats.cost.halved)
+        #expect(sim.resources(me) == before + stats.cost.share(0.5))
         let view = sim.view(for: me)
         #expect(view.populationLimit == limit - stats.housing)
         #expect(view.events.contains(.destroyed(house)))
@@ -290,12 +290,12 @@ private let load = Catalogue.standard.gathering.load
         let afterPaying = sim.resources(me)
         // Nearly pulled down already, so that it comes down before the worker is trained.
         let c = sim.index(of: centre)!
-        sim.entities[c].demolished = Simulation.demolitionTime(Catalogue.standard.stats(.townCentre).buildTime) - 1
+        sim.entities[c].demolished = Catalogue.standard.stats(.townCentre).demolishTime - 1
         let builder = sim.add(.worker, me, 6.5, 6.5)
         #expect(sim.apply(.demolish(workers: [builder], building: centre), from: me) == .accepted)
         do { let reached = sim.run(until: { $0.entity(centre) == nil }, limit: 200); #expect(reached) }
         #expect(sim.people(me, .worker).count == sim.view(for: me).entities.filter { $0.kind == .unit(.worker) }.count)
-        let back = Catalogue.standard.stats(.townCentre).cost.halved + Catalogue.standard.stats(.worker).cost
+        let back = Catalogue.standard.stats(.townCentre).cost.share(0.5) + Catalogue.standard.stats(.worker).cost
         #expect(sim.resources(me) == afterPaying + back)
     }
 
@@ -317,7 +317,7 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.resources(me)[.food] == food - Catalogue.standard.stats(.worker).cost[.food])
         _ = sim.view(for: me)
         do { let reached = sim.run(until: { $0.people(me, .worker).count == 4 }, limit: 400); #expect(reached) }
-        #expect(sim.tick == Catalogue.standard.stats(.worker).trainTime)
+        #expect(sim.tick == Catalogue.standard.production(of: .worker, at: .townCentre)!.time)
         let trained = sim.people(me, .worker).last!
         #expect(sim.view(for: me).events.contains(.trained(trained, .worker)))
         let footprint = Goal.tiles(GridPoint(2, 2), GridPoint(3, 3), reach: 0)
@@ -444,11 +444,11 @@ private let load = Catalogue.standard.gathering.load
         let held = sim.resources(me)
         #expect(sim.apply(.advanceAge(at: centre), from: me) == .accepted)
         let c = sim.index(of: centre)!
-        sim.entities[c].demolished = Simulation.demolitionTime(Catalogue.standard.stats(.townCentre).buildTime) - 1
+        sim.entities[c].demolished = Catalogue.standard.stats(.townCentre).demolishTime - 1
         let worker = sim.people(me, .worker)[0]
         #expect(sim.apply(.demolish(workers: [worker], building: centre), from: me) == .accepted)
         do { let reached = sim.run(until: { $0.entity(centre) == nil }, limit: 200); #expect(reached) }
-        #expect(sim.resources(me) == held + Catalogue.standard.stats(.townCentre).cost.halved)
+        #expect(sim.resources(me) == held + Catalogue.standard.stats(.townCentre).cost.share(0.5))
         #expect(sim.players[0].age == .towns)
     }
 }

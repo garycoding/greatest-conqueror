@@ -100,7 +100,8 @@ public struct Lobby: Hashable, Codable, Sendable {
 }
 
 /// What a joining Mac needs once, when its match starts or it rejoins: the
-/// parts of a view that never change, so that each view can leave them out.
+/// parts of a view that never change, so that each view can leave them out,
+/// and the host's tables, by which everyone in the match plays (requirement 29).
 public struct MatchStart: Hashable, Codable, Sendable {
     public var player: PlayerID
     public var mapWidth: Int
@@ -132,7 +133,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 1
+    public static let protocolVersion = 2
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`
