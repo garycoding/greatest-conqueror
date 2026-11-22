@@ -6,7 +6,7 @@ import GameCore
 import Synchronization
 
 /// The boat's art of the Alchemy age (ruled 2026-11-21), in the Cartoon Modern
-/// style of docs/art-style.md: the fishing smack (`SpriteSubject.unit(.boat,
+/// style of docs/art-style.md: the fishing smack (`SpriteSubject.unit(.fishingBoat,
 /// .alchemy)`), a small gaff-rigged sailing boat worked by one fisherman, in
 /// the five views, standing (hove to, its sail slack), walking (under sail)
 /// and working (hauling a net, or working a rock), each a cycle of 12 frames.
@@ -29,7 +29,7 @@ public final class AlchemyBoatSprites: ViewedSpriteSource {
 
     public init(catalogue: Catalogue = .standard) {
         poses = SpriteKey.required(through: .cannons, catalogue: catalogue).filter { key in
-            guard case .unit(.boat, .alchemy) = key.subject else { return false }
+            guard case .unit(.fishingBoat, .alchemy) = key.subject else { return false }
             return AlchemySmack.drawn(key.pose)
         }
         supplied = Set(poses)
@@ -41,10 +41,10 @@ public final class AlchemyBoatSprites: ViewedSpriteSource {
     }
 
     /// The smack is drawn in all five views (ruled 2026-11-21).
-    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.boat, .alchemy) }
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.fishingBoat, .alchemy) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.boat, .alchemy),
+        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.fishingBoat, .alchemy),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)) else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
         let drawn = Self.drawPose(key.pose, view: key.view)

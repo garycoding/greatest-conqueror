@@ -13,7 +13,7 @@ import Testing
 /// none; every other key has none; and a key always gives the same pixels.
 @Suite(.serialized) struct StoneBoatsTests {
     private let source = StoneBoatSprites()
-    private static let boat = SpriteSubject.unit(.boat, .stone)
+    private static let boat = SpriteSubject.unit(.fishingBoat, .stone)
 
     @Test func theBatchIsTheDugoutTheFishAndTheRocksAfloat() {
         #expect(source.poses == [SpriteKey(Self.boat, .standing), SpriteKey(Self.boat, .walking), SpriteKey(Self.boat, .working)])
@@ -119,7 +119,7 @@ import Testing
             others.append(SpriteKey(.site(.fish), .complete, frame: frame))
         }
         others.append(SpriteKey(Self.boat, .fighting))
-        others += [Look.bronze, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
+        others += [Look.bronze, .iron, .alchemy, .industrial].map { SpriteKey(.unit(.fishingBoat, $0), .standing) }
         others += [SiteKind.tree, .prey, .fish].map { SpriteKey(.site($0), .afloat) }
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .afloat, frame: 1) }
         others += StoneBoatSprites.rocks.map { SpriteKey(.site($0), .complete) }

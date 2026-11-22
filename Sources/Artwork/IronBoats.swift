@@ -7,7 +7,7 @@ import Synchronization
 
 /// The boats' art of the Iron age (ruled 2026-11-21), in the Cartoon Modern
 /// style of docs/art-style.md: the boat in its Iron-age look, the fishing boat
-/// (`SpriteSubject.unit(.boat, .iron)`), an oared boat of planks rowed by one
+/// (`SpriteSubject.unit(.fishingBoat, .iron)`), an oared boat of planks rowed by one
 /// person, in the five views, standing, walking (rowing) and working (casting
 /// a net), each a cycle of 12 frames. It has no attack, so no fighting pose.
 /// It carries the team's colour on its hull and on its rower, sits on the
@@ -27,7 +27,7 @@ public final class IronBoatSprites: ViewedSpriteSource {
 
     public init(catalogue: Catalogue = .standard) {
         poses = SpriteKey.required(through: .ships, catalogue: catalogue).filter { key in
-            guard case .unit(.boat, .iron) = key.subject else { return false }
+            guard case .unit(.fishingBoat, .iron) = key.subject else { return false }
             return IronFishingBoat.drawn(key.pose)
         }
         supplied = Set(poses)
@@ -39,10 +39,10 @@ public final class IronBoatSprites: ViewedSpriteSource {
     }
 
     /// The fishing boat is drawn in all five views (ruled 2026-11-21).
-    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.boat, .iron) }
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.fishingBoat, .iron) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.boat, .iron),
+        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.fishingBoat, .iron),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)) else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
         let drawn = Self.drawPose(key.pose, view: key.view)

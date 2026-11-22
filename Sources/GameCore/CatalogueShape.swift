@@ -38,6 +38,9 @@ public struct CatalogueShape: Sendable {
     public var bonuses: [Bonus]
     public var startingResources: ResourceAmounts
     public var startingPeople: Int
+    public var founderPeople: Int
+    /// How many troops a navy ship carries (requirement 16).
+    public var shipCargo: Int
     public var populationMaximum: Int
     public var car: CarStats?
 
@@ -48,18 +51,24 @@ public struct CatalogueShape: Sendable {
         func cost(_ pairs: [Resource: Int]) -> ResourceAmounts { ResourceAmounts(pairs) }
         let units: [UnitShape] = [
             UnitShape(kind: .worker, armour: 0, speed: 1.0, sight: 4, population: 1),
-            // A boat (ruled 2026-11-21): on the water only, a worker's speed.
-            UnitShape(kind: .boat, armour: 0, speed: 1.0, sight: 5, population: 1),
+            UnitShape(kind: .doctor, armour: 0, speed: 1.0, sight: 5, population: 1),
+            // A fishing boat (ruled 2026-11-21): on the water only, a worker's speed.
+            UnitShape(kind: .fishingBoat, armour: 0, speed: 1.0, sight: 5, population: 1),
             // A person's car (ruled 2026-11-21): outside the population, twice a worker's speed.
             UnitShape(kind: .car, armour: 0, speed: 2.0, sight: 8, population: 0),
-            UnitShape(kind: .spearman, armour: 1, speed: 1.0, sight: 5, population: 1),
-            UnitShape(kind: .swordsman, armour: 2, speed: 1.0, sight: 5, population: 1),
-            UnitShape(kind: .musketeer, armour: 1, speed: 1.0, sight: 7, population: 1),
-            UnitShape(kind: .rifleman, armour: 1, speed: 1.1, sight: 8, population: 1),
-            UnitShape(kind: .horseman, armour: 1, speed: 2.2, sight: 7, population: 2),
-            UnitShape(kind: .knight, armour: 3, speed: 2.0, sight: 7, population: 2),
-            UnitShape(kind: .cannon, armour: 2, speed: 0.6, sight: 9, population: 3, area: 1.5),
-            UnitShape(kind: .fieldGun, armour: 2, speed: 0.8, sight: 10, population: 3, area: 1.5),
+            UnitShape(kind: .soldier1, armour: 1, speed: 1.0, sight: 5, population: 1),
+            UnitShape(kind: .soldier2, armour: 2, speed: 1.0, sight: 5, population: 1),
+            UnitShape(kind: .soldier3, armour: 1, speed: 1.0, sight: 7, population: 1),
+            UnitShape(kind: .soldier4, armour: 1, speed: 1.1, sight: 8, population: 1),
+            UnitShape(kind: .knight1, armour: 1, speed: 2.2, sight: 7, population: 2),
+            UnitShape(kind: .knight2, armour: 3, speed: 2.0, sight: 7, population: 2),
+            UnitShape(kind: .knight3, armour: 3, speed: 2.1, sight: 8, population: 2),
+            UnitShape(kind: .cannon1, armour: 2, speed: 0.6, sight: 9, population: 3, area: 1.5),
+            UnitShape(kind: .cannon2, armour: 2, speed: 0.8, sight: 10, population: 3, area: 1.5),
+            // A navy ship (requirement 16): on the water only, with built-in cannons.
+            UnitShape(kind: .navyShip, armour: 3, speed: 1.3, sight: 9, population: 3),
+            // A founder (ruled 2026-11-22): outside the population, a little quicker than a worker.
+            UnitShape(kind: .founder, armour: 0, speed: 1.2, sight: 5, population: 0),
         ]
         let buildings: [BuildingShape] = [
             BuildingShape(kind: .townCentre, armour: 2, footprint: GridPoint(3, 3), sight: 8, housing: 5, accepts: [.food, .wood, .gold]),
@@ -67,24 +76,27 @@ public struct CatalogueShape: Sendable {
             // A boat house on the shore (ruled 2026-11-21): it takes in the boats' loads.
             BuildingShape(kind: .boatHouse, armour: 0, footprint: GridPoint(2, 2), sight: 4, housing: 0, accepts: [.food, .gold]),
             BuildingShape(kind: .barracks, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
-            BuildingShape(kind: .watchTower, armour: 2, footprint: GridPoint(1, 1), sight: 9, housing: 0, accepts: []),
+            BuildingShape(kind: .tower, armour: 2, footprint: GridPoint(1, 1), sight: 9, housing: 0, accepts: []),
             BuildingShape(kind: .farm, armour: 0, footprint: GridPoint(3, 3), sight: 2, housing: 0, accepts: []),
             BuildingShape(kind: .stable, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
             BuildingShape(kind: .castle, armour: 4, footprint: GridPoint(4, 4), sight: 10, housing: 10, accepts: []),
+            BuildingShape(kind: .cannonFactory, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
+            BuildingShape(kind: .hospital, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0, accepts: []),
         ]
         let gathering = GatheringStats(farmYield: 300, farmReseed: cost([.wood: 60]), load: 10,
                                        siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200])
         let bonuses: [Bonus] = [
-            Bonus(.spearman, against: .horseman, 3),
-            Bonus(.swordsman, against: .spearman, 1.5),
-            Bonus(.knight, against: .swordsman, 1.5), Bonus(.knight, against: .musketeer, 1.5),
-            Bonus(.spearman, against: .knight, 2.5),
-            Bonus(.musketeer, against: .knight, 2), Bonus(.musketeer, against: .swordsman, 1.5),
-            Bonus(.rifleman, against: .knight, 2), Bonus(.rifleman, against: .musketeer, 1.5), Bonus(.rifleman, against: .swordsman, 1.5),
-            Bonus(.fieldGun, against: .rifleman, 1.5), Bonus(.fieldGun, against: .musketeer, 1.5),
+            Bonus(.soldier1, against: .knight1, 3),
+            Bonus(.soldier2, against: .soldier1, 1.5),
+            Bonus(.knight2, against: .soldier2, 1.5), Bonus(.knight2, against: .soldier3, 1.5),
+            Bonus(.knight3, against: .soldier3, 1.5), Bonus(.knight3, against: .soldier4, 1.5),
+            Bonus(.soldier1, against: .knight2, 2.5),
+            Bonus(.soldier3, against: .knight2, 2), Bonus(.soldier3, against: .soldier2, 1.5),
+            Bonus(.soldier4, against: .knight2, 2), Bonus(.soldier4, against: .knight3, 2), Bonus(.soldier4, against: .soldier3, 1.5), Bonus(.soldier4, against: .soldier2, 1.5),
+            Bonus(.cannon2, against: .soldier4, 1.5), Bonus(.cannon2, against: .soldier3, 1.5),
         ]
         return CatalogueShape(units: units, buildings: buildings, gathering: gathering, bonuses: bonuses,
                               startingResources: cost([.food: 200, .wood: 250]), startingPeople: 3,
-                              populationMaximum: 200, car: CarStats(killRadius: 11))
+                              founderPeople: 2, shipCargo: 20, populationMaximum: 200, car: CarStats(killRadius: 11))
     }()
 }

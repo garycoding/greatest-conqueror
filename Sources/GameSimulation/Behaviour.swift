@@ -10,13 +10,19 @@ extension Simulation {
         if entities[i].unitKind == .car { clearAround(i) }
         if entities[i].cooldown > 0 { entities[i].cooldown -= 1 }
         switch entities[i].task {
-        case .idle: entities[i].doing = .idle
+        case .idle:
+            entities[i].doing = .idle
+            lookForCare(i)
         case .move(let point): moveTask(i, to: point)
         case .gather(let site, let kind, let tile): gatherTask(i, site: site, kind: kind, tile: tile)
         case .work(let building): workTask(i, at: building)
         case .demolish(let building): demolishTask(i, building)
         case .attack(let target): attackTask(i, target: target)
+        case .heal(let target): healTask(i, target)
+        case .board(let ship): boardTask(i, ship)
+        case .land(let point): landTask(i, at: point)
         }
+        if entities[i].alive, !entities[i].queue.isEmpty { makeAtShore(i) }
     }
 
     mutating func setIdle(_ i: Int) {
@@ -52,7 +58,7 @@ extension Simulation {
         let owner = entities[i].owner.rawValue
         let load = catalogue.gathering.load
         var siteIndex = self.siteIndex(of: site)
-        if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner, afloat: entities[i].isBoat) {
+        if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner, afloat: entities[i].isAfloat) {
             // The site is exhausted: the worker turns to the nearest other of its kind.
             entities[i].task = .gather(site: sites[next].id, kind: kind, tile: sites[next].tile)
             entities[i].route = Route()
@@ -92,7 +98,7 @@ extension Simulation {
         entities[i].doing = .carrying
         var drop = entities[i].dropOff.flatMap { index(of: $0) }
         if let d = drop, !accepts(d, kind.yield, from: entities[i].owner)
-            || (entities[d].buildingKind == .boatHouse) != entities[i].isBoat { drop = nil }
+            || (entities[d].buildingKind == .boatHouse) != entities[i].isAfloat { drop = nil }
         if drop == nil {
             drop = nearestDropOff(for: i, accepting: kind.yield)
             entities[i].dropOff = drop.map { entities[$0].id }
@@ -124,7 +130,7 @@ extension Simulation {
         let owner = entities[i].owner, position = entities[i].position
         var best: Int?
         var bestDistance = Double.infinity
-        let boat = entities[i].isBoat
+        let boat = entities[i].isAfloat
         for j in entities.indices where !entities[j].isPerson && accepts(j, resource, from: owner)
             && (entities[j].buildingKind == .boatHouse) == boat {
             let d = Goal.tiles(entities[j].origin, entities[j].size, reach: 0).distance(to: position)
@@ -169,7 +175,7 @@ extension Simulation {
     // MARK: Working at a building
 
     /// Workers construct a building, repair it once it is damaged, or tend it
-    /// if it is a farm.
+    /// if it is a farm; a founder constructs the town centre it founded.
     mutating func workTask(_ i: Int, at building: EntityID) {
         guard let b = index(of: building), entities[b].owner == entities[i].owner,
               let buildingKind = entities[b].buildingKind, hasWork(at: b, person: i) else {
@@ -184,7 +190,7 @@ extension Simulation {
         }
         switch approach(i, .tiles(entities[b].origin, entities[b].size, reach: Rule.besideReach)) {
         case .moving: entities[i].doing = .moving; return
-        case .unreachable: setIdle(i); return
+        case .unreachable: rest(i); return
         case .arrived: break
         }
         face(i, dx: entities[b].position.x - entities[i].position.x, dy: entities[b].position.y - entities[i].position.y)
@@ -194,14 +200,17 @@ extension Simulation {
         if !entities[b].complete {
             entities[i].doing = .constructing
             entities[b].built += 1
-            credit(b, health: stats.health, per: buildTime)
+            credit(b, health: entities[b].maxHealth, per: buildTime)
             if entities[b].built >= buildTime { complete(b) }
             return
         }
         if entities[b].health < entities[b].maxHealth {
+            // Repair: each worker restores `repair_per_second`, so that more
+            // workers repair sooner (requirement 12).
             entities[i].doing = .working
-            credit(b, health: stats.health, per: buildTime)
-            if entities[b].health >= entities[b].maxHealth { entities[b].healthCredit = 0 }
+            let rate = entities[i].unitKind.flatMap { tables.unit($0).repairing } ?? 0
+            let whole = accrue(i, rate)
+            entities[b].health = min(entities[b].maxHealth, entities[b].health + whole)
             return
         }
         // A farm: its one worker earns food until it runs dry, and then reseeds
@@ -279,6 +288,7 @@ extension Simulation {
     func hasWork(at b: Int, person: Int? = nil) -> Bool {
         let e = entities[b]
         guard let buildingKind = e.buildingKind else { return false }
+        if let person, entities[person].isFounder { return !e.complete && e.foundedBy == entities[person].id }
         if !e.complete || e.health < e.maxHealth { return true }
         return buildingKind == .farm && farmer(of: b, besides: person) == nil
     }
@@ -301,6 +311,10 @@ extension Simulation {
         let p = entities[b].owner.rawValue
         housing[p] += tables.building(kind).housing
         record(.constructed(entities[b].id, kind), for: p)
+        if let founder = entities[b].foundedBy {
+            entities[b].foundedBy = nil
+            founded(b, by: founder)
+        }
     }
 
     // MARK: Buildings
@@ -309,7 +323,7 @@ extension Simulation {
         guard entities[b].complete, let kind = entities[b].buildingKind else { return }
         if entities[b].advancing != nil { advance(b) }
         if entities[b].cooldown > 0 { entities[b].cooldown -= 1 }
-        if let attack = tables.building(kind).attack, entities[b].cooldown == 0 {
+        if let attack = attack(of: b), entities[b].cooldown == 0 {
             let e = entities[b]
             if let target = nearestOpponent(of: teamOf(e.owner), minX: Double(e.origin.x), minY: Double(e.origin.y),
                                             maxX: Double(e.origin.x + e.size.x), maxY: Double(e.origin.y + e.size.y),
@@ -320,14 +334,14 @@ extension Simulation {
         }
         if let head = entities[b].queue.first {
             let stats = tables.unit(head)
-            let time = tables.trainTime(head, at: kind)
+            let time = tables.trainTime(head, at: .building(kind))
             if entities[b].trainProgress < time { entities[b].trainProgress += 1 }
             let p = entities[b].owner.rawValue
             if entities[b].trainProgress >= time && population[p] + stats.population <= populationLimit(p) {
                 entities[b].queue.removeFirst()
                 entities[b].trainProgress = 0
-                // A boat comes out on the water beside its boat house (ruled 2026-11-21).
-                let spot = freeTile(besideBuilding: b, index: entities[b].spawned, afloat: head == .boat)
+                // A boat or a ship comes out on the water beside its boathouse.
+                let spot = freeTile(besideBuilding: b, index: entities[b].spawned, afloat: head.isAfloat)
                 entities[b].spawned += 1
                 let id = spawnPerson(head, owner: entities[b].owner, at: spot.centre)
                 record(.trained(id, head), for: p)
@@ -347,6 +361,7 @@ extension Simulation {
         entities[b].advancing = nil
         players[p].age = next
         record(.ageReached(next), for: p)
+        upgrade(player: p)
     }
 
     /// Every opponent's unit within a car's kill radius dies at once (ruled

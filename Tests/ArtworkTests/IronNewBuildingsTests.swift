@@ -23,7 +23,8 @@ import Testing
 
     @Test func theBatchIsTheIronAgesNewBuildings() {
         // The stable, of the age of ships, and the farm, which Cities of Progress drew from its Iron age.
-        let iron = Catalogue.standard.buildings.filter { $0.age == .ships }.map(\.kind) + [.farm]
+        // The castle, of the age of ships now, is drawn in the Iron look by its Alchemy stand-in (`StandIn`).
+        let iron = Catalogue.standard.buildings.filter { $0.age == .ships && $0.kind != .castle }.map(\.kind) + [.farm]
         #expect(Set(iron) == Set(IronNewBuildingsArt.kinds))
         #expect(Self.batch.count == 6)
     }
@@ -238,7 +239,7 @@ struct IronNewBuildingsRenders {
             (SpriteKey(.site(.tree), .complete), 1.5, 15.5, nil),
             (SpriteKey(.site(.tree), .complete), 7.5, 2.5, nil),
             (SpriteKey(.unit(.worker, .bronze), .working), 6.9, 9.4, .sumer),
-            (SpriteKey(.unit(.spearman, .bronze), .standing), 15.6, 9.6, .sumer),
+            (SpriteKey(.unit(.soldier1, .bronze), .standing), 15.6, 9.6, .sumer),
             (SpriteKey(.unit(.worker, .bronze), .walking), 11.4, 11.6, .sumer),
         ]
         for (key, x, y, civilization) in things.sorted(by: { ($0.1 + $0.2, $0.1) < ($1.1 + $1.2, $1.1) }) {

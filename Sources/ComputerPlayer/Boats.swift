@@ -30,11 +30,12 @@ extension Turn {
 
     /// A complete boat house trains boats up to `boatsWanted`, one at a time.
     func trainBoats() {
-        guard boats.count + training[UnitKind.boat.rawValue] < Self.boatsWanted else { return }
-        let stats = catalogue.stats(.boat)
+        guard boats.count + training[UnitKind.fishingBoat.rawValue] < Self.boatsWanted,
+              let made = catalogue.production(of: .fishingBoat, at: .boatHouse), made.age <= view.age else { return }
+        let stats = catalogue.stats(.fishingBoat)
         for house in completeBuildings(.boatHouse) where isFree(house) && queueLength(house) == 0 {
             guard projectedPopulation + stats.population <= view.populationLimit, canPay(stats.cost) else { return }
-            train(.boat, at: house)
+            train(.fishingBoat, at: house)
             return
         }
     }

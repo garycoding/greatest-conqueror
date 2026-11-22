@@ -16,7 +16,7 @@ import Testing
     @Test func theBatchIsTheChecklistsBronzePeople() {
         let expected = SpriteKey.required(through: .farms).filter { key in
             // The boat is drawn with the boats' art, in its own batch (`BronzeBoatSprites`).
-            if case .unit(let kind, .bronze) = key.subject { return kind != .boat }
+            if case .unit(let kind, .bronze) = key.subject { return kind != .fishingBoat }
             return false
         }
         #expect(source.poses == expected)
@@ -25,7 +25,7 @@ import Testing
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(kinds == [.worker, .spearman])
+        #expect(kinds == [.worker, .soldier1])
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -74,7 +74,7 @@ import Testing
     }
 
     @Test func warfightersWorkingStandStill() throws {
-        for kind in [UnitKind.spearman] {
+        for kind in [UnitKind.soldier1] {
             for frame in [0, 8] {
                 let working = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .working, frame: frame)))
                 let standing = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .standing, frame: frame)))

@@ -64,19 +64,6 @@ extension Simulation {
         inMap(t) && (mapRevealed(for: p) || teams[players[p].teamIndex].explored[tileIndex(t)])
     }
 
-    /// Which players own anything that keeps them in the match.
-    func ownership() -> [Bool] {
-        var owns = Array(repeating: false, count: players.count)
-        for e in entities where e.alive {
-            // A person's car keeps nobody in the match (ruled 2026-11-21), nor
-            // does a boat, which can neither build nor fight, nor be reached
-            // on the water by any warfighter before the age of cannons.
-            if e.unitKind == .car || e.unitKind == .boat { continue }
-            owns[e.owner.rawValue] = true
-        }
-        return owns
-    }
-
     public mutating func view(for player: PlayerID) -> PlayerView { view(for: player, asComputer: false) }
 
     /// A computer player always explores (ruled 2026-11-20), even in a person's seat.
@@ -154,6 +141,9 @@ extension Simulation {
             return .repairing
         case .demolish: return .demolishing
         case .attack: return .attacking
+        case .heal: return .healing
+        case .board: return .boarding
+        case .land: return .landing
         }
     }
 
@@ -163,6 +153,13 @@ extension Simulation {
                               maxHealth: e.maxHealth, activity: activity(of: e),
                               remaining: remaining(of: e))
         view.killRadiusOff = e.killRadiusOff
+        if e.unitKind == .navyShip {
+            view.passengers = e.passengers?.count ?? 0
+            if let head = e.queue.first {
+                let time = tables.trainTime(head, at: e.kind)
+                view.making = .training(head, min(1, Double(e.trainProgress) / Double(time)), queued: e.queue.count)
+            }
+        }
         if e.unitKind == .car, e.doing == .fighting, case .attack(let target) = e.task, let t = index(of: target) {
             view.laserTarget = entities[t].position
         }
@@ -180,7 +177,7 @@ extension Simulation {
             let stats = tables.building(kind)
             if !e.complete { return .underConstruction(min(1, Double(e.built) / Double(max(1, stats.buildTime)))) }
             if let head = e.queue.first {
-                let time = tables.trainTime(head, at: kind)
+                let time = tables.trainTime(head, at: .building(kind))
                 return .training(head, min(1, Double(e.trainProgress) / Double(time)), queued: e.queue.count)
             }
             if let done = e.advancing, let advance = catalogue.advance(from: players[e.owner.rawValue].age) {

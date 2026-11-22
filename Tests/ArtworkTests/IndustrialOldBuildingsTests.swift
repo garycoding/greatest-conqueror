@@ -13,7 +13,9 @@ import Testing
     private static let source = IndustrialOldBuildingSprites()
 
     /// The buildings of the Stone, Bronze, Iron and Alchemy ages, the boat house among them: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .cannons }.map(\.kind)
+    /// The kinds drawn as stand-ins (`StandIn`) are drawn by none.
+    private static let kinds = Catalogue.standard.buildings
+        .filter { $0.age <= .cannons && StandIn.building($0.kind) == $0.kind }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Industrial age's
     /// look, complete and under construction, at frame 0.
@@ -369,8 +371,8 @@ private enum IndustrialOldBuildingsPreview {
             Placed(kind: .house, x: 11, y: 7, complete: true, civilization: .rome),
             Placed(kind: .house, x: 5, y: 4, complete: false, civilization: .rome),
             Placed(kind: .barracks, x: 11, y: 11, complete: true, civilization: .rome),
-            Placed(kind: .watchTower, x: 9, y: 2, complete: false, civilization: .rome),
-            Placed(kind: .watchTower, x: 15, y: 9, complete: true, civilization: .rome),
+            Placed(kind: .tower, x: 9, y: 2, complete: false, civilization: .rome),
+            Placed(kind: .tower, x: 15, y: 9, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 8, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 12, complete: false, civilization: .rome),
             Placed(kind: .stable, x: 7, y: 14, complete: true, civilization: .rome),

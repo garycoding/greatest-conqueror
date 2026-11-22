@@ -31,33 +31,33 @@ import Testing
     }
 
     @Test func aBlowDoesItsDamageLessArmourAndAtLeastOne() {
-        #expect(Self.harm(.unit(.spearman), .unit(.spearman)) == 5 - 1)
-        #expect(Self.harm(.unit(.worker), .unit(.spearman)) == 3 - 1)
+        #expect(Self.harm(.unit(.soldier1), .unit(.soldier1)) == 5 - 1)
+        #expect(Self.harm(.unit(.worker), .unit(.soldier1)) == 3 - 1)
         #expect(Self.harm(.unit(.worker), .building(.townCentre)) == 1)
-        #expect(Self.harm(.building(.watchTower), .unit(.spearman)) == 4 - 1)
+        #expect(Self.harm(.building(.tower), .unit(.soldier1)) == 4 - 1)
     }
 
     @Test func bonusesMultiplyTheDamageBeforeArmour() {
-        #expect(Self.harm(.unit(.spearman), .unit(.horseman)) == 5 * 3 - 1)
-        #expect(Self.harm(.unit(.horseman), .unit(.spearman)) == 7 - 1)
-        #expect(Self.harm(.unit(.swordsman), .unit(.spearman)) == Int((7 * 1.5).rounded()) - 1)
-        #expect(Self.harm(.unit(.musketeer), .unit(.knight)) == 12 * 2 - 3)
-        #expect(Self.harm(.unit(.spearman), .unit(.knight)) == Int((5 * 2.5).rounded()) - 3)
-        #expect(Self.harm(.unit(.knight), .unit(.swordsman)) == Int((10 * 1.5).rounded()) - 2)
+        #expect(Self.harm(.unit(.soldier1), .unit(.knight1)) == 5 * 3 - 1)
+        #expect(Self.harm(.unit(.knight1), .unit(.soldier1)) == 7 - 1)
+        #expect(Self.harm(.unit(.soldier2), .unit(.soldier1)) == Int((7 * 1.5).rounded()) - 1)
+        #expect(Self.harm(.unit(.soldier3), .unit(.knight2)) == 12 * 2 - 3)
+        #expect(Self.harm(.unit(.soldier1), .unit(.knight2)) == Int((5 * 2.5).rounded()) - 3)
+        #expect(Self.harm(.unit(.knight2), .unit(.soldier2)) == Int((10 * 1.5).rounded()) - 2)
     }
 
     @Test func aCannonsShotHarmsOpponentsAroundTheTargetAndNoAlly() {
         var sim = Simulation(setup: setup(openMap(starts: [GridPoint(2, 2), GridPoint(34, 34), GridPoint(2, 34)]),
                                           teams: [0, 1, 0]))
         let ally = PlayerID(2)
-        let cannon = sim.add(.cannon, me, 10.5, 18.5)
-        let target = sim.add(.swordsman, them, 18.5, 18.5)
-        let beside = sim.add(.swordsman, them, 19.5, 18.5)
-        let far = sim.add(.swordsman, them, 22.5, 18.5)
-        let friend = sim.add(.swordsman, ally, 18.5, 19.5)
-        let attack = Catalogue.standard.stats(.cannon).attack!
+        let cannon = sim.add(.cannon1, me, 10.5, 18.5)
+        let target = sim.add(.soldier2, them, 18.5, 18.5)
+        let beside = sim.add(.soldier2, them, 19.5, 18.5)
+        let far = sim.add(.soldier2, them, 22.5, 18.5)
+        let friend = sim.add(.soldier2, ally, 18.5, 19.5)
+        let attack = Catalogue.standard.stats(.cannon1).attack!
         sim.strike(from: sim.index(of: cannon)!, at: sim.index(of: target)!, attack: attack)
-        let full = Catalogue.standard.stats(.swordsman).health
+        let full = Catalogue.standard.stats(.soldier2).health
         #expect(sim.living(target).health < full)
         #expect(sim.living(beside).health < full)
         #expect(sim.living(far).health == full)
@@ -66,13 +66,13 @@ import Testing
 
     @Test func meleeClosesInAndRangedStrikesFromItsRange() {
         var sim = duel()
-        let spearman = sim.add(.spearman, me, 14.5, 16.5)
-        let musketeer = sim.add(.musketeer, me, 12.5, 20.5)
+        let spearman = sim.add(.soldier1, me, 14.5, 16.5)
+        let musketeer = sim.add(.soldier3, me, 12.5, 20.5)
         let targets = [sim.add(.worker, them, 19.5, 16.5), sim.add(.worker, them, 19.5, 20.5)]
         #expect(sim.apply(.attack(units: [spearman], target: targets[0]), from: me) == .accepted)
         #expect(sim.apply(.attack(units: [musketeer], target: targets[1]), from: me) == .accepted)
         do { let reached = sim.run(until: { s in [spearman, musketeer].allSatisfy { s.living($0).doing == .fighting } }, limit: 200); #expect(reached) }
-        let range = Catalogue.standard.stats(.musketeer).attack!.range
+        let range = Catalogue.standard.stats(.soldier3).attack!.range
         let musketeerDistance = sim.living(musketeer).position.distance(to: sim.living(targets[1]).position)
         #expect(musketeerDistance <= range && musketeerDistance > range - 0.5)
         #expect(sim.living(spearman).position.distance(to: sim.living(targets[0]).position) <= 1)
@@ -86,16 +86,16 @@ import Testing
 
     @Test func townCentresAndTowersShootOpponentsInRange() {
         var sim = duel()
-        let intruder = sim.add(.spearman, them, 8.5, 3.5)      // 4 from player 0's town centre
-        let mine = sim.add(.spearman, me, 6.5, 3.5)
-        let tower = sim.add(.watchTower, me, 20, 20)
-        let unfinished = sim.add(.watchTower, me, 26, 12, complete: false)
-        let scout = sim.add(.spearman, them, 25.5, 20.5)       // 5 from the tower
-        let passer = sim.add(.spearman, them, 26.5, 14.5)      // beside the unfinished tower
+        let intruder = sim.add(.soldier1, them, 8.5, 3.5)      // 4 from player 0's town centre
+        let mine = sim.add(.soldier1, me, 6.5, 3.5)
+        let tower = sim.add(.tower, me, 20, 20)
+        let unfinished = sim.add(.tower, me, 26, 12, complete: false)
+        let scout = sim.add(.soldier1, them, 25.5, 20.5)       // 5 from the tower
+        let passer = sim.add(.soldier1, them, 26.5, 14.5)      // beside the unfinished tower
         let centre = Catalogue.standard.stats(.townCentre).attack!
-        let towerAttack = Catalogue.standard.stats(.watchTower).attack!
+        let towerAttack = Catalogue.standard.stats(.tower).attack!
         sim.run(centre.interval * 2)
-        let health = Catalogue.standard.stats(.spearman).health, armour = Catalogue.standard.stats(.spearman).armour
+        let health = Catalogue.standard.stats(.soldier1).health, armour = Catalogue.standard.stats(.soldier1).armour
         #expect(sim.health(intruder) == health - 2 * (centre.damage - armour))
         #expect(sim.health(mine) == health)
         #expect(sim.health(scout) == health - (centre.interval * 2 / towerAttack.interval) * (towerAttack.damage - armour))
@@ -106,19 +106,19 @@ import Testing
     @Test func alliesAndOwnCannotBeAttacked() {
         var sim = Simulation(setup: setup(openMap(width: 40, height: 40, starts: [GridPoint(2, 2), GridPoint(2, 34), GridPoint(34, 34)]),
                                           teams: [0, 0, 1]))
-        let spearman = sim.add(.spearman, me, 18.5, 18.5)
+        let spearman = sim.add(.soldier1, me, 18.5, 18.5)
         let ally = sim.add(.worker, PlayerID(1), 19.5, 18.5)
         let own = sim.add(.worker, me, 18.5, 19.5)
         let opponent = sim.add(.worker, PlayerID(2), 20.5, 18.5)
         #expect(sim.apply(.attack(units: [spearman], target: ally), from: me) == .refused(.cannotAttack))
         #expect(sim.apply(.attack(units: [spearman], target: own), from: me) == .refused(.cannotAttack))
         // A boat has no attack.
-        let boat = sim.add(.boat, me, 18.5, 17.5)
+        let boat = sim.add(.fishingBoat, me, 18.5, 17.5)
         #expect(sim.apply(.attack(units: [boat], target: opponent), from: me) == .refused(.notYours))
         #expect(sim.apply(.attack(units: [spearman, boat], target: opponent), from: me) == .accepted)
         #expect(sim.living(boat).task == .idle)
         // A tower does not shoot its own side's allies.
-        sim.add(.watchTower, PlayerID(1), 22, 22)
+        sim.add(.tower, PlayerID(1), 22, 22)
         let allyNearTower = sim.add(.worker, me, 24.5, 22.5)
         sim.run(100)
         #expect(sim.health(allyNearTower) == Catalogue.standard.stats(.worker).health)
@@ -126,7 +126,7 @@ import Testing
 
     @Test func anOpponentOutOfSightCannotBeTargeted() {
         var sim = duel()
-        let spearman = sim.add(.spearman, me, 14.5, 16.5)
+        let spearman = sim.add(.soldier1, me, 14.5, 16.5)
         let far = sim.add(.worker, them, 24.5, 16.5)
         #expect(sim.apply(.attack(units: [spearman], target: far), from: me) == .refused(.invalidTarget))
         #expect(sim.apply(.attack(units: [spearman], target: EntityID(9_999)), from: me) == .refused(.invalidTarget))
@@ -134,12 +134,12 @@ import Testing
 
     @Test func idleWarfightersFightBackAndOthersDoNot() {
         var sim = duel()
-        let attacker = sim.add(.spearman, them, 16.5, 18.5)
-        let defender = sim.add(.spearman, me, 17.5, 18.5)
+        let attacker = sim.add(.soldier1, them, 16.5, 18.5)
+        let defender = sim.add(.soldier1, me, 17.5, 18.5)
         let bystander = sim.add(.worker, me, 17.5, 19.0)
         _ = sim.apply(.attack(units: [attacker], target: defender), from: them)
         sim.step()
-        #expect(sim.health(defender)! < Catalogue.standard.stats(.spearman).health)
+        #expect(sim.health(defender)! < Catalogue.standard.stats(.soldier1).health)
         #expect(sim.living(defender).task == .attack(attacker))
         _ = sim.apply(.attack(units: [attacker], target: bystander), from: them)
         sim.run(40)
@@ -150,7 +150,7 @@ import Testing
 
     @Test func theDestroyedLeaveTheMapAndBothSidesHearOfIt() {
         var sim = duel()
-        let spearmen = (0..<4).map { _ in sim.add(.spearman, me, 17.5, 18.5) }
+        let spearmen = (0..<4).map { _ in sim.add(.soldier1, me, 17.5, 18.5) }
         let house = sim.add(.house, them, 18, 18)
         let worker = sim.add(.worker, them, 16.5, 19.5)
         _ = sim.apply(.attack(units: spearmen, target: worker), from: me)
@@ -167,7 +167,7 @@ import Testing
 
     @Test func aWarfighterWhoseTargetFallsTakesTheNearestOpponentInSight() {
         var sim = duel()
-        let spearmen = (0..<3).map { _ in sim.add(.spearman, me, 17.5, 18.5) }
+        let spearmen = (0..<3).map { _ in sim.add(.soldier1, me, 17.5, 18.5) }
         let first = sim.add(.worker, them, 18.5, 18.5)
         let second = sim.add(.worker, them, 20.5, 18.5)
         _ = sim.apply(.attack(units: spearmen, target: first), from: me)
@@ -196,7 +196,7 @@ import Testing
     @Test func alliesShareSightAndViewsShowOthersOnlyWhereVisible() {
         var sim = Simulation(setup: setup(openMap(width: 48, height: 48, starts: [GridPoint(2, 2), GridPoint(2, 42), GridPoint(42, 42)]),
                                           teams: [0, 0, 1]))
-        let allyScout = sim.add(.spearman, PlayerID(1), 30.5, 10.5)
+        let allyScout = sim.add(.soldier1, PlayerID(1), 30.5, 10.5)
         let opponent = sim.add(.worker, PlayerID(2), 32.5, 10.5)
         let hidden = sim.add(.worker, PlayerID(2), 20.5, 30.5)
         var view = sim.view(for: me)

@@ -60,7 +60,7 @@ private func owns(_ kinds: [UnitKind], in view: PlayerView) -> Bool {
 @Test func aHardComputerPlayerInTheAgeOfShipsBuildsAStableAndTrainsHorsemen() {
     var start = LateStart(age: .ships, seed: 3)
     let minutes = start.play(minutes: 30) { view in
-        complete(.stable, in: view) && owns([.horseman], in: view)
+        complete(.stable, in: view) && owns([.knight1], in: view)
     }
     #expect(minutes != nil, "no stable and horseman within 30 minutes")
     print("Ships: stable and horseman at \(minutes.map(String.init) ?? "never") minutes")
@@ -71,7 +71,7 @@ private func owns(_ kinds: [UnitKind], in view: PlayerView) -> Bool {
 @Test func aHardComputerPlayerInTheAgeOfCannonsBuildsACastleAndTrainsItsWarfighters() {
     var start = LateStart(age: .cannons, seed: 3)
     let minutes = start.play(minutes: 30) { view in
-        complete(.castle, in: view) && owns([.musketeer, .knight, .cannon], in: view)
+        complete(.castle, in: view) && owns([.soldier3, .knight2, .cannon1], in: view)
     }
     #expect(minutes != nil, "no castle and warfighters of the age within 30 minutes")
     print("Cannons: castle and warfighters at \(minutes.map(String.init) ?? "never") minutes")

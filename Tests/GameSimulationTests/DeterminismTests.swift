@@ -62,8 +62,8 @@ enum Script {
                 out.append(.construct(workers: [builder], building: .house, at: at))
             } else if bronze, buildings(.barracks).isEmpty, let at = spot(.barracks, near: centre.tile) {
                 out.append(.construct(workers: [builder], building: .barracks, at: at))
-            } else if bronze, buildings(.watchTower).isEmpty, let at = spot(.watchTower, near: centre.tile) {
-                out.append(.construct(workers: [builder], building: .watchTower, at: at))
+            } else if bronze, buildings(.tower).isEmpty, let at = spot(.tower, near: centre.tile) {
+                out.append(.construct(workers: [builder], building: .tower, at: at))
             }
         }
         // One worker in training at a time, up to six.
@@ -71,7 +71,7 @@ enum Script {
             out.append(.train(at: centre.id, unit: .worker))
         }
         if let barracks = complete(.barracks), t % 300 == 0 {
-            out.append(.train(at: barracks.id, unit: .spearman))
+            out.append(.train(at: barracks.id, unit: .soldier1))
         }
         if !bronze, view.ageProgress == 0, let advance = catalogue.advance(from: view.age), held.covers(advance.cost) {
             out.append(.advanceAge(at: centre.id))
@@ -134,7 +134,7 @@ enum Script {
 @Suite struct Determinism {
     /// The checksum at the end of the scripted match. A second process must
     /// reproduce it; a change to the rules that changes the match changes it.
-    static let storedChecksum: UInt64 = 0x36D0_5518_D548_E1AF
+    static let storedChecksum: UInt64 = 0x8355_9372_9F19_43D9
 
     @Test func theScriptedMatchEndsWithTheStoredChecksum() {
         var sim = Simulation(setup: Samples.twoPlayerSetup(seed: 7))

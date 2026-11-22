@@ -6,7 +6,7 @@ import GameCore
 import Synchronization
 
 /// The boat in its Industrial-age look (ruled 2026-11-21, plan D7), the steam
-/// trawler (`SpriteSubject.unit(.boat, .industrial)`), in the Cartoon Modern
+/// trawler (`SpriteSubject.unit(.fishingBoat, .industrial)`), in the Cartoon Modern
 /// style of docs/art-style.md: a small steel trawler with a tall funnel and a
 /// crewman at its winch, in the five views, standing, walking (under steam,
 /// smoke from the funnel and a bow wave) and working (hauling the trawl's warp
@@ -29,7 +29,7 @@ public final class IndustrialBoatSprites: ViewedSpriteSource {
 
     public init(catalogue: Catalogue = .standard) {
         poses = SpriteKey.required(through: .hospitals, catalogue: catalogue).filter { key in
-            guard case .unit(.boat, .industrial) = key.subject else { return false }
+            guard case .unit(.fishingBoat, .industrial) = key.subject else { return false }
             return IndustrialTrawler.drawn(key.pose)
         }
         supplied = Set(poses)
@@ -41,10 +41,10 @@ public final class IndustrialBoatSprites: ViewedSpriteSource {
     }
 
     /// The trawler is drawn in all five views.
-    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.boat, .industrial) }
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.fishingBoat, .industrial) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.boat, .industrial),
+        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.fishingBoat, .industrial),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)) else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
         let drawn = Self.drawPose(key.pose, view: key.view)

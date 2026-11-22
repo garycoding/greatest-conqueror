@@ -199,11 +199,12 @@ enum Placeholders {
             // A pick: a haft with a crossbar.
             line(c, CGPoint(x: h.x - 3 + tilt, y: h.y - 6), CGPoint(x: h.x + 3, y: h.y + 14), wood, width: 2.5)
             line(c, CGPoint(x: h.x - 4, y: h.y + 12), CGPoint(x: h.x + 10, y: h.y + 15), colour(0.55, 0.55, 0.58), width: 2.5)
-        case .spearman:
+        case .soldier1:
             line(c, CGPoint(x: h.x, y: h.y - 14), CGPoint(x: h.x + 3 + tilt, y: h.y + 28), wood, width: 2)
             polygon(c, [CGPoint(x: h.x + 1 + tilt, y: h.y + 26), CGPoint(x: h.x + 5 + tilt, y: h.y + 26),
                         CGPoint(x: h.x + 3 + tilt, y: h.y + 35)], fill: colour(0.7, 0.72, 0.75))
-        case .swordsman, .horseman, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .car, .boat:
+        case .soldier2, .knight1, .knight2, .knight3, .soldier3, .cannon1, .soldier4, .cannon2, .car, .fishingBoat,
+             .doctor, .navyShip, .founder:
             break
         }
     }
@@ -224,7 +225,7 @@ enum Placeholders {
             let s = Projection.screen(MapPosition(x: x - fx / 2, y: y - fy / 2))
             return CGPoint(x: cx + s.x, y: cy + s.y + lift)
         }
-        let inset = kind == .watchTower ? 0.22 : 0.12
+        let inset = kind == .tower ? 0.22 : 0.12
         let (x0, y0, x1, y1) = (inset, inset, fx - inset, fy - inset)
 
         let image = render(size) { c in
@@ -295,7 +296,7 @@ enum Placeholders {
             line(c, onRightFace(0.22, 0.2), onRightFace(0.78, 0.8), light, width: 2.5)
             line(c, onRightFace(0.22, 0.8), onRightFace(0.78, 0.2), light, width: 2.5)
             line(c, onLeftFace(0.22, 0.2), onLeftFace(0.78, 0.8), light, width: 2)
-        case .watchTower:
+        case .tower:
             for corner in [corners.top, corners.right, corners.bottom, corners.left] {
                 polygon(c, [CGPoint(x: corner.x - 3, y: corner.y), CGPoint(x: corner.x + 3, y: corner.y),
                             CGPoint(x: corner.x + 3, y: corner.y + 6), CGPoint(x: corner.x - 3, y: corner.y + 6)],
@@ -303,7 +304,7 @@ enum Placeholders {
             }
             polygon(c, [onRightFace(0.4, 0.55), onRightFace(0.6, 0.55), onRightFace(0.6, 0.8), onRightFace(0.4, 0.8)],
                     fill: colour(0.15, 0.1, 0.07))
-        case .farm, .stable, .castle, .boatHouse:
+        case .farm, .stable, .castle, .boatHouse, .cannonFactory, .hospital:
             break
         }
     }

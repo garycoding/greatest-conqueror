@@ -28,6 +28,13 @@ enum Rule {
     static let resiteRadius = 8.0
     /// The side of a cell of the spatial index, in tiles.
     static let bucketSize = 8
+    /// How often an idle worker or doctor looks for a building to repair or a unit to heal.
+    static let careSearchInterval = 10
+    /// How long a worker or doctor that could not reach its repair or healing waits before looking again.
+    static let careRest = Tick.rate * 10
+    /// A navy ship is at the shore while an open land tile's centre lies within
+    /// this distance of it; troops board it, and it lands them, from there.
+    static let shoreReach = 1.5
 }
 
 /// A grid of flags, packed into words, for what each team has explored.
@@ -89,6 +96,12 @@ enum Task: Codable, Sendable, Hashable {
     case work(EntityID)
     case demolish(EntityID)
     case attack(EntityID)
+    /// A doctor heals a wounded unit of its player (requirement 13).
+    case heal(EntityID)
+    /// A troop walks to a navy ship at the shore and boards it (requirement 16).
+    case board(EntityID)
+    /// A navy ship sails to the shore near a point and lands its troops there (requirement 16).
+    case land(MapPosition)
 }
 
 /// The way a person is following toward its goal.
@@ -161,14 +174,22 @@ struct Entity: Codable, Sendable, Hashable {
     var advancing: Int?
     /// People trained here so far, to spread them around the building.
     var spawned = 0
+    /// A navy ship's troops aboard, out of the map (requirement 16); nil being none.
+    var passengers: [Entity]?
+    /// For a town centre that a founder is building, the founder (ruled 2026-11-22); nil elsewhere.
+    var foundedBy: EntityID?
+    /// For a worker or doctor that could not reach a building to repair or a
+    /// unit to heal, the tick before which it looks for no more such work.
+    var restUntil: Int?
 
     var unitKind: UnitKind? { if case .unit(let k) = kind { k } else { nil } }
     var buildingKind: BuildingKind? { if case .building(let k) = kind { k } else { nil } }
     var isPerson: Bool { if case .unit = kind { true } else { false } }
-    /// Whether this is a boat, which moves on water only (ruled 2026-11-21).
-    var isBoat: Bool { kind == .unit(.boat) }
-    /// Nothing harms a person's car, and it is no target.
-    var isUnharmable: Bool { unitKind == .car }
+    /// Whether this moves on water only: a fishing boat or a navy ship.
+    var isAfloat: Bool { unitKind?.isAfloat ?? false }
+    var isFounder: Bool { unitKind == .founder }
+    /// Nothing harms a person's car or a founder, and neither is a target.
+    var isUnharmable: Bool { unitKind == .car || unitKind == .founder }
 }
 
 /// The catalogue's figures by kind, in arrays indexed by raw value, for the tick's hot loops.
@@ -179,7 +200,7 @@ struct Tables: Sendable {
     var speedPerTick: [Double]
     /// `Catalogue.bonus`, by attacker and defender raw value.
     var bonus: [Double]
-    /// Production times, by maker and unit raw value; 0 where the maker does not make the unit.
+    /// Production times, by maker and unit raw value (`slot(_:)`); 0 where the maker does not make the unit.
     var time: [Int]
 
     init(_ catalogue: Catalogue) {
@@ -189,8 +210,8 @@ struct Tables: Sendable {
         let n = UnitKind.allCases.count
         bonus = Array(repeating: 1, count: n * n)
         for a in UnitKind.allCases { for d in UnitKind.allCases { bonus[a.rawValue * n + d.rawValue] = catalogue.bonus(a, against: d) } }
-        time = Array(repeating: 0, count: BuildingKind.allCases.count * n)
-        for item in catalogue.production { time[item.maker.rawValue * n + item.unit.rawValue] = item.time }
+        time = Array(repeating: 0, count: (BuildingKind.allCases.count + n) * n)
+        for item in catalogue.production { time[Tables.slot(item.maker) * n + item.unit.rawValue] = item.time }
     }
 
     func unit(_ kind: UnitKind) -> UnitStats {
@@ -203,8 +224,18 @@ struct Tables: Sendable {
         return stats
     }
 
+    /// A maker's row in `time`: the buildings first, then the units.
+    static func slot(_ maker: EntityKind) -> Int {
+        switch maker {
+        case .building(let kind): kind.rawValue
+        case .unit(let kind): BuildingKind.allCases.count + kind.rawValue
+        }
+    }
+
     /// Ticks a maker takes to make a unit (`production.csv`).
-    func trainTime(_ unit: UnitKind, at maker: BuildingKind) -> Int { max(1, time[maker.rawValue * UnitKind.allCases.count + unit.rawValue]) }
+    func trainTime(_ unit: UnitKind, at maker: EntityKind) -> Int {
+        max(1, time[Tables.slot(maker) * UnitKind.allCases.count + unit.rawValue])
+    }
 
     func bonus(_ attacker: UnitKind, against defender: UnitKind) -> Double {
         bonus[attacker.rawValue * UnitKind.allCases.count + defender.rawValue]

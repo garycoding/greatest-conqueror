@@ -44,7 +44,7 @@ private final class Store: Sendable {
 /// What this batch draws, on what canvas, and the drawing of it.
 enum IndustrialOldBuildingsArt {
     /// The buildings this batch draws: those of the Stone, Bronze, Iron and Alchemy ages.
-    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .watchTower,
+    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .tower,
                                         .farm, .stable, .castle, .boatHouse]
 
     /// The buildings drawn with the kit of the larger works (`IndustrialOldBuildingsLatePainter`).
@@ -111,12 +111,14 @@ extension IndustrialOldBuildingsPainter {
         case .townCentre: townCentre(complete: complete)
         case .house: house(complete: complete)
         case .barracks: barracks(complete: complete)
-        case .watchTower: watchTower(complete: complete)
+        case .tower: watchTower(complete: complete)
         case .farm: farm(complete: complete)
         case .stable: stable(complete: complete)
         case .boatHouse: boatHouse(complete: complete, turn: .side)
         // Drawn with the kit of the larger works, or by another batch.
         case .castle: break
+        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        case .cannonFactory, .hospital: break
         }
     }
 }

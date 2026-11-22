@@ -87,11 +87,12 @@ enum Stature {
         case .townCentre: 40
         case .house: 26
         case .barracks: 32
-        case .watchTower: 58
+        case .tower: 58
         case .farm: 3
         case .stable: 28
         case .castle: 60
         case .boatHouse: 30
+        case .cannonFactory, .hospital: building(StandIn.building(kind))
         }
     }
 

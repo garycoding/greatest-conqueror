@@ -56,20 +56,19 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func workersOfferTheBuildingsOfTheAgesReached() {
     let view = Samples.townsAgeOpening()
     let m = model(view, [view.id(of: .unit(.worker))])
-    #expect(m.build.map(\.id) == ["build-townCentre", "build-house", "build-boatHouse"])
+    #expect(m.build.map(\.id) == ["build-townCentre", "build-house"])
     #expect(m.train.isEmpty)
     // 140 wood is held: a town centre wants 300.
     let centre = offer(m, "build-townCentre").unavailable
     #expect(centre?.refusal == .notEnough(ResourceAmounts([.wood: 160])))
     #expect(offer(m, "build-house").isAvailable)
-    #expect(offer(m, "build-boatHouse").isAvailable)
     #expect(offer(m, "build-house").action == .place(.house))
     #expect(offer(m, "build-house").order == nil)
 }
 
 @Test func nonWorkersOfferNoBuildings() {
     var view = Samples.townsAgeOpening()
-    view.entities.append(EntityView(id: EntityID(900), owner: view.player, kind: .unit(.boat), position: MapPosition(x: 10, y: 12),
+    view.entities.append(EntityView(id: EntityID(900), owner: view.player, kind: .unit(.fishingBoat), position: MapPosition(x: 10, y: 12),
                                     tile: GridPoint(10, 12), facing: .right, health: 25, maxHealth: 25, activity: .idle))
     let m = model(view, [EntityID(900)])
     #expect(m.build.isEmpty)
@@ -80,9 +79,9 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     var view = Samples.farmsAgeSkirmish()
     view.resources = ResourceAmounts()
     let m = model(view, [view.id(of: .building(.barracks))])
-    #expect(offer(m, "train-swordsman").unavailable?.refusal == .ageNotReached(.ships))
-    #expect(offer(m, "train-swordsman").unavailable?.explanation == "Needs the age of ships")
-    #expect(offer(m, "train-spearman").unavailable?.refusal == .notEnough(ResourceAmounts([.food: 60, .gold: 20])))
+    #expect(offer(m, "train-soldier2").unavailable?.refusal == .ageNotReached(.ships))
+    #expect(offer(m, "train-soldier2").unavailable?.explanation == "Needs the age of ships")
+    #expect(offer(m, "train-soldier1").unavailable?.refusal == .notEnough(ResourceAmounts([.food: 60, .gold: 20])))
 }
 
 // MARK: The skirmish, in the age of farms
@@ -91,19 +90,19 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.farmsAgeSkirmish()   // 15 of 15
     let barracks = view.id(of: .building(.barracks))
     let m = model(view, [barracks])
-    #expect(m.train.map(\.id) == ["train-spearman", "train-swordsman", "train-musketeer", "train-rifleman"])
-    #expect(offer(m, "train-spearman").unavailable?.refusal == .populationLimit)
-    #expect(offer(m, "train-spearman").unavailable?.explanation == "Population full (15 of 15); build a house")
+    #expect(m.train.map(\.id) == ["train-soldier1", "train-soldier2", "train-soldier3", "train-soldier4"])
+    #expect(offer(m, "train-soldier1").unavailable?.refusal == .populationLimit)
+    #expect(offer(m, "train-soldier1").unavailable?.explanation == "Population full (15 of 15); build a house")
     // Resources are not the cause: 420 food, 310 wood, 60 gold.
-    #expect(view.resources.covers(catalogue.stats(.spearman).cost))
-    #expect(offer(m, "train-spearman").title == "Spearman")
+    #expect(view.resources.covers(catalogue.stats(.soldier1).cost))
+    #expect(offer(m, "train-soldier1").title == "Soldier 1")
 }
 
 @Test func theLimitAtItsMaximumSaysTheHousesCannotHelp() {
     var view = Samples.farmsAgeSkirmish()
     view.population = 200; view.populationLimit = 200
     let m = model(view, [view.id(of: .building(.barracks))])
-    #expect(offer(m, "train-spearman").unavailable?.explanation == "Population full (200 of 200)")
+    #expect(offer(m, "train-soldier1").unavailable?.explanation == "Population full (200 of 200)")
 }
 
 @Test func aKnightTakesTwoPlaces() {
@@ -115,31 +114,31 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
                                     position: MapPosition(x: 25.5, y: 25.5), tile: GridPoint(24, 24), facing: .right,
                                     health: 500, maxHealth: 500, activity: .idle))
     // One place is left: a spearman takes it; a knight needs two.
-    #expect(offer(model(view, [view.id(of: .building(.barracks))]), "train-spearman").isAvailable)
-    #expect(offer(model(view, [EntityID(900)]), "train-knight").unavailable?.refusal == .populationLimit)
+    #expect(offer(model(view, [view.id(of: .building(.barracks))]), "train-soldier1").isAvailable)
+    #expect(offer(model(view, [EntityID(900)]), "train-knight2").unavailable?.refusal == .populationLimit)
 }
 
 @Test func aBuildingUnderConstructionOffersOnlyDemolition() {
     let view = Samples.farmsAgeSkirmish()
-    let tower = view.entities.first { $0.owner == view.player && $0.kind == .building(.watchTower) && $0.activity != .idle }!.id
+    let tower = view.entities.first { $0.owner == view.player && $0.kind == .building(.tower) && $0.activity != .idle }!.id
     let m = model(view, [tower])
     #expect(m.actions.map(\.id) == ["demolish"])
     guard case .single(let detail) = m.content else { Issue.record("expected a single entity"); return }
-    #expect(detail.name == "Watch tower")
+    #expect(detail.name == "Tower")
     #expect(detail.progress == 0.6)
     #expect(detail.activity == "Under construction")
 }
 
 @Test func workersAndWarfightersTogetherOfferTheBuildingsAndDismissal() {
     let view = Samples.farmsAgeSkirmish()
-    let m = model(view, view.ids(ofUnits: [.worker, .spearman]))
+    let m = model(view, view.ids(ofUnits: [.worker, .soldier1]))
     #expect(m.build.count == 6)
     #expect(offer(m, "build-barracks").isAvailable)           // 100 wood of 310
-    #expect(offer(m, "build-watchTower").isAvailable)         // 100 wood of 310
+    #expect(offer(m, "build-tower").isAvailable)         // 100 wood of 310
     guard case .several(let total, let counts) = m.content else { Issue.record("expected several"); return }
     #expect(total == 9 + 4)
     #expect(counts.map(\.count) == [9, 4])
-    #expect(counts.map(\.name) == ["Worker", "Spearman"])
+    #expect(counts.map(\.name) == ["Worker", "Soldier 1"])
 }
 
 // MARK: Contents
@@ -155,9 +154,9 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 
 @Test func aSinglePersonIsShownWithHealthAndActivity() {
     let view = Samples.farmsAgeSkirmish()
-    let spearman = view.entities.first { $0.owner == view.player && $0.kind == .unit(.spearman) && $0.health < $0.maxHealth }!
+    let spearman = view.entities.first { $0.owner == view.player && $0.kind == .unit(.soldier1) && $0.health < $0.maxHealth }!
     guard case .single(let d) = model(view, [spearman.id]).content else { Issue.record("expected single"); return }
-    #expect(d.name == "Spearman")
+    #expect(d.name == "Soldier 1")
     #expect(d.health == 43 && d.maxHealth == 55)
     #expect(abs(d.healthFraction - 43.0 / 55.0) < 1e-9)
     #expect(d.activity == "Fighting")
@@ -178,7 +177,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func trainingShowsItsQueueAndProgress() {
     let view = Samples.farmsAgeSkirmish()
     guard case .single(let d) = model(view, [view.id(of: .building(.barracks))]).content else { Issue.record("expected single"); return }
-    #expect(d.activity == "Training Spearman, 2 queued")
+    #expect(d.activity == "Training Soldier 1, 2 queued")
     #expect(d.progress == 0.4)
 }
 
@@ -253,7 +252,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
         (Samples.townsAgeOpening(), [], [.townCentre]),
         (Samples.farmsAgeSkirmish(), [], [.barracks]),
         (Samples.farmsAgeSkirmish(), [], [.townCentre]),
-        (Samples.farmsAgeSkirmish(), [.worker, .spearman, .knight], []),
+        (Samples.farmsAgeSkirmish(), [.worker, .soldier1, .knight2], []),
         (Samples.townsAgeOpening(), [.worker], []),
         ({ var v = Samples.farmsAgeSkirmish(); v.age = .hospitals; return v }(), [.worker], []),
         ({ var v = Samples.farmsAgeSkirmish(); v.age = .hospitals; return v }(), [], [.townCentre]),
@@ -314,4 +313,49 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(d.shortcut == PanelModel.deleteKey)
     #expect(d.costLine == "Frees \(workers.count) places")
     #expect(model(view, [view.id(of: .building(.townCentre))]).dismiss.isEmpty)
+}
+
+// MARK: Step 5: the navy ship, the founder and the workers' names
+
+@Test func aNavyShipOffersTheTroopsItMakesAndShowsItsCargo() {
+    var view = Samples.farmsAgeSkirmish()
+    view.age = .hospitals
+    var ship = view.entities.first { $0.owner == view.player && $0.kind == .unit(.worker) }!
+    ship.id = EntityID(9_100)
+    ship.kind = .unit(.navyShip)
+    ship.passengers = 4
+    view.entities.append(ship)
+    let m = model(view, [ship.id])
+    #expect(Set(m.train.map(\.id)) == Set(catalogue.made(by: .unit(.navyShip)).map { "train-\($0.unit)" }))
+    #expect(offer(m, "train-knight3").order == .train(at: ship.id, unit: .knight3))
+    guard case .single(let detail) = m.content else { Issue.record("not one"); return }
+    #expect(detail.name == "Navy ship" && detail.activity.contains("4 of 20 troops aboard"))
+}
+
+@Test func aFounderOffersOneTownCentreFreeAndCannotBeDismissed() {
+    var view = Samples.townsAgeOpening()
+    view.entities.removeAll { $0.owner == view.player }
+    view.entities.append(EntityView(id: EntityID(9_300), owner: view.player, kind: .unit(.founder),
+                                    position: MapPosition(x: 20.5, y: 14.5), tile: GridPoint(20, 14), facing: .right,
+                                    health: 1, maxHealth: 1, activity: .idle))
+    let m = model(view, [EntityID(9_300)])
+    #expect(m.build.map(\.id) == ["found"])
+    #expect(offer(m, "found").cost.isZero && offer(m, "found").action == .place(.townCentre))
+    #expect(m.dismiss.isEmpty)
+}
+
+@Test func aWorkersNameFollowsItsWork() {
+    var view = Samples.townsAgeOpening()
+    let worker = view.id(of: .unit(.worker))
+    let i = view.entities.firstIndex { $0.id == worker }!
+    for (job, name) in [(Job.gathering(.tree), "Lumberjack"), (.gathering(.prey), "Hunter"), (.gathering(.gold), "Miner"),
+                        (.working(.farm), "Farmer"), (.constructing, "Builder"), (.repairing, "Repairer"), (.idle, "Worker")] {
+        view.entities[i].job = job
+        guard case .single(let detail) = model(view, [worker]).content else { Issue.record("not one"); return }
+        #expect(detail.name == name, "\(job)")
+    }
+}
+
+@Test func noTrainingKeyIsF() {
+    for unit in UnitKind.allCases { #expect(PanelModel.trainKey(unit) != "f", "\(unit)") }
 }

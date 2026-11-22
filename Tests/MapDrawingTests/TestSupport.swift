@@ -27,7 +27,7 @@ func geometry(_ x: Double, _ y: Double, zoom: Double = 1) -> MapGeometry {
 /// A view with `count` extra people of the player's, spread over the explored ground.
 func crowd(_ count: Int, shift: Double = 0) -> PlayerView {
     var view = Samples.townsAgeOpening()
-    let kinds: [UnitKind] = [.worker, .spearman, .boat, .worker, .horseman]
+    let kinds: [UnitKind] = [.worker, .soldier1, .fishingBoat, .worker, .knight1]
     var next = (view.entities.map(\.id.rawValue).max() ?? 0) + 1
     for i in 0..<count {
         let x = 2.0 + Double((i * 7) % 28) + shift.truncatingRemainder(dividingBy: 1)

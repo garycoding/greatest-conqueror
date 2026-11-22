@@ -8,7 +8,7 @@ import Synchronization
 /// The boats' art of the Stone age (ruled 2026-11-21), in the Cartoon Modern
 /// style of docs/art-style.md:
 ///
-/// - The boat in its Stone-age look, the dugout (`SpriteSubject.unit(.boat,
+/// - The boat in its Stone-age look, the dugout (`SpriteSubject.unit(.fishingBoat,
 ///   .stone)`): a canoe hollowed from a log, paddled by one person, in the
 ///   five views, standing, walking (paddling) and working (spearing fish),
 ///   each a cycle of 12 frames. It has no attack, so no fighting pose. It
@@ -34,10 +34,10 @@ public final class StoneBoatSprites: ViewedSpriteSource {
     public static let rocks: [SiteKind] = [.gold]
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .towns, catalogue: catalogue).filter { key in
-            guard case .unit(.boat, .stone) = key.subject else { return false }
-            return StoneDugout.drawn(key.pose)
-        }
+        // The fishing boat belongs to the age of farms now (requirement 17), so
+        // the checklist no longer asks for the dugout; it is still drawn.
+        poses = [SpritePose.standing, .walking, .working, .fighting].filter(StoneDugout.drawn)
+            .map { SpriteKey(.unit(.fishingBoat, .stone), $0) }
         supplied = Set(poses)
     }
 
@@ -51,13 +51,13 @@ public final class StoneBoatSprites: ViewedSpriteSource {
     }
 
     /// The dugout is drawn in all five views (ruled 2026-11-21).
-    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.boat, .stone) }
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.fishingBoat, .stone) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame) else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
         switch key.subject {
-        case .unit(.boat, .stone):
+        case .unit(.fishingBoat, .stone):
             guard supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)) else { return nil }
             let drawn = Self.drawPose(key.pose, view: key.view)
             cache.withLock { cache in

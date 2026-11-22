@@ -16,11 +16,14 @@ public enum MapKey: Equatable, Sendable {
     case digit(Int)
     /// Shift-C: the person's car (ruled 2026-11-21).
     case summonCar
+    /// F: select the person's founder and centre the view on it (ruled 2026-11-22).
+    case founder
 
     init?(_ event: NSEvent) {
         let modifiers = event.modifierFlags.intersection([.shift, .command, .option, .control])
         switch event.keyCode {
         case 8 where modifiers == .shift: self = .summonCar
+        case 3 where modifiers.isEmpty: self = .founder
         case 53: self = .escape
         case 123: self = .arrow(.left)
         case 124: self = .arrow(.right)
@@ -82,6 +85,12 @@ extension MapScene {
             session.lastRefusal = .placementBlocked
             return
         }
+        // A founder founds a town centre, free, rather than constructing it (ruled 2026-11-22).
+        if kind == .townCentre, let founder = session.ownSelection.first(where: { $0.kind == .unit(.founder) }) {
+            session.issue(.found(founder: founder.id, at: origin))
+            if !keepPlacing { session.placing = nil }
+            return
+        }
         let workers = session.ownSelection.filter { $0.kind == .unit(.worker) }.map(\.id)
         guard !workers.isEmpty else {
             session.lastRefusal = .notYours
@@ -130,6 +139,8 @@ extension MapScene {
         case .summonCar:
             session.issue(.summonCar)
             return true
+        case .founder:
+            return selectFounder()
         case .digit(let number):
             if command {
                 session.groups[number] = session.ownSelection.map(\.id)
@@ -139,6 +150,17 @@ extension MapScene {
             }
             return true
         }
+    }
+
+    /// Select the person's founder and centre the view on it; nothing happens
+    /// while the person has none (ruled 2026-11-22).
+    @discardableResult
+    public func selectFounder() -> Bool {
+        guard let founder = session.view.entities.first(where: { $0.owner == session.view.player && $0.kind == .unit(.founder) })
+        else { return false }
+        session.selection = [founder.id]
+        setCamera(Camera(centre: founder.position, zoom: session.camera.zoom))
+        return true
     }
 
     public func handleKeyUp(_ key: MapKey) {

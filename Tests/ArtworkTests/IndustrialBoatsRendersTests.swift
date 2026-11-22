@@ -197,7 +197,7 @@ struct IndustrialBoatsRenders {
                     Preview.place(Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour), anchor: large.anchor,
                                   at: CGPoint(x: 185 + Double(v) * 355, y: 400), in: context)
                     Preview.label(view.rawValue, in: context, at: CGPoint(x: 125 + Double(v) * 355, y: 290), size: 18)
-                    let sprite = try #require(source.sprite(SpriteKey(.unit(.boat, .industrial), pose, frame: frame, view: view)))
+                    let sprite = try #require(source.sprite(SpriteKey(.unit(.fishingBoat, .industrial), pose, frame: frame, view: view)))
                     let tinted = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
                     Preview.place(tinted, anchor: sprite.anchor, at: CGPoint(x: 115 + Double(v) * 355, y: 110), in: context)
                     context.saveGState()
@@ -252,7 +252,7 @@ struct IndustrialBoatsRenders {
             (.walking, .front, false, 9.2, 4.0), (.walking, .back, false, 4.8, 10.6), (.working, .side, true, 7.6, 7.6),
         ]
         for (pose, view, mirrored, x, y) in boats {
-            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.boat, .industrial), pose, view: view), at: (x, y), mirrored: mirrored,
+            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.fishingBoat, .industrial), pose, view: view), at: (x, y), mirrored: mirrored,
                                 offset: false))
         }
         things.sort { $0.depth < $1.depth }

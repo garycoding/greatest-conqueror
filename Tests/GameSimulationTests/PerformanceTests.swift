@@ -30,7 +30,7 @@ import Testing
                           starts: [GridPoint(2, 2), GridPoint(2, 91), GridPoint(91, 2), GridPoint(91, 91)],
                           sites: trees, water: water, catalogue: catalogue)
         var sim = Simulation(setup: setup(map, teams: [0, 0, 1, 1], catalogue: catalogue))
-        let kinds: [UnitKind] = [.spearman, .musketeer, .spearman, .musketeer, .horseman]
+        let kinds: [UnitKind] = [.soldier1, .soldier3, .soldier1, .soldier3, .knight1]
         var west: [EntityID] = [], east: [EntityID] = []
         for k in 0..<600 {
             let row = Double(k / 20), col = Double(k % 20)

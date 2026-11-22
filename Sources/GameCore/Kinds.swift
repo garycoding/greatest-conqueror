@@ -1,48 +1,79 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// The kinds of unit. Workers and boats are one kind each in every age; each
-/// warfighter is a kind of its own. The warfighters are those of Cities of
-/// Progress that become the tiers of soldiers, knights and cannons in a later
-/// step (docs/requirements.md, requirement 19).
+/// The kinds of unit (docs/requirements.md, requirements 12 to 20). Workers,
+/// doctors and fishing boats are one kind each in every age; soldiers, knights
+/// and cannons come in tiers, each a kind of its own (requirement 19). The
+/// founder and the car are made by no maker and are not units (ruled
+/// 2026-11-22): neither keeps a player in the match.
 public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
-    /// Gathers, farms, builds and repairs.
+    /// Gathers, hunts, farms, cuts wood, mines gold, builds, repairs and demolishes.
     case worker
-    /// A boat (ruled 2026-11-21): trained at a boat house, it moves only on
-    /// water and gathers from the sites there as a worker does on land.
-    case boat
+    /// Heals wounded units of its player (requirement 13).
+    case doctor
+    /// A fishing boat (requirement 14): made at a boathouse, it moves only on
+    /// water and catches fish and mines gold there.
+    case fishingBoat
+    /// Soldiers 1 to 4.
+    case soldier1, soldier2, soldier3, soldier4
+    /// Knights 1 to 3.
+    case knight1, knight2, knight3
+    /// Cannons 1 and 2.
+    case cannon1, cannon2
+    /// A navy ship (requirements 16 and 18): made at a boathouse, it moves on
+    /// water, carries troops, attacks with built-in cannons and, from the age
+    /// of hospitals, makes soldiers, knights and cannons at the shore.
+    case navyShip
     /// A person's car (ruled 2026-11-21): made with Shift-C; it cannot be
     /// harmed, and every enemy unit within `CarStats.killRadius` dies at once.
     case car
-    /// Soldiers 1 to 4.
-    case spearman, swordsman, musketeer, rifleman
-    /// Knights 1 and 2.
-    case horseman, knight
-    /// Cannons 1 and 2.
-    case cannon, fieldGun
+    /// A person's founder (ruled 2026-11-22): given to a person who has lost
+    /// every worker and town centre whilst a teammate stands; it cannot be
+    /// harmed or attack, and builds one town centre free.
+    case founder
 
+    /// A soldier, knight or cannon: the troops, which attack, come in tiers and
+    /// may board a navy ship (requirements 15, 16 and 19).
     public var isWarfighter: Bool {
         switch self {
-        case .worker, .boat, .car: false
-        case .spearman, .swordsman, .musketeer, .rifleman, .horseman, .knight, .cannon, .fieldGun: true
+        case .worker, .doctor, .fishingBoat, .navyShip, .car, .founder: false
+        case .soldier1, .soldier2, .soldier3, .soldier4, .knight1, .knight2, .knight3, .cannon1, .cannon2: true
         }
     }
+
+    /// Whether the kind moves on water only: the fishing boat and the navy ship.
+    public var isAfloat: Bool { self == .fishingBoat || self == .navyShip }
+
+    /// Whether the kind is a unit (ruled 2026-11-22): anything that moves but
+    /// the car and the founder.
+    public var isUnit: Bool { self != .car && self != .founder }
+
+    /// Whether the kind keeps the look of the age in which it first appears,
+    /// rather than taking its owner's: the tiers, the navy ship, the car and the founder.
+    public var keepsItsLook: Bool { isWarfighter || self == .car || self == .founder }
+
+    /// Towers, castles and navy ships are upgraded at each new age (requirement 24).
+    public var isUpgradedWithAge: Bool { self == .navyShip }
 
     /// The name of this kind at the owner's age, for the interface.
     public func stageName(at age: Age) -> String {
         switch self {
         case .worker: "Worker"
+        case .doctor: "Doctor"
         case .car: "Car"
-        case .boat: age >= .hospitals ? "Steam trawler" : age >= .cannons ? "Fishing smack"
+        case .founder: "Founder"
+        case .fishingBoat: age >= .hospitals ? "Steam trawler" : age >= .cannons ? "Fishing smack"
             : age >= .ships ? "Fishing boat" : age >= .farms ? "Reed boat" : "Dugout"
-        case .spearman: "Spearman"
-        case .swordsman: "Swordsman"
-        case .musketeer: "Musketeer"
-        case .rifleman: "Rifleman"
-        case .horseman: "Horseman"
-        case .knight: "Knight"
-        case .cannon: "Cannon"
-        case .fieldGun: "Field gun"
+        case .navyShip: "Navy ship"
+        case .soldier1: "Soldier 1"
+        case .soldier2: "Soldier 2"
+        case .soldier3: "Soldier 3"
+        case .soldier4: "Soldier 4"
+        case .knight1: "Knight 1"
+        case .knight2: "Knight 2"
+        case .knight3: "Knight 3"
+        case .cannon1: "Cannon 1"
+        case .cannon2: "Cannon 2"
         }
     }
 }
@@ -50,21 +81,27 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
 /// The kinds of building (docs/requirements.md, requirement 10).
 public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case townCentre, house, farm
-    /// A boat house on the shore (ruled 2026-11-21): it trains boats and takes
-    /// in what they bring back.
+    /// A boathouse on the shore: it makes fishing boats and navy ships and
+    /// takes in what fishing boats bring back.
     case boatHouse
-    case barracks, watchTower, stable, castle
+    case barracks, tower, stable, castle
+    /// Makes cannons from the age of cannons (requirement 17).
+    case cannonFactory
+    /// Makes doctors from the age of hospitals (requirement 17).
+    case hospital
 
     public var name: String {
         switch self {
         case .townCentre: "Town centre"
         case .house: "House"
         case .farm: "Farm"
-        case .boatHouse: "Boat house"
+        case .boatHouse: "Boathouse"
         case .barracks: "Barracks"
-        case .watchTower: "Watch tower"
+        case .tower: "Tower"
         case .stable: "Stable"
         case .castle: "Castle"
+        case .cannonFactory: "Cannon factory"
+        case .hospital: "Hospital"
         }
     }
 }

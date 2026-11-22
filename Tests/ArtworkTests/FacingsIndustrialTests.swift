@@ -14,8 +14,8 @@ import Testing
     /// Each kind drawn in the five views, the source that draws it, and the name of its renders.
     static let kinds: [(kind: UnitKind, source: any ViewedSpriteSource, name: String)] = [
         (.worker, IndustrialPeopleSprites(), "factory-hand"),
-        (.rifleman, IndustrialWarriorSprites(), "rifleman"),
-        (.fieldGun, IndustrialWarriorSprites(), "field-gun"),
+        (.soldier4, IndustrialWarriorSprites(), "rifleman"),
+        (.cannon2, IndustrialWarriorSprites(), "field-gun"),
     ]
 
     @Test func everyKindIsDrawnInEveryView() {
@@ -53,7 +53,7 @@ struct FacingsIndustrialRenders {
     /// The width of a column and the size of a frame of the walk, wider for the machines.
     private static func room(_ kind: UnitKind) -> (column: Double, round: Int) {
         switch kind {
-        case .fieldGun: (250, 600)
+        case .cannon2: (250, 600)
         default: (150, 360)
         }
     }

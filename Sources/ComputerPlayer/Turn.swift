@@ -38,6 +38,7 @@ final class Turn {
     var builders: [EntityView] = []
     var warfighters: [EntityView] = []
     var boats: [EntityView] = []
+    var navy: [EntityView] = []
     var buildings: [EntityView] = []
     /// People in training at its buildings, by `UnitKind.rawValue`, with those
     /// queued in this action. A queue is counted as the kind it is training.
@@ -49,9 +50,11 @@ final class Turn {
     var base: MapPosition
 
     // What others show.
-    /// Opponents' units in sight, cars and boats left out: nothing harms a
-    /// car, and a boat on the water is out of reach and keeps nobody in the match.
+    /// Opponents' units in sight on land, cars and founders left out: nothing
+    /// harms either, and what is on the water is out of reach from the land.
     var enemyUnits: [EntityView] = []
+    /// Opponents' fishing boats and navy ships in sight, for its navy ships.
+    var enemyVessels: [EntityView] = []
     /// The warfighters of allied computer players.
     var allyWarfighters: [EntityView] = []
     var allyBuildings: [EntityView] = []
@@ -110,7 +113,8 @@ final class Turn {
                     case .unit(let kind):
                         switch kind {
                         case .worker: workers.append(entity)
-                        case .boat: boats.append(entity)
+                        case .fishingBoat: boats.append(entity)
+                        case .navyShip: navy.append(entity)
                         default: if kind.isWarfighter { warfighters.append(entity) }
                         }
                     case .building:
@@ -128,8 +132,8 @@ final class Turn {
                     case .unit(let kind): if kind.isWarfighter && !owner.isHuman { allyWarfighters.append(entity) }
                     case .building: allyBuildings.append(entity)
                     }
-                } else if !owner.isDefeated, case .unit(let kind) = entity.kind, kind != .car, kind != .boat {
-                    enemyUnits.append(entity)
+                } else if !owner.isDefeated, case .unit(let kind) = entity.kind, kind.isUnit {
+                    if kind.isAfloat { enemyVessels.append(entity) } else { enemyUnits.append(entity) }
                 }
             }
         }
@@ -197,6 +201,9 @@ final class Turn {
         employBuilders()
         trainBoats()
         sendBoats()
+        trainNavy()
+        sendNavy()
+        guardTheShore()
     }
 
     // MARK: Spending and ordering

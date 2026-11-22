@@ -44,7 +44,7 @@ extension Turn {
         if view.age >= .farms {
             let barracks = (BuildingKind.barracks, Turn.toward(base, front, by: 7), 0...8)
             if count(.barracks) == 0 { out.append(barracks) }
-            if count(.watchTower) == 0 { out.append((.watchTower, Turn.toward(base, front, by: 5), 0...6)) }
+            if count(.tower) == 0 { out.append((.tower, Turn.toward(base, front, by: 5), 0...6)) }
             if count(.barracks) < tuning.barracks && !completeBuildings(.barracks).isEmpty { out.append(barracks) }
             // Farms, reseeded by their farmers when they run dry: the food once the prey
             // thins, since no other building yields it. A farm is wanted once every farm

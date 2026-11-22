@@ -185,7 +185,7 @@ import Testing
             #expect(!source.drawsViews(of: .building(kind, .stone)), "\(kind)")
         }
         for age in Look.allCases where age != .stone { #expect(!source.drawsViews(of: .building(.boatHouse, age)), "\(age)") }
-        #expect(!source.drawsViews(of: .unit(.boat, .stone)))
+        #expect(!source.drawsViews(of: .unit(.fishingBoat, .stone)))
         let game = GameSprites()
         for back in Self.backKeys {
             var sideKey = back

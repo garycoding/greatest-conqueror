@@ -19,14 +19,54 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
 
     /// The subject for an entity, as both the drawing and the artwork must name it.
     public static func of(_ entity: EntityView, ownerAge: Age, catalogue: Catalogue = .standard) -> SpriteSubject {
-        switch entity.kind {
+        of(entity.kind, ownerAge: ownerAge, catalogue: catalogue)
+    }
+
+    /// The subject for a kind of an owner in an age: a kind without a drawing
+    /// of its own is drawn as its stand-in (`StandIn`).
+    public static func of(_ kind: EntityKind, ownerAge: Age, catalogue: Catalogue = .standard) -> SpriteSubject {
+        switch kind {
         case .unit(let kind):
-            let own = catalogue.stats(kind).age
-            let age = (kind.isWarfighter || kind == .car) ? own : max(own, ownerAge)
-            return .unit(kind, age.look)
+            let drawn = StandIn.unit(kind)
+            let own = catalogue.stats(drawn).age
+            return .unit(drawn, (drawn.keepsItsLook ? own : max(own, ownerAge)).look)
         case .building(let kind):
-            return .building(kind, max(catalogue.stats(kind).age, ownerAge).look)
+            let drawn = StandIn.building(kind)
+            return StandIn.subject(.building(drawn, max(catalogue.stats(drawn).age, ownerAge).look))
         }
+    }
+}
+
+/// The kinds drawn, until their own art is made, as an existing kind (step 5
+/// of the plan; step 8 replaces this table with the new drawings): the doctor
+/// and the founder as the worker, the navy ship as the fishing boat, drawn
+/// larger, knight 3 as knight 2, the cannon factory as the barracks and the
+/// hospital as the house. Every other kind is drawn as itself.
+public enum StandIn {
+    public static func unit(_ kind: UnitKind) -> UnitKind {
+        switch kind {
+        case .doctor, .founder: .worker
+        case .navyShip: .fishingBoat
+        case .knight3: .knight2
+        default: kind
+        }
+    }
+
+    public static func building(_ kind: BuildingKind) -> BuildingKind {
+        switch kind {
+        case .cannonFactory: .barracks
+        case .hospital: .house
+        default: kind
+        }
+    }
+
+    /// How much larger than its stand-in a kind is drawn.
+    public static func scale(_ kind: EntityKind) -> Double { kind == .unit(.navyShip) ? 1.5 : 1 }
+
+    /// A look a kind lacks, drawn in another: the castle, of the age of ships
+    /// now (requirement 10), in the Iron look as in the Alchemy look.
+    public static func subject(_ subject: SpriteSubject) -> SpriteSubject {
+        subject == .building(.castle, .iron) ? .building(.castle, .alchemy) : subject
     }
 }
 
@@ -118,16 +158,18 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
     public static func required(through age: Age, catalogue: Catalogue = .standard) -> [SpriteKey] {
         var keys: [SpriteKey] = []
         let ages = Age.allCases.filter { $0 <= age }
-        for stats in catalogue.units where stats.age <= age {
-            let looks: [Age] = stats.kind.isWarfighter || stats.kind == .car ? [stats.age] : ages.filter { $0 >= stats.age }
+        // The kinds that are drawn as a stand-in (`StandIn`) add nothing to the list.
+        for stats in catalogue.units where stats.age <= age && StandIn.unit(stats.kind) == stats.kind {
+            let looks: [Age] = stats.kind.keepsItsLook ? [stats.age] : ages.filter { $0 >= stats.age }
             for look in looks.map(\.look) {
                 for pose in [SpritePose.standing, .walking, .working, .fighting] where pose != .fighting || stats.attack != nil {
                     keys.append(SpriteKey(.unit(stats.kind, look), pose))
                 }
             }
         }
-        for stats in catalogue.buildings where stats.age <= age {
-            for look in ages.filter({ $0 >= stats.age }).map(\.look) {
+        for stats in catalogue.buildings where stats.age <= age && StandIn.building(stats.kind) == stats.kind {
+            for look in ages.filter({ $0 >= stats.age }).map(\.look)
+            where StandIn.subject(.building(stats.kind, look)) == .building(stats.kind, look) {
                 keys.append(SpriteKey(.building(stats.kind, look), .complete))
                 keys.append(SpriteKey(.building(stats.kind, look), .underConstruction))
             }

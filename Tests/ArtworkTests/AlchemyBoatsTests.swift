@@ -14,14 +14,14 @@ import Testing
 /// Alchemy age's older buildings (`AlchemyOldBuildingsTests`).
 @Suite(.serialized) struct AlchemyBoatsTests {
     private let source = AlchemyBoatSprites()
-    private static let boat = SpriteSubject.unit(.boat, .alchemy)
+    private static let boat = SpriteSubject.unit(.fishingBoat, .alchemy)
 
     @Test func theBatchIsTheFishingSmack() {
         #expect(source.poses == [SpriteKey(Self.boat, .standing), SpriteKey(Self.boat, .walking), SpriteKey(Self.boat, .working)])
         #expect(source.keys.count == 3 * SpriteKey.framesPerPose)
         #expect(source.drawsViews(of: Self.boat))
-        #expect(!source.drawsViews(of: .unit(.boat, .stone)))
-        #expect(UnitKind.boat.stageName(at: .cannons) == "Fishing smack")
+        #expect(!source.drawsViews(of: .unit(.fishingBoat, .stone)))
+        #expect(UnitKind.fishingBoat.stageName(at: .cannons) == "Fishing smack")
     }
 
     /// Every frame of every pose in every view: a mask that is not empty and
@@ -77,7 +77,7 @@ import Testing
         var others = SpriteKey.required(through: .hospitals).filter { !batch.contains($0) }
         for frame in [-1, 12] { others.append(SpriteKey(Self.boat, .walking, frame: frame)) }
         others.append(SpriteKey(Self.boat, .fighting))
-        others += [Look.stone, .bronze, .iron, .industrial].map { SpriteKey(.unit(.boat, $0), .standing) }
+        others += [Look.stone, .bronze, .iron, .industrial].map { SpriteKey(.unit(.fishingBoat, $0), .standing) }
         others.append(SpriteKey(.building(.boatHouse, .alchemy), .complete))
         others.append(SpriteKey(.site(.fish), .complete))
         others.append(SpriteKey(.site(.gold), .afloat))

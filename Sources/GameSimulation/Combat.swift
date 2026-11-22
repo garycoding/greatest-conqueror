@@ -7,7 +7,8 @@ import GameCore
 // unit kind strikes another, rounded, less the defender's armour, and never
 // less than 1. A blow at or within `Attack.range` lands at once: melee and
 // ranged differ only in reach. Allies never harm one another, and nothing
-// harms a car. A blow with an area (a cannon's shot) also harms every
+// harms a car or a founder. Towers, castles and navy ships strike with the
+// attack of their owner's age (requirement 24). A blow with an area (a cannon's shot) also harms every
 // opponent within that many tiles of the target, and never an ally.
 
 extension Simulation {
@@ -22,7 +23,7 @@ extension Simulation {
 
     mutating func attackTask(_ i: Int, target: EntityID) {
         if entities[i].unitKind == .car { laserTask(i, target: target); return }
-        guard let kind = entities[i].unitKind, let attack = tables.unit(kind).attack else { setIdle(i); return }
+        guard let kind = entities[i].unitKind, let attack = attack(of: i) else { setIdle(i); return }
         let owner = entities[i].owner
         let team = teamOf(owner)
         var targetIndex = index(of: target)
@@ -30,8 +31,8 @@ extension Simulation {
             targetIndex = nil
         }
         if targetIndex == nil {
-            // The target is gone: a warfighter takes the nearest opponent it can see, if any.
-            guard kind.isWarfighter, let next = nearestTarget(for: i) else { setIdle(i); return }
+            // The target is gone: a warfighter or a navy ship takes the nearest opponent it can see, if any.
+            guard kind.isWarfighter || kind == .navyShip, let next = nearestTarget(for: i) else { setIdle(i); return }
             assign(i, .attack(entities[next].id))
             targetIndex = next
         }
@@ -125,8 +126,8 @@ extension Simulation {
         }
         if tick - entities[target].lastHurt >= Rule.underAttackInterval { record(.underAttack(entities[target].id), for: owner) }
         entities[target].lastHurt = tick
-        // An idle warfighter fights back.
-        if let kind = entities[target].unitKind, kind.isWarfighter, entities[target].task == .idle,
+        // An idle warfighter or navy ship fights back.
+        if let kind = entities[target].unitKind, kind.isWarfighter || kind == .navyShip, entities[target].task == .idle,
            canStrike(entities[target].owner, attacker) {
             assign(target, .attack(entities[attacker].id))
         }
@@ -142,6 +143,12 @@ extension Simulation {
         let p = entities[i].owner.rawValue
         if let kind = entities[i].unitKind {
             population[p] -= tables.unit(kind).population
+            // The troops aboard a ship go down with it (requirement 16).
+            for passenger in entities[i].passengers ?? [] {
+                population[p] -= passenger.unitKind.map { tables.unit($0).population } ?? 0
+                record(.destroyed(passenger.id), for: p)
+            }
+            entities[i].passengers = nil
         } else if let kind = entities[i].buildingKind {
             if entities[i].complete { housing[p] -= tables.building(kind).housing }
             for t in footprintTiles(origin: entities[i].origin, size: entities[i].size) where inMap(t) {

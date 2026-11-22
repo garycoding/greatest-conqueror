@@ -7,7 +7,7 @@ import Synchronization
 
 /// The boats' art of the Bronze age (ruled 2026-11-21), in the Cartoon Modern
 /// style of docs/art-style.md: the boat in its Bronze-age look, the reed boat
-/// (`SpriteSubject.unit(.boat, .bronze)`): two bundles of reed bound together,
+/// (`SpriteSubject.unit(.fishingBoat, .bronze)`): two bundles of reed bound together,
 /// curled up at either end, poled by one person, in the five views, standing,
 /// walking (poling) and working (fishing with a hoop net), each a cycle of 12
 /// frames. It has no attack, so no fighting pose. It carries the team's colour
@@ -28,7 +28,7 @@ public final class BronzeBoatSprites: ViewedSpriteSource {
 
     public init(catalogue: Catalogue = .standard) {
         poses = SpriteKey.required(through: .farms, catalogue: catalogue).filter { key in
-            guard case .unit(.boat, .bronze) = key.subject else { return false }
+            guard case .unit(.fishingBoat, .bronze) = key.subject else { return false }
             return BronzeReedBoat.drawn(key.pose)
         }
         supplied = Set(poses)
@@ -40,10 +40,10 @@ public final class BronzeBoatSprites: ViewedSpriteSource {
     }
 
     /// The reed boat is drawn in all five views (ruled 2026-11-21).
-    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.boat, .bronze) }
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.fishingBoat, .bronze) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.boat, .bronze),
+        guard (0..<SpriteKey.framesPerPose).contains(key.frame), key.subject == .unit(.fishingBoat, .bronze),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)) else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
         let drawn = Self.drawPose(key.pose, view: key.view)

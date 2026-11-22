@@ -100,9 +100,11 @@ private func moves(_ orders: [Order]) -> [(units: [EntityID], to: MapPosition)] 
 
 // MARK: Boats (ruled 2026-11-21)
 
-/// The opening in the age of towns with a pond to the east of the town centre, a shoal of fish in it.
+/// The opening, moved on to the age of farms (in which the boathouse is first
+/// built), with a pond to the east of the town centre, a shoal of fish in it.
 private func openingByAPond() -> PlayerView {
     var view = Samples.townsAgeOpening()
+    view.age = .farms
     let pond = (4...8).flatMap { y in (15...19).map { GridPoint($0, y) } }
     view.sites.removeAll { pond.contains($0.tile) }
     for t in pond { view.terrain[t.y * view.mapWidth + t.x] = .deepWater }
@@ -118,6 +120,9 @@ private func openingByAPond() -> PlayerView {
 @Test func buildsABoatHouseOnTheShoreOfWaterWithFish() {
     var view = openingByAPond()
     view.add(.unit(.worker), owner: TestViews.me, at: 13, 8)
+    // The age's barracks and tower stand already, so that the boathouse is the building wanted.
+    _ = view.add(.building(.barracks), owner: TestViews.me, at: 2, 14)
+    _ = view.add(.building(.tower), owner: TestViews.me, at: 7, 1)
     var cp = player()
     let houses = constructs(decide(&cp, view)).filter { $0.kind == .boatHouse }
     #expect(houses.count == 1)
@@ -130,10 +135,10 @@ private func openingByAPond() -> PlayerView {
 @Test func aBoatHouseTrainsBoatsAndAnIdleBoatFishes() {
     var view = openingByAPond()
     let house = view.add(.building(.boatHouse), owner: TestViews.me, at: 14, 6)
-    let boat = view.add(.unit(.boat), owner: TestViews.me, at: 15.5, 7.5)
+    let boat = view.add(.unit(.fishingBoat), owner: TestViews.me, at: 15.5, 7.5)
     var cp = player()
     let orders = decide(&cp, view)
-    #expect(orders.contains(.train(at: house, unit: .boat)))
+    #expect(orders.contains(.train(at: house, unit: .fishingBoat)))
     let fished = orders.compactMap { order -> SiteID? in
         guard case .gather(let units, let site) = order, units == [boat] else { return nil }
         return site
@@ -150,7 +155,7 @@ private func openingByAPond() -> PlayerView {
     for order in decide(&cp, view) {
         guard case .gather(let units, let site) = order, let found = view.sites.first(where: { $0.id == site }) else { continue }
         let afloat = view.terrain[found.tile.y * view.mapWidth + found.tile.x].isWater
-        #expect(!afloat || units.allSatisfy { view.entity($0)?.kind == .unit(.boat) })
+        #expect(!afloat || units.allSatisfy { view.entity($0)?.kind == .unit(.fishingBoat) })
     }
 }
 
@@ -167,7 +172,7 @@ private func openingByAPond() -> PlayerView {
     var cp = player()
     let kinds = constructs(decide(&cp, view)).map(\.kind)
     #expect(kinds.contains(.barracks))
-    #expect(kinds.contains(.watchTower))
+    #expect(kinds.contains(.tower))
 }
 
 @Test func defendsInTheSkirmish() {
@@ -283,8 +288,8 @@ private func openingByAPond() -> PlayerView {
 
 @Test func hardLeansFurtherTowardCounters() {
     var seen = [Double](repeating: 0, count: UnitKind.allCases.count)
-    seen[UnitKind.horseman.rawValue] = 6
-    let kinds: [UnitKind] = [.spearman, .musketeer, .horseman]
+    seen[UnitKind.knight1.rawValue] = 6
+    let kinds: [UnitKind] = [.soldier1, .soldier3, .knight1]
     func spearmen(_ difficulty: Difficulty) -> Double {
         let weights = Turn.mix(kinds, seen: seen, counters: Tuning.of(difficulty).counters, catalogue: .standard)
         return weights[0] / weights.reduce(0, +)
@@ -295,11 +300,11 @@ private func openingByAPond() -> PlayerView {
     // Seeing only horsemen, the barracks trains the spearman that strikes them three times as hard.
     var view = TestViews.farmsArmy(extra: 0, tick: Tick.seconds(600))
     view.set(EntityID(10), .idle)
-    view.add(.unit(.horseman), owner: TestViews.enemy, at: 28, 3, .moving)
-    view.add(.unit(.horseman), owner: TestViews.enemy, at: 29, 3, .moving)
+    view.add(.unit(.knight1), owner: TestViews.enemy, at: 28, 3, .moving)
+    view.add(.unit(.knight1), owner: TestViews.enemy, at: 29, 3, .moving)
     view.setVisibility(.visible) { $0.x >= 24 && $0.y < 6 }
     var hard = player(.hard)
-    #expect(decide(&hard, view).contains(.train(at: EntityID(10), unit: .spearman)))
+    #expect(decide(&hard, view).contains(.train(at: EntityID(10), unit: .soldier1)))
 }
 
 // MARK: Determinism, saving and speed
@@ -323,7 +328,7 @@ private func openingByAPond() -> PlayerView {
             "update OrderFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum OrderFixture { static let expected: UInt64 = 0xD334_F094_7897_6609 }
+enum OrderFixture { static let expected: UInt64 = 0x01C0_7AD7_2F90_AF57 }
 
 @Test func aSavedPlayerResumesWithTheSameDecisions() throws {
     let views = TestViews.sequence()

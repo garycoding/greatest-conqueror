@@ -77,7 +77,7 @@ import Testing
     @Test func speedComesFromTheCatalogue() {
         var sim = duel()
         let worker = sim.add(.worker, me, 10.5, 20.5)
-        let horseman = sim.add(.horseman, me, 10.5, 24.5)
+        let horseman = sim.add(.knight1, me, 10.5, 24.5)
         _ = sim.apply(.move(units: [worker], to: MapPosition(x: 20.5, y: 20.5)), from: me)
         _ = sim.apply(.move(units: [horseman], to: MapPosition(x: 20.5, y: 24.5)), from: me)
         var arrival: [EntityID: Int] = [:]
@@ -87,7 +87,7 @@ import Testing
         }
         // Ten tiles at 1 and at 2 tiles a second, 20 ticks a second.
         let workerTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.worker).speed
-        let horsemanTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.horseman).speed
+        let horsemanTicks = 10 * Double(Tick.rate) / Catalogue.standard.stats(.knight1).speed
         #expect(abs(Double(arrival[worker] ?? 0) - workerTicks) <= 2)
         #expect(abs(Double(arrival[horseman] ?? 0) - horsemanTicks) <= 2)
     }
@@ -105,7 +105,7 @@ import Testing
 
     @Test func peopleSentTogetherSpreadAroundThePoint() {
         var sim = duel()
-        let group = (0..<9).map { k in sim.add(.spearman, me, 8.5 + Double(k), 16.5) }
+        let group = (0..<9).map { k in sim.add(.soldier1, me, 8.5 + Double(k), 16.5) }
         let point = MapPosition(x: 18, y: 18)
         _ = sim.apply(.move(units: group, to: point), from: me)
         do { let reached = sim.run(until: { s in group.allSatisfy { s.living($0).task == .idle } }, limit: 600); #expect(reached) }
@@ -116,7 +116,7 @@ import Testing
 
     @Test func aChaserKeepsToItsRouteWhenNoSearchIsLeftToReplanIt() {
         var sim = Self.walled()
-        let chaser = sim.add(.spearman, me, 10.5, 5.5)
+        let chaser = sim.add(.soldier1, me, 10.5, 5.5)
         let target = sim.add(.worker, them, 20.5, 5.5)
         sim.add(.worker, me, 21.5, 6.5)                      // to see the target by
         #expect(sim.apply(.attack(units: [chaser], target: target), from: me) == .accepted)

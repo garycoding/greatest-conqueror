@@ -90,8 +90,8 @@ import Testing
     @Test func onlyEverythingInViewLetsAPersonAttackWhatTheirUnitsDoNotSee() {
         for sight in [MapSight.mapShown, .everything] {
             var sim = match(sight)
-            let spearman = sim.add(.spearman, me, 4.5, 4.5)
-            let theirs = sim.add(.spearman, them, 30.5, 28.5)
+            let spearman = sim.add(.soldier1, me, 4.5, 4.5)
+            let theirs = sim.add(.soldier1, them, 30.5, 28.5)
             let result = sim.apply(.attack(units: [spearman], target: theirs), from: me)
             #expect(result == (sight == .everything ? .accepted : .refused(.invalidTarget)), "\(sight)")
             if sight == .everything {

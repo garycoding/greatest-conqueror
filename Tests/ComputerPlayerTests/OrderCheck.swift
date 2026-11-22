@@ -73,7 +73,7 @@ enum OrderCheck {
                 // Boats gather in the water, workers on land (ruled 2026-11-21).
                 let known = view.sites.first { $0.id == site && $0.remaining > 0 }
                 let afloat = known.map { view.terrain[$0.tile.y * view.mapWidth + $0.tile.x].isWater } ?? false
-                command(units, "gather") { afloat ? $0 == .boat : $0 == .worker }
+                command(units, "gather") { afloat ? $0 == .fishingBoat : $0 == .worker }
                 if known == nil {
                     problems.append("gather: site \(site.rawValue) is not a known site with something left")
                 }
@@ -133,7 +133,7 @@ enum OrderCheck {
                 }
                 if view.ageProgress > 0 { problems.append("advanceAge: an advance is under way") }
                 spent = spent + advance.cost
-            case .cancelTraining, .setPaused, .stop:
+            case .cancelTraining, .setPaused, .stop, .heal, .board, .land, .found:
                 problems.append("unexpected order \(order)")
             }
         }

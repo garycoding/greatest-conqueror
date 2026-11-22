@@ -58,7 +58,7 @@ struct BronzeFacingRenders {
     static let kinds: [(kind: UnitKind, name: String, title: String)] = [
         (.worker, "herder", "The herder (worker)"), 
 
-        (.spearman, "spearman", "The spearman"), 
+        (.soldier1, "spearman", "The spearman"), 
     ]
 
     @Test(arguments: kinds.filter { BronzePeopleSprites.viewed.contains($0.kind) }.map(\.name)) func sheet(_ name: String) throws {

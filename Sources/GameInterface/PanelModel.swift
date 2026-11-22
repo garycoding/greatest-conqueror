@@ -179,10 +179,20 @@ public struct PanelModel: Sendable {
         case 1:
             let e = selected[0]
             let ownerAge = age(of: e.owner)
-            let (text, progress) = InterfaceText.describe(e.activity, of: e.kind, age: ownerAge)
+            var (text, progress) = InterfaceText.describe(e.activity, of: e.kind, age: ownerAge)
+            if let job = e.job, job == .healing { text = "Healing" }
+            // A navy ship's troops, and what it is making (requirements 16 and 18).
+            if let aboard = e.passengers {
+                text += "; \(aboard) of \(catalogue.shipCargo) troops aboard"
+                if let making = e.making {
+                    let (line, done) = InterfaceText.describe(making, of: e.kind, age: ownerAge)
+                    text += "; \(line)"
+                    progress = done
+                }
+            }
             let civ = view.players.first { $0.id == e.owner }?.civilization.name ?? "Unknown"
             let relation = e.owner == view.player ? "yours" : (view.isAlly(e.owner) ? "ally" : "opponent")
-            content = .single(EntityDetail(id: e.id, kind: e.kind, name: InterfaceText.name(of: e.kind, at: ownerAge),
+            content = .single(EntityDetail(id: e.id, kind: e.kind, name: InterfaceText.name(of: e, at: ownerAge),
                                            ownerLine: "\(civ), \(relation)", health: e.health, maxHealth: e.maxHealth,
                                            activity: text, progress: progress))
         default:
@@ -207,14 +217,17 @@ public struct PanelModel: Sendable {
         let planner = Planner(view: view, catalogue: catalogue, gate: gate)
         let own = selected.filter { $0.owner == view.player }
 
-        // Train at a single own building that stands complete.
-        if selected.count == 1, let b = own.first, case .building(let kind) = b.kind, !Self.isUnderConstruction(b) {
-            train = catalogue.production.filter { $0.maker == kind && $0.age <= catalogue.lastAge }.map { made in
+        // Train at a single own maker: a building that stands complete, or a
+        // navy ship, which makes units whilst at the shore (requirement 18).
+        if selected.count == 1, let b = own.first, !Self.isUnderConstruction(b) {
+            train = catalogue.made(by: b.kind).filter { $0.age <= catalogue.lastAge }.map { made in
                 let unit = made.unit
                 let u = catalogue.stats(unit)
                 let name = unit.stageName(at: view.age)
+                let detail = b.kind == .unit(.navyShip) ? "Makes one \(name) on the shore, whilst the ship is at the shore."
+                                                        : "Trains one \(name)."
                 return ActionOffer(
-                    id: "train-\(unit)", section: .train, title: name, detail: "Trains one \(name).", cost: u.cost,
+                    id: "train-\(unit)", section: .train, title: name, detail: detail, cost: u.cost,
                     action: .train(at: b.id, unit: unit),
                     unavailable: planner.check(cost: u.cost, age: made.age, population: u.population),
                     shortcut: Self.trainKey(unit), icon: .unit(unit),
@@ -270,6 +283,16 @@ public struct PanelModel: Sendable {
                 shortcut: "x", icon: nil, iconSubject: nil, refund: back)]
         }
 
+        // A founder builds one town centre, free (ruled 2026-11-22).
+        if own.contains(where: { $0.kind == .unit(.founder) }) && !own.contains(where: { $0.kind == .unit(.worker) }) {
+            build = [ActionOffer(
+                id: "found", section: .build, title: BuildingKind.townCentre.name,
+                detail: "The founder builds it where you click, free; when it is finished, two workers appear and the founder becomes a worker.",
+                cost: ResourceAmounts(), action: .place(.townCentre), unavailable: gate,
+                shortcut: Self.buildKey(.townCentre), icon: .building(.townCentre),
+                iconSubject: planner.subject(.building(.townCentre)))]
+        }
+
         // Buildings for workers, of the ages reached.
         if own.contains(where: { $0.kind == .unit(.worker) }) {
             build = catalogue.buildings.filter { $0.age <= view.age }.map { b in
@@ -280,8 +303,8 @@ public struct PanelModel: Sendable {
             }
         }
 
-        // Dismiss the player's own units.
-        let leaving = own.filter { if case .unit = $0.kind { return true } else { return false } }
+        // Dismiss the player's own units; a founder cannot be dismissed.
+        let leaving = own.filter { if case .unit(let kind) = $0.kind { return kind != .founder } else { return false } }
             .map(\.id).sorted()
         if !leaving.isEmpty {
             let what = leaving.count == 1 ? (selected.first.map { InterfaceText.name(of: $0.kind, at: view.age) } ?? "Person")
@@ -304,18 +327,22 @@ public struct PanelModel: Sendable {
     public static let deleteKey: Character = "\u{8}"
 
     static func trainKey(_ unit: UnitKind) -> Character? {
+        // F is left free: it finds the founder (ruled 2026-11-22).
         switch unit {
         case .worker: "w"
-        case .spearman: "p"
-        case .swordsman: "q"
-        case .horseman: "r"
-        case .knight: "k"
-        case .musketeer: "m"
-        case .cannon: "j"
-        case .rifleman: "f"
-        case .fieldGun: "d"
-        case .car: nil
-        case .boat: "b"
+        case .doctor: "o"
+        case .fishingBoat: "b"
+        case .navyShip: "y"
+        case .soldier1: "q"
+        case .soldier2: "a"
+        case .soldier3: "s"
+        case .soldier4: "d"
+        case .knight1: "r"
+        case .knight2: "k"
+        case .knight3: "u"
+        case .cannon1: "j"
+        case .cannon2: "g"
+        case .car, .founder: nil
         }
     }
 
@@ -324,11 +351,13 @@ public struct PanelModel: Sendable {
         case .townCentre: "t"
         case .house: "h"
         case .barracks: "b"
-        case .watchTower: "w"
+        case .tower: "w"
         case .farm: "f"
         case .stable: "l"
         case .castle: "c"
         case .boatHouse: "i"
+        case .cannonFactory: "m"
+        case .hospital: "o"
         }
     }
 
@@ -372,13 +401,7 @@ public struct PanelModel: Sendable {
 
         /// The sprite subject of an icon, chosen as `SpriteSubject.of` does for an entity.
         func subject(_ kind: EntityKind) -> SpriteSubject {
-            switch kind {
-            case .unit(let u):
-                let own = catalogue.stats(u).age
-                return .unit(u, ((u.isWarfighter || u == .car) ? own : max(own, view.age)).look)
-            case .building(let b):
-                return .building(b, max(catalogue.stats(b).age, view.age).look)
-            }
+            SpriteSubject.of(kind, ownerAge: view.age, catalogue: catalogue)
         }
     }
 }

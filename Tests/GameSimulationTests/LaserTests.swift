@@ -53,7 +53,7 @@ import Testing
         let car = sim.people(me, .car)[0]
         let at = sim.living(car).position
         #expect(sim.apply(.attack(units: [car], target: sim.townCentre(me)), from: me) == .refused(.cannotAttack))
-        let spearman = sim.add(.spearman, them, at.x + 15, at.y)
+        let spearman = sim.add(.soldier1, them, at.x + 15, at.y)
         #expect(sim.apply(.attack(units: [car], target: spearman), from: me) == .refused(.cannotAttack))
     }
 }
