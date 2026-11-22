@@ -173,10 +173,10 @@ public struct ResourceAmounts: Hashable, Codable, Sendable, CustomStringConverti
         return out
     }
 
-    /// Half of each amount, rounded down: what a demolished building returns.
-    public var halved: ResourceAmounts {
+    /// That share of each amount, rounded down: what a demolished building returns.
+    public func share(_ fraction: Double) -> ResourceAmounts {
         var out = self
-        for r in Resource.allCases { out[r] = self[r] / 2 }
+        for r in Resource.allCases { out[r] = Int((Double(self[r]) * fraction).rounded(.down)) }
         return out
     }
 

@@ -76,6 +76,10 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     public var cost: ResourceAmounts
     /// Ticks of one worker's work to construct it; more workers finish sooner.
     public var buildTime: Int
+    /// Ticks of one worker's work to demolish it; more workers finish sooner.
+    public var demolishTime: Int
+    /// The share of its cost that demolishing it returns, from 0 to 1.
+    public var demolishReturn: Double
     public var health: Int
     public var armour: Int
     /// The tiles it covers, from its origin toward +x and +y.
@@ -94,10 +98,13 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     /// upgrade itself is a later step's rule; the rows are read and kept.
     public var levels: [BuildingLevel]
 
-    public init(kind: BuildingKind, age: Age, cost: ResourceAmounts, buildTime: Int, health: Int, armour: Int,
+    public init(kind: BuildingKind, age: Age, cost: ResourceAmounts, buildTime: Int, demolishTime: Int? = nil,
+                demolishReturn: Double = 0.5, health: Int, armour: Int,
                 footprint: GridPoint, sight: Double, attack: Attack? = nil, housing: Int = 0,
                 accepts: [Resource] = [], trains: [UnitKind] = [], levels: [BuildingLevel] = []) {
-        self.kind = kind; self.age = age; self.cost = cost; self.buildTime = buildTime; self.health = health
+        self.kind = kind; self.age = age; self.cost = cost; self.buildTime = buildTime
+        self.demolishTime = demolishTime ?? max(1, buildTime / 2); self.demolishReturn = demolishReturn
+        self.health = health
         self.armour = armour; self.footprint = footprint; self.sight = sight; self.attack = attack
         self.housing = housing; self.accepts = accepts; self.trains = trains; self.levels = levels
     }

@@ -81,7 +81,7 @@ private func fault(_ texts: TableTexts) -> TableError? {
     }
 
     @Test func aMissingRowOrColumnIsAFault() {
-        let row = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,,,,,,,\n", with: ""))
+        let row = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,,,,,,,\n", with: ""))
         #expect(row?.file == "stats.csv" && row?.message == "the building farm has no row")
         let advance = fault(defaults(.ages, replacing: "ships,cannons,800,0,400,200\n", with: ""))
         #expect(advance?.file == "ages.csv" && advance?.message == "the advance from the age of ships has no row")
@@ -93,13 +93,26 @@ private func fault(_ texts: TableTexts) -> TableError? {
         #expect(empty?.file == "stats.csv" && empty?.message == "the file is empty")
     }
 
+    @Test func demolitionIsReadFromItsColumnsAndChecked() throws {
+        let farm = try Catalogue(tables: defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,",
+                                                  with: "farm,farms,0,60,0,150,,,,20,4,0.25,")).stats(.farm)
+        #expect(farm.demolishTime == Tick.seconds(4) && farm.demolishReturn == 0.25)
+        #expect(ResourceAmounts([.wood: 60, .gold: 3]).share(0.25) == ResourceAmounts([.wood: 15]))
+        let tooMuch = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,", with: "farm,farms,0,60,0,150,,,,20,10,1.5,"))
+        #expect(tooMuch?.file == "stats.csv" && tooMuch?.line == 18 && tooMuch?.column == 12)
+        let missing = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,", with: "farm,farms,0,60,0,150,,,,20,,0.5,"))
+        #expect(missing?.column == 11 && missing?.message == "a building needs demolish_seconds")
+        let unit = fault(defaults(.stats, replacing: "worker,towns,50,0,0,25,3,0.6667,1,,,,", with: "worker,towns,50,0,0,25,3,0.6667,1,,5,,"))
+        #expect(unit?.line == 2 && unit?.column == 11)
+    }
+
     @Test func aTowersLaterRowIsItsUpgradeAndAHousesIsAFault() throws {
         var texts = TableTexts.defaults
-        texts.stats += "watchTower,ships,0,100,0,600,6,0.5,8,40,,,,,,,\n"
+        texts.stats += "watchTower,ships,0,100,0,600,6,0.5,8,40,,,,,,,,,\n"
         let tower = try Catalogue(tables: texts).stats(.watchTower)
         #expect(tower.age == .farms && tower.health == 400)
         #expect(tower.levels == [BuildingLevel(age: .ships, health: 600, attack: Attack(damage: 6, range: 8, interval: Tick.seconds(2)))])
-        texts.stats += "house,farms,0,30,0,300,,,,20,,,,,,,\n"
+        texts.stats += "house,farms,0,30,0,300,,,,20,10,0.5,,,,,,,\n"
         let house = fault(texts)
         #expect(house?.message == "house has a row already, on line 14")
     }

@@ -262,10 +262,10 @@ public struct PanelModel: Sendable {
             let crew = idle.isEmpty ? nearest.map { [$0.id] } ?? [] : idle
             var why = gate
             if why == nil && crew.isEmpty { why = Unavailability(.notYours, "Needs a worker") }
-            let back = catalogue.stats(kind).cost.halved
+            let back = catalogue.stats(kind).cost.share(catalogue.stats(kind).demolishReturn)
             demolish = [ActionOffer(
                 id: "demolish", section: .demolish, title: kind.name,
-                detail: "Workers pull it down and return half its cost (\(InterfaceText.cost(back))).",
+                detail: "Workers pull it down and return part of its cost (\(InterfaceText.cost(back))).",
                 cost: ResourceAmounts(), action: .demolish(workers: crew, building: b.id), unavailable: why,
                 shortcut: "x", icon: nil, iconSubject: nil, refund: back)]
         }

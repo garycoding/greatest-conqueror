@@ -73,7 +73,7 @@ extension Catalogue {
 /// a table may give them in any order.
 public enum TableColumns {
     public static let stats = ["kind", "age", "food", "wood", "gold", "health", "damage", "hits_per_second", "range",
-                               "build_seconds", "gather_food", "gather_wood", "gather_gold", "farm_food",
+                               "build_seconds", "demolish_seconds", "demolish_return", "gather_food", "gather_wood", "gather_gold", "farm_food",
                                "heal_per_second", "repair_per_second", "radius"]
     public static let production = ["maker", "unit", "age", "seconds"]
     public static let ages = ["from", "to", "food", "wood", "gold", "seconds"]
@@ -200,7 +200,9 @@ enum TableReader {
                     throw s.fault(row, "kind", "\(name) has a row already, on line \(line)")
                 }
                 unitLines[kind] = row.line
-                if !s.isEmpty(row, "build_seconds") { throw s.fault(row, "build_seconds", "a unit is not built") }
+                for column in ["build_seconds", "demolish_seconds", "demolish_return"] where !s.isEmpty(row, column) {
+                    throw s.fault(row, column, "a unit is not built or demolished")
+                }
                 let unitShape = shape.unit(kind)
                 if var a = attack { a.area = unitShape.area; attack = a }
                 var gathering = [Double](repeating: 0, count: Resource.allCases.count)
@@ -232,12 +234,23 @@ enum TableReader {
                 guard let seconds = try s.positive(row, "build_seconds") else {
                     throw s.fault(row, "build_seconds", "a building needs build_seconds")
                 }
+                guard let demolishSeconds = try s.positive(row, "demolish_seconds") else {
+                    throw s.fault(row, "demolish_seconds", "a building needs demolish_seconds")
+                }
+                guard let demolishReturn = try s.number(row, "demolish_return") else {
+                    throw s.fault(row, "demolish_return", "a building needs demolish_return")
+                }
+                guard demolishReturn <= 1 else {
+                    throw s.fault(row, "demolish_return", "demolish_return must be at most 1")
+                }
                 for column in ["gather_food", "gather_wood", "gather_gold", "farm_food", "heal_per_second", "repair_per_second", "radius"]
                 where !s.isEmpty(row, column) {
                     throw s.fault(row, column, "a building does not have \(column)")
                 }
                 let buildingShape = shape.building(kind)
                 buildings[kind] = BuildingStats(kind: kind, age: age, cost: cost, buildTime: max(1, Tick.seconds(seconds)),
+                                                demolishTime: max(1, Tick.seconds(demolishSeconds)),
+                                                demolishReturn: demolishReturn,
                                                 health: health, armour: buildingShape.armour,
                                                 footprint: buildingShape.footprint, sight: buildingShape.sight,
                                                 attack: attack, housing: buildingShape.housing,

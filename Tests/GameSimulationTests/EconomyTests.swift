@@ -274,7 +274,7 @@ private let load = Catalogue.standard.gathering.load
         while sim.entity(house) != nil, ticks < stats.buildTime { sim.step(); ticks += 1 }
         #expect(sim.entity(house) == nil)
         #expect(ticks == max(1, stats.buildTime / 2))
-        #expect(sim.resources(me) == before + stats.cost.halved)
+        #expect(sim.resources(me) == before + stats.cost.share(0.5))
         let view = sim.view(for: me)
         #expect(view.populationLimit == limit - stats.housing)
         #expect(view.events.contains(.destroyed(house)))
@@ -290,12 +290,12 @@ private let load = Catalogue.standard.gathering.load
         let afterPaying = sim.resources(me)
         // Nearly pulled down already, so that it comes down before the worker is trained.
         let c = sim.index(of: centre)!
-        sim.entities[c].demolished = Simulation.demolitionTime(Catalogue.standard.stats(.townCentre).buildTime) - 1
+        sim.entities[c].demolished = Catalogue.standard.stats(.townCentre).demolishTime - 1
         let builder = sim.add(.worker, me, 6.5, 6.5)
         #expect(sim.apply(.demolish(workers: [builder], building: centre), from: me) == .accepted)
         do { let reached = sim.run(until: { $0.entity(centre) == nil }, limit: 200); #expect(reached) }
         #expect(sim.people(me, .worker).count == sim.view(for: me).entities.filter { $0.kind == .unit(.worker) }.count)
-        let back = Catalogue.standard.stats(.townCentre).cost.halved + Catalogue.standard.stats(.worker).cost
+        let back = Catalogue.standard.stats(.townCentre).cost.share(0.5) + Catalogue.standard.stats(.worker).cost
         #expect(sim.resources(me) == afterPaying + back)
     }
 
@@ -444,11 +444,11 @@ private let load = Catalogue.standard.gathering.load
         let held = sim.resources(me)
         #expect(sim.apply(.advanceAge(at: centre), from: me) == .accepted)
         let c = sim.index(of: centre)!
-        sim.entities[c].demolished = Simulation.demolitionTime(Catalogue.standard.stats(.townCentre).buildTime) - 1
+        sim.entities[c].demolished = Catalogue.standard.stats(.townCentre).demolishTime - 1
         let worker = sim.people(me, .worker)[0]
         #expect(sim.apply(.demolish(workers: [worker], building: centre), from: me) == .accepted)
         do { let reached = sim.run(until: { $0.entity(centre) == nil }, limit: 200); #expect(reached) }
-        #expect(sim.resources(me) == held + Catalogue.standard.stats(.townCentre).cost.halved)
+        #expect(sim.resources(me) == held + Catalogue.standard.stats(.townCentre).cost.share(0.5))
         #expect(sim.players[0].age == .towns)
     }
 }

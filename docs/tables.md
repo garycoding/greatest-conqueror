@@ -16,6 +16,8 @@ One row for each unit kind and each building kind. A tower's or a castle's later
 | `health` | The maximum health points. |
 | `damage`, `hits_per_second`, `range` | An attacker's harm per blow, blows a second and reach in tiles; empty for a kind that does not attack. |
 | `build_seconds` | For a building, the seconds of one worker's work to build it; more workers build it sooner. |
+| `demolish_seconds` | For a building, the seconds of one worker's work to demolish it; more workers demolish it sooner. By default half of `build_seconds`. |
+| `demolish_return` | For a building, the share of its cost, from 0 to 1, that demolishing it returns, rounded down. By default 0.5. |
 | `gather_food`, `gather_wood`, `gather_gold` | For a worker or a boat, what it takes from a site a second: food from deer or fish, wood from trees, gold from gold mines. |
 | `farm_food` | For a worker, the food a second it earns at a farm. |
 | `heal_per_second`, `repair_per_second`, `radius` | The rates of healing and repair, and the radius within which an idle unit looks for that work; empty until the rules that use them are written. |

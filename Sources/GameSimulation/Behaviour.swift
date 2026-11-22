@@ -234,18 +234,15 @@ extension Simulation {
         face(i, dx: entities[b].position.x - entities[i].position.x, dy: entities[b].position.y - entities[i].position.y)
         entities[i].doing = .constructing
         entities[b].demolished += 1
-        if entities[b].demolished >= Self.demolitionTime(tables.building(kind).buildTime) { demolish(b) }
+        if entities[b].demolished >= tables.building(kind).demolishTime { demolish(b) }
     }
 
-    /// Worker-ticks to pull down a building: half its construction time.
-    static func demolitionTime(_ buildTime: Int) -> Int { max(1, buildTime / 2) }
-
-    /// A building comes down: half its cost back, and whatever was under way
+    /// A building comes down: its share of its cost back (`demolish_return`), and whatever was under way
     /// there cancelled and refunded.
     mutating func demolish(_ b: Int) {
         guard let kind = entities[b].buildingKind else { return }
         let p = entities[b].owner.rawValue
-        var back = tables.building(kind).cost.halved
+        var back = tables.building(kind).cost.share(tables.building(kind).demolishReturn)
         for unit in entities[b].queue { back = back + tables.unit(unit).cost }
         if entities[b].advancing != nil, let advance = catalogue.advance(from: players[p].age) { back = back + advance.cost }
         entities[b].queue = []
