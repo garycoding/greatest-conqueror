@@ -5,7 +5,7 @@ Status: draft for review, 2026-11-22.
 ## Intents
 
 1. **A real-time strategy game to play.** Players gather food, wood and gold, build a town, advance through five ages and conquer their opponents, alone against computer players or with others on the same network.
-2. **A game whose balance is in the player's hands.** Every number that governs the play lives in three tables the player can read, edit during a match, save and load. Tuning the game is part of playing it, not a change to its code.
+2. **A game whose balance is in the player's hands.** Every number that governs the play lives in tables the player can read, edit during a match, save and load. Tuning the game is part of playing it, not a change to its code.
 
 The two support each other: the game must be good to play on its default tables, and the tables must be the whole of what decides the play, so that what one learns by playing can be put straight into them.
 
