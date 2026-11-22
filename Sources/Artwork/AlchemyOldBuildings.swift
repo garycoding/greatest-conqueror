@@ -95,7 +95,7 @@ extension AlchemyOldBuildingsPainter {
         case .boatHouse: boatHouse(complete: complete)
         // The Alchemy age's own buildings are drawn by their own batch.
         case .castle: break
-        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        // Drawn by their own batch (`LateBuildingSprites`).
         case .cannonFactory, .hospital: break
         }
     }

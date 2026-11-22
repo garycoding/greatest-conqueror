@@ -80,7 +80,7 @@ enum BronzeBuildingsArt {
         case .tower: 120
         // Iron-age buildings are drawn by their own batch; the boat house fits in their height too.
         case .farm, .stable, .castle, .boatHouse: 80
-        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        // Drawn by their own batch (`LateBuildingSprites`).
         case .cannonFactory, .hospital: 80
         }
     }
@@ -113,7 +113,7 @@ extension BronzeBuildingsPainter {
         case .boatHouse: boatHouse(complete: complete)
         // Iron-age buildings are drawn by their own batch.
         case .farm, .stable, .castle: break
-        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        // Drawn by their own batch (`LateBuildingSprites`).
         case .cannonFactory, .hospital: break
         }
     }
