@@ -46,7 +46,6 @@ public enum StandIn {
     public static func unit(_ kind: UnitKind) -> UnitKind {
         switch kind {
         case .doctor, .founder: .worker
-        case .navyShip: .fishingBoat
         case .knight3: .knight2
         default: kind
         }
@@ -61,7 +60,7 @@ public enum StandIn {
     }
 
     /// How much larger than its stand-in a kind is drawn.
-    public static func scale(_ kind: EntityKind) -> Double { kind == .unit(.navyShip) ? 1.5 : 1 }
+    public static func scale(_ kind: EntityKind) -> Double { 1 }
 
     /// A look a kind lacks, drawn in another: the castle, of the age of ships
     /// now (requirement 10), in the Iron look as in the Alchemy look.
