@@ -37,10 +37,9 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
     }
 }
 
-/// The kinds drawn, until their own art is made, as an existing kind (step 5
-/// of the plan; step 8 replaces this table with the new drawings): the doctor
-/// and the founder as the worker, the navy ship as the fishing boat, drawn
-/// larger, and knight 3 as knight 2. Every other kind is drawn as itself.
+/// The kinds drawn as an existing kind until their own art is made: since the
+/// art of step 8, only the founder, drawn as the worker. Every other kind is
+/// drawn as itself.
 public enum StandIn {
     public static func unit(_ kind: UnitKind) -> UnitKind {
         switch kind {
