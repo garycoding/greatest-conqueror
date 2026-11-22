@@ -173,6 +173,16 @@ extension Simulation {
         #expect(view.entity(men[0]) == nil)
     }
 
+    @Test func workersAndDoctorsBoardButFoundersDoNot() {
+        var (sim, ship, _) = harbour(troops: 0)
+        let worker = sim.add(.worker, me, 6.5, 11.5), doctor = sim.add(.doctor, me, 6.9, 11.5)
+        #expect(sim.apply(.board(units: [worker, doctor], ship: ship), from: me) == .accepted)
+        sim.run(until: { $0.cargo(of: $0.index(of: ship)!) == 2 }, limit: 30 * Tick.rate)
+        #expect(sim.cargo(of: sim.index(of: ship)!) == 2)
+        #expect(UnitKind.allCases.filter(\.boardsShips).count == 11)
+        #expect(!UnitKind.founder.boardsShips && !UnitKind.car.boardsShips && !UnitKind.fishingBoat.boardsShips)
+    }
+
     @Test func aShipAwayFromTheShoreTakesNoOneAboard() {
         var (sim, _, men) = harbour(troops: 1)
         let offshore = sim.add(.navyShip, me, 15.5, 15.5)

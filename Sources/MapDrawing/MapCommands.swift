@@ -80,7 +80,7 @@ public enum MapCommands {
             return gatherers.isEmpty ? .move(units: everyone, to: site.tile.centre) : .gather(units: gatherers, site: site.id)
         case .entity(let entity):
             if entity.owner == view.player, entity.kind == .unit(.navyShip) {
-                let troops = ids(\.isWarfighter)
+                let troops = ids(\.boardsShips)
                 if !troops.isEmpty { return .board(units: troops, ship: entity.id) }
             }
             if entity.owner == view.player, case .unit(let kind) = entity.kind, kind.isUnit, !kind.isAfloat,

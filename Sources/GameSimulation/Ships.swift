@@ -38,7 +38,7 @@ extension Simulation {
     func cargo(of i: Int) -> Int { entities[i].passengers?.count ?? 0 }
 
     /// Whether a unit kind may board a navy ship: the troops.
-    static func boards(_ kind: UnitKind?) -> Bool { kind?.isWarfighter ?? false }
+    static func boards(_ kind: UnitKind?) -> Bool { kind?.boardsShips ?? false }
 
     /// A troop walks to a ship at the shore and boards it, if there is room.
     mutating func boardTask(_ i: Int, _ ship: EntityID) {
