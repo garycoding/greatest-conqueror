@@ -354,11 +354,13 @@ extension IronOldBuildingsPainter {
         vexillum(at: iso(0.55, 1.78, g), height: 34, width: 13, length: 15)
     }
 
-    /// A square tower's shaft of fresh stone, begun to `top` points, on its footing.
+    /// A square tower's shaft of fresh stone, begun to `top` points on its
+    /// footing and open at the top, its inner walls and the earth within showing.
     private mutating func towerStump(_ cx: Double, _ cy: Double, half s: Double, top: Double) {
         typealias I = IronOldBuildingsInk
         let g = Fort.ground, (x0, y0, x1, y1) = (cx - s, cy - s, cx + s, cy + s), w = 2 * s * 32
-        block(x0, y0, x1, y1, g, top, top: .colour(I.rawStoneTop), left: .colour(I.rawStone), right: .colour(I.rawStoneShade))
+        shell(x0, y0, x1, y1, from: g, floor: max(g + 0.5, top - 10), to: top, thickness: s < 0.25 ? 0.05 : 0.07,
+              lit: .colour(I.rawStone), shade: .colour(I.rawStoneShade), top: .colour(I.rawStoneTop), ground: .colour(I.earthShade))
         for side in [IronOldBuildingsSide.left, .right] {
             wall(side, from: side == .left ? x0 : x1, y1, at: g) { p in
                 p.colour(p.panel(0, 0, w, min(5, top - g)), .colour(I.rawStoneShade))
