@@ -16,9 +16,9 @@ import Testing
         .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronBoatSprites(), IronPeopleSprites(), IronWarriorSprites(),
                 NavyShipSprites()],
         .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(),
-                   AlchemyBoatSprites(), NavyShipSprites()],
+                   AlchemyBoatSprites(), NavyShipSprites(), LateBuildingSprites()],
         .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(), IndustrialNewPeopleSprites(),
-                      IndustrialBoatSprites(), NavyShipSprites()],
+                      IndustrialBoatSprites(), NavyShipSprites(), LateBuildingSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []

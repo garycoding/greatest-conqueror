@@ -85,7 +85,7 @@ extension IronOldBuildingsPainter {
         case .boatHouse: boatHouse(complete: complete, view: view)
         // The Iron age's own buildings are drawn by their own batch.
         case .farm, .stable, .castle: break
-        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        // Drawn by their own batch (`LateBuildingSprites`).
         case .cannonFactory, .hospital: break
         }
     }

@@ -13,9 +13,9 @@ import Testing
     private static let source = IndustrialOldBuildingSprites()
 
     /// The buildings of the Stone, Bronze, Iron and Alchemy ages, the boat house among them: the batch's kinds.
-    /// The kinds drawn as stand-ins (`StandIn`) are drawn by none.
+    /// The cannon factory is drawn by its own batch (`LateBuildingSprites`).
     private static let kinds = Catalogue.standard.buildings
-        .filter { $0.age <= .cannons && StandIn.building($0.kind) == $0.kind }.map(\.kind)
+        .filter { $0.age <= .cannons && $0.kind != .cannonFactory }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Industrial age's
     /// look, complete and under construction, at frame 0.
