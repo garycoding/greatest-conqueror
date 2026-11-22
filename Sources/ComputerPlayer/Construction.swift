@@ -133,7 +133,8 @@ extension Turn {
     /// The nearest origin to `anchor`, ring by ring, where a building of `kind`
     /// may stand (`Placement.canPlace`, through `Ground.allows`) with a tile of
     /// open ground between it and every other building; failing that, without
-    /// the open ground. Rings beyond `Turn.widestRing` are not searched.
+    /// the open ground. Either way some tile beside it must be open, so that a
+    /// worker can reach it to build it. Rings beyond `Turn.widestRing` are not searched.
     func site(for kind: BuildingKind, near anchor: MapPosition, rings: ClosedRange<Int>) -> GridPoint? {
         let low = max(0, rings.lowerBound), high = min(Turn.widestRing, rings.upperBound)
         guard low <= high else { return nil }
@@ -149,7 +150,8 @@ extension Turn {
                 let origin = GridPoint(centre.x + offsets[i].x, centre.y + offsets[i].y)
                 i += 1
                 guard ground.isFree(size: size, at: origin), !spaced || ground.isClear(size: size, at: origin),
-                      !refused.contains(origin), ground.allows(kind, at: origin, in: view) else { continue }
+                      !refused.contains(origin), ground.allows(kind, at: origin, in: view),
+                      ground.hasOpenSide(size: size, at: origin, in: view) else { continue }
                 return origin
             }
         }

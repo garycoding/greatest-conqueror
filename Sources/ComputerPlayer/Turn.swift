@@ -477,6 +477,19 @@ struct Ground {
 
     /// Whether a person can stand on a tile: inside the map, passable, and
     /// clear of buildings and of sites that block their tiles.
+    /// Whether a worker can stand beside a building at `origin`: some tile
+    /// along a side of its footprint, not at a corner, is open, so that it can
+    /// be built at all.
+    func hasOpenSide(size: GridPoint, at origin: GridPoint, in view: PlayerView) -> Bool {
+        for x in origin.x..<(origin.x + size.x) {
+            if canStand(GridPoint(x, origin.y - 1), in: view) || canStand(GridPoint(x, origin.y + size.y), in: view) { return true }
+        }
+        for y in origin.y..<(origin.y + size.y) {
+            if canStand(GridPoint(origin.x - 1, y), in: view) || canStand(GridPoint(origin.x + size.x, y), in: view) { return true }
+        }
+        return false
+    }
+
     func canStand(_ tile: GridPoint, in view: PlayerView) -> Bool {
         guard isInside(tile) else { return false }
         let here = tile.y * width + tile.x
