@@ -14,8 +14,8 @@ import GameCore
 /// He carries a Gladstone bag of brown leather with a brass frame and clasp.
 /// Standing, he breathes and blinks, the bag in his hand; walking, the bag
 /// swings with his stride; working, he heals: standing over the open bag, the
-/// patient before him, he holds the end of a bandage in one hand and winds
-/// the roll round in the other, and motes of the light rise where the
+/// patient before him, he winds a roll of bandage round the patient's wound,
+/// its loose end swinging below it, and motes of the light rise where the
 /// bandage goes on. He does not attack, so he has no fighting pose.
 struct IndustrialNewPeopleDoctor: PersonLook {
     /// The bag's length, end to end, and its depth from side to side.
@@ -25,23 +25,23 @@ struct IndustrialNewPeopleDoctor: PersonLook {
 
     // MARK: Healing
 
-    /// One frame of the healing, in the picture: the lean, where the near hand
-    /// holds the roll, and where the far hand holds the bandage's end. He
-    /// stands over the open bag with the patient before him, holds the end of
-    /// the bandage in his far hand and winds the roll round in his near hand,
-    /// once in the cycle, down, forward, up and back.
+    /// One frame of the healing, in the picture: the lean, and where the near
+    /// hand holds the roll. He stands over the open bag with the patient
+    /// before him and winds the roll round in his near hand, once in the
+    /// cycle, down, forward, up and back; his far hand rests at his side.
     struct Step {
         var lean: Double
         var near: P
-        var far: P
+        /// The turn of the winding, in radians.
+        var turn: Double
     }
 
     /// Where the near hand winds the roll round, and how far.
-    static let winding = P(19.4, -33.4), across = 3.4, deep = 4.8
+    static let winding = P(18.4, -39.6), across = 3.2, deep = 3.6
 
     static func step(_ frame: Int) -> Step {
         let t = 2 * Double.pi * Double(frame) / 12
-        return Step(lean: 6 + 1.6 * sin(t), near: winding + P(-across * cos(t), deep * sin(t)), far: P(10.8 + 0.6 * sin(t), -31.6 + 0.5 * cos(t)))
+        return Step(lean: 6 + 1.6 * sin(t), near: winding + P(-across * cos(t), deep * sin(t)), turn: t)
     }
 
     /// The legs whilst he heals: a short stance toward the patient.
@@ -74,7 +74,7 @@ struct IndustrialNewPeopleDoctor: PersonLook {
         r.backLeg = stanceBack; r.frontLeg = stanceFront
         r.lean = s.lean
         r.frontArm = IndustrialPeopleKit.reach(front: true, r, to: s.near)
-        r.backArm = IndustrialPeopleKit.reach(front: false, r, to: s.far)
+        r.backArm = Limb(-2 - 2 * sin(s.turn), -14)
         r.eyes = frame == 8 ? .closed : .down
         r.headTilt = 5
         r.mouth = .firm
@@ -88,7 +88,7 @@ struct IndustrialNewPeopleDoctor: PersonLook {
         (0..<3).map { i in
             let t = Double((frame + 4 * i) % 12) / 12
             let p = winding + P(across + 2.4 + Double(i - 1) * 2.6 + 0.9 * sin(t * 2 * .pi + Double(i)), -4 - 16 * t)
-            return (p, 1.9 - 0.5 * t, 0.15 + 0.85 * sin(.pi * t))
+            return (p, 2.5 - 0.6 * t, 0.15 + 0.85 * sin(.pi * t))
         }
     }
 
@@ -111,7 +111,7 @@ struct IndustrialNewPeopleDoctor: PersonLook {
                 Self.bag(&d.svg, top: d.joints.frontHand + P(swing * 0.3, 3.2), length: Self.bagLength, open: false, swing: swing)
             default:
                 if let s = step {
-                    Self.bandage(&d.svg, from: d.joints.backHand, to: d.joints.frontHand)
+                    Self.bandage(&d.svg, roll: d.joints.frontHand, turn: s.turn)
                     Self.roll(&d.svg, at: d.joints.frontHand)
                 }
             }
@@ -130,7 +130,7 @@ struct IndustrialNewPeopleDoctor: PersonLook {
     /// The frock coat's outline: fitted at the waist, its skirts flaring to the knee and swinging with the stride.
     static func coatOutline(_ sway: Double) -> [P] {
         let s = sway * 1.4
-        return [P(-9.6, -47.6), P(9.4, -47.6), P(10.4, -37), P(9, -27.6), P(12.8 - s, -9.4), P(-12.6 - s, -9.8), P(-10.2, -27.6), P(-10.6, -37)]
+        return [P(-9.6, -47.6), P(9.4, -47.6), P(10.2, -37), P(8.8, -27.6), P(14 - s, -9.4), P(-13.8 - s, -9.8), P(-9.8, -27.6), P(-10.4, -37)]
     }
 
     /// The frock coat of the team's colour, its skirts to the knee swinging
@@ -247,10 +247,12 @@ struct IndustrialNewPeopleDoctor: PersonLook {
         svg.path("M\(num(hand.x + 0.6)),\(num(hand.y - 1.4)) m-0.9,0 a0.9,0.9 0 1 1 1.8,0", stroke: .colour(IndustrialNewPeopleInk.linenShade), width: 0.6)
     }
 
-    /// The bandage unrolled from the far hand, which holds its end, to the roll in the near hand.
-    static func bandage(_ svg: inout SVG, from a: P, to b: P) {
+    /// The bandage's loose end, unrolled from the roll in the hand and
+    /// hanging below it, swinging as the roll goes round (`turn`, in radians).
+    static func bandage(_ svg: inout SVG, roll a: P, turn: Double) {
+        let b = a + P(1.4 + 2.4 * sin(turn + 1.2), 10.4 - 1.2 * cos(turn))
         var strip = PathData()
-        strip.move(a); strip.quad((a + b) * 0.5 + P(0, 1.6), b + P(0.6, -0.4))
+        strip.move(a + P(0.6, -0.4)); strip.quad(a + P(2.4 + 1.6 * cos(turn), 5), b)
         svg.path(strip, stroke: .colour(Ink.line), width: 3.2)
         svg.path(strip, stroke: .colour(IndustrialNewPeopleInk.linen), width: 2)
     }
@@ -262,7 +264,7 @@ struct IndustrialNewPeopleDoctor: PersonLook {
             let radius = i % 2 == 0 ? r : r * 0.36
             points.append(c + P.direction(Double(i) * 45) * radius)
         }
-        svg.polygon(points, fill: .colour(IndustrialPeopleInk.light), stroke: .colour(Ink.line), width: 0.5, opacity: opacity)
+        svg.polygon(points, fill: .colour(IndustrialPeopleInk.light), stroke: .colour(Ink.line), width: 0.7, opacity: opacity)
     }
 }
 
@@ -310,7 +312,7 @@ extension IndustrialNewPeopleDoctor {
             let far: IndustrialViews.Arm, near: IndustrialViews.Arm
             if let s = step {
                 near = IndustrialViews.reach(d, front: true, to: Self.inFigure(d, s.near, z: Drawing.shoulderSpread - 2))
-                far = IndustrialViews.reach(d, front: false, to: Self.inFigure(d, s.far, z: -2))
+                far = IndustrialViews.arm(d, front: false)
             } else {
                 near = IndustrialViews.arm(d, front: true); far = IndustrialViews.arm(d, front: false)
             }
@@ -321,7 +323,7 @@ extension IndustrialNewPeopleDoctor {
                         let swing = pose == .walking ? -2 * d.rig.sway * IndustrialViews.ahead(d) : 0
                         Self.bag(&d.svg, top: a.hand + P(swing * 0.3, 3.2), length: shown, open: false, swing: swing)
                     default:
-                        Self.bandage(&d.svg, from: far.hand, to: a.hand)
+                        Self.bandage(&d.svg, roll: a.hand, turn: step?.turn ?? 0)
                         Self.roll(&d.svg, at: a.hand)
                     }
                 }

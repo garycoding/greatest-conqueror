@@ -283,8 +283,10 @@ struct IndustrialNewPeopleCavalryman: PersonLook {
                                 fill: .colour(IndustrialPeopleInk.black), width: 1, shift: P(-0.4, 0.3))
         // The stirrup's tread, and the spur.
         svg.line([foot + P(-1, 2.8), foot + P(2.6 + 3 * toe, 2.8)], stroke: .colour(IndustrialWarriorsInk.steelDark), width: 1.4)
-        svg.line([foot + P(-2.2, 0.8), foot + P(-5, 1.2)], stroke: .colour(IndustrialWarriorsInk.steelLight), width: 0.9)
-        svg.circle(foot + P(-5.4, 1.2), 0.9, fill: .colour(IndustrialWarriorsInk.steelLight), stroke: .colour(Ink.line), width: 0.4)
+        // The spur points back from the heel, as far as the view shows the foot's length.
+        let back = max(abs(run), 0.15)
+        svg.line([foot + P(-2.2 * back, 0.8), foot + P(-5 * back, 1.2)], stroke: .colour(IndustrialWarriorsInk.steelLight), width: 0.9)
+        svg.circle(foot + P(-5.4 * back, 1.2), 0.9, fill: .colour(IndustrialWarriorsInk.steelLight), stroke: .colour(Ink.line), width: 0.4)
     }
 
     /// The steel scabbard from `mouth` along `degrees`, shown `length` of its
