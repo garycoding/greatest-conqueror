@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="2000" height="1280" viewBox="0 0 1000 640" font-family="Futura, 'Gill Sans', Helvetica, sans-serif">
+<defs>
+<filter id="sponge" x="-5%" y="-5%" width="110%" height="110%">
+<feTurbulence type="fractalNoise" baseFrequency="0.42" numOctaves="3" seed="11"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 3.2 -1.5" result="m"/>
+<feComposite in="SourceGraphic" in2="m" operator="in"/>
+</filter>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="5"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.6 -1.2" result="m"/>
+<feComposite in="SourceGraphic" in2="m" operator="in"/>
+</filter>
+<g id="palm">
+<ellipse cx="-2" cy="-130" rx="54" ry="36" fill="#8a9c58"/>
+<ellipse cx="-2" cy="-130" rx="54" ry="36" fill="#6c7f42" filter="url(#sponge)"/>
+<path d="M-11,3 C-15,-37 -9,-77 -4,-115 L5,-115 C2,-75 0,-35 4,3 Z" fill="#c08a5a"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M-6,0 C-10,-40 -4,-80 1,-118 M8,0 C4,-40 6,-80 9,-118"/>
+<path d="M-7,-20 l13,-2 M-8,-40 l13,-2 M-7,-60 l13,-2 M-5,-80 l12,-2 M-3,-100 l11,-2" stroke-width="1.6"/>
+<path d="M5,-120 Q-30,-150 -52,-122 M5,-120 Q-22,-166 -46,-158 M5,-120 Q-8,-172 -28,-184 M5,-120 Q6,-172 14,-190 M5,-120 Q32,-166 52,-172 M5,-120 Q44,-150 66,-140 M5,-120 Q40,-124 60,-104 M5,-120 Q-26,-124 -48,-98"/>
+</g>
+<circle cx="-3" cy="-111" r="4.5" fill="#d9703a"/><circle cx="11" cy="-109" r="4.5" fill="#d9703a"/><circle cx="4" cy="-102" r="4.5" fill="#d9703a"/>
+</g>
+<g id="house">
+<polygon points="-44,5 33,5 29,-49 -38,-54" fill="currentColor"/>
+<rect x="-9" y="-31" width="17" height="31" fill="#2f6b6b"/>
+<path d="M-64,2 c-7,-10 -5,-19 2,-23 h9 c7,4 9,13 2,23 Z" fill="#c2683c"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<polygon points="-38,0 38,0 33,-52 -33,-48"/>
+<path d="M-40,-50 q8,-10 16,-2 q8,8 16,-2 q8,-10 16,-1 q8,8 16,-2 q6,-6 12,2"/>
+<path d="M-6,0 v-27 h14 v27"/>
+<path d="M40,0 L31,-58 M51,0 L42,-58 M38,-12 h11 M36,-24 h11 M34,-36 h11 M33,-48 h10" stroke-width="1.8"/>
+<path d="M-60,0 c-7,-10 -5,-19 2,-23 h9 c7,4 9,13 2,23 Z M-58,-23 l-2,-5 h13 l-2,5"/>
+</g>
+<rect x="17" y="-37" width="9" height="9" fill="#2a2420"/>
+<path d="M-22,-14 l4,-6 l4,6 l4,-6 l4,6" fill="none" stroke="#2a2420" stroke-width="1.4" stroke-linecap="round"/>
+</g>
+<g id="person">
+<polygon points="-15,-61 9,-64 16,-21 -21,-19" fill="#f1e3c4"/>
+<polygon points="-17,-47 13,-49 14,-40 -18,-38" fill="currentColor"/>
+<ellipse cx="-3" cy="-77" rx="12" ry="13" fill="#e2a27c"/>
+<path d="M-13,-80 C-14,-95 2,-97 9,-88 C0,-91 -6,-86 -8,-76 Z" fill="#2a2420"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M-12,-78 C-12,-92 6,-94 9,-82 L23,-76 L9,-72 C8,-64 -10,-62 -12,-78 Z"/>
+<path d="M-10,-64 L8,-64 L15,-24 L-17,-24 Z"/>
+<path d="M-17,-24 l4,5 l4,-5 l4,5 l4,-5 l4,5 l4,-5 l4,5 l4,-5" stroke-width="1.6"/>
+<path d="M-6,-20 L-6,-2 h10 M6,-20 L7,-2 h10"/>
+<path d="M-1,-86 l8,2" stroke-width="1.8"/>
+</g>
+<circle cx="3" cy="-80" r="1.8" fill="#2a2420"/>
+</g>
+<g id="spearman">
+<polygon points="-18,-20 20,-20 12,-60 -11,-62" fill="currentColor"/>
+<ellipse cx="2" cy="-75" rx="12" ry="13" fill="#e2a27c"/>
+<path d="M-12,-82 C-10,-101 11,-101 15,-83 Z" fill="#d6b25e"/>
+<circle cx="-23" cy="-43" r="18" fill="#efe0c2"/>
+<path d="M19,-111 l-6,-13 l8,-7 l5,9 Z" fill="#d6b25e"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12,-76 C12,-90 -6,-92 -9,-80 L-23,-74 L-9,-70 C-8,-62 10,-60 12,-76 Z"/>
+<path d="M-10,-84 C-8,-101 10,-101 13,-84 Z M2,-98 v-9"/>
+<path d="M-8,-62 L9,-62 L17,-22 L-15,-22 Z"/>
+<path d="M-11,-48 L13,-48 M-13,-35 L15,-35" stroke-width="1.6"/>
+<path d="M-15,-22 l4,5 l4,-5 l4,5 l4,-5 l4,5 l4,-5 l4,5 l4,-5" stroke-width="1.6"/>
+<path d="M-5,-18 L-5,-2 h-10 M7,-18 L7,-2 h-10"/>
+<circle cx="-19" cy="-46" r="17"/>
+<path d="M-19,-46 m-9,0 a9,9 0 1 1 9,9 a5.5,5.5 0 1 1 -5.5,-5.5" stroke-width="1.6"/>
+<path d="M19,-110 L14,0 M19,-111 l-6,-13 l8,-7 l5,9 Z M8,-56 L16,-50"/>
+<path d="M-8,-84 l9,3" stroke-width="1.8"/>
+<path d="M-8,-68 l3,6 l3,-5 l3,6 l3,-5 l3,5" stroke-width="1.6"/>
+</g>
+<circle cx="2" cy="-109" r="3" fill="#c8402f"/>
+<circle cx="-2" cy="-78" r="1.8" fill="#2a2420"/>
+</g>
+<g id="ox">
+<rect x="-35" y="-53" width="64" height="31" rx="13" fill="#b9623a"/>
+<polygon points="27,-55 50,-62 55,-42 39,-33" fill="#b9623a"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="-30" y="-50" width="62" height="30" rx="13"/>
+<path d="M30,-52 L52,-58 L56,-40 L40,-32 Z"/>
+<path d="M44,-58 q-5,-16 9,-21 M50,-58 q8,-11 17,-6"/>
+<path d="M-22,-20 v19 h5 M-10,-20 v19 h5 M14,-20 v19 h5 M26,-20 v19 h5"/>
+<path d="M-30,-44 q-13,4 -10,21 l-3,6 m3,-6 l4,5"/>
+<path d="M-12,-40 q7,-7 14,0 q-7,7 -14,0 M8,-36 q5,-5 10,0" stroke-width="1.6"/>
+</g>
+<circle cx="48" cy="-48" r="1.8" fill="#2a2420"/>
+</g>
+</defs>
+<rect x="0" y="0" width="1000" height="640" fill="#d9b46c"/>
+<rect x="0" y="0" width="1000" height="640" fill="#c59848" filter="url(#sponge)"/>
+<path d="M300,300 C380,235 620,230 730,285 C815,330 800,425 700,448 C560,478 380,470 305,425 C245,390 245,335 300,300 Z" fill="#ecdcb6"/>
+<path d="M300,300 C380,235 620,230 730,285 C815,330 800,425 700,448 C560,478 380,470 305,425 C245,390 245,335 300,300 Z" fill="#d7c08c" filter="url(#sponge)"/>
+<path d="M80,455 C160,415 330,420 440,460 C505,486 460,560 345,570 C200,582 60,558 50,505 C45,478 60,465 80,455 Z" fill="#a7a55a"/>
+<path d="M80,455 C160,415 330,420 440,460 C505,486 460,560 345,570 C200,582 60,558 50,505 C45,478 60,465 80,455 Z" fill="#8b8b45" filter="url(#sponge)"/>
+<path d="M610,640 C655,588 760,570 845,560 C915,550 962,522 1000,500 L1000,640 Z" fill="#6fa39a"/>
+<path d="M610,640 C655,588 760,570 845,560 C915,550 962,522 1000,500 L1000,640 Z" fill="#578a82" filter="url(#sponge)"/>
+<g fill="none" stroke="#eef5ef" stroke-width="2.2" stroke-linecap="round">
+<path d="M760,612 q8,-8 16,0 q8,8 16,0 q8,-8 16,0 M865,590 q8,-8 16,0 q8,8 16,0 q8,-8 16,0 M930,560 q8,-8 16,0 q8,8 16,0 M700,628 q8,-8 16,0 q8,8 16,0"/>
+</g>
+<use xlink:href="#palm" href="#palm" x="128" y="318"/>
+<use xlink:href="#palm" href="#palm" transform="translate(205,372) scale(0.82)"/>
+<use xlink:href="#palm" href="#palm" transform="translate(858,258) scale(-0.9,0.9)"/>
+<g transform="translate(905,345)">
+<polygon points="-46,4 -35,-31 -10,-46 20,-34 37,-5 31,4" fill="#7fa89c"/>
+<polygon points="-46,4 -35,-31 -10,-46 20,-34 37,-5 31,4" fill="#5c8a7e" filter="url(#sponge)"/>
+<polygon points="28,6 36,-16 56,-20 66,6" fill="#c2683c"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+<polygon points="-40,0 -30,-34 -6,-48 22,-36 40,-8 34,0"/>
+<path d="M-30,-34 L-8,-22 L22,-36 M-8,-22 L-4,0"/>
+<polygon points="32,2 40,-20 58,-24 68,2"/>
+<path d="M-52,-52 l5,7 M-58,-40 l8,2 M30,-52 l-3,8" stroke-width="1.6"/>
+</g>
+</g>
+<use xlink:href="#house" href="#house" transform="translate(338,312) scale(0.8)" color="#f1e3c4"/>
+<polygon points="372,356 612,356 590,291 394,291" fill="#c2683c"/>
+<polygon points="372,356 612,356 590,291 394,291" fill="#a2522c" filter="url(#sponge)"/>
+<polygon points="412,291 572,291 555,238 429,238" fill="#d88a55"/>
+<polygon points="450,238 534,238 524,196 460,196" fill="#c2683c"/>
+<rect x="477" y="171" width="33" height="25" fill="#2f6b6b"/>
+<polygon points="486,350 514,350 508,190 492,190" fill="#efe0c2"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+<polygon points="380,350 620,350 598,285 402,285"/>
+<polygon points="420,285 580,285 563,232 437,232"/>
+<polygon points="458,232 542,232 532,190 468,190"/>
+<polygon points="486,350 514,350 508,190 492,190"/>
+<path d="M488,338 h24 M488,324 h24 M489,310 h22 M489,296 h22 M490,282 h20 M490,268 h20 M490,254 h20 M491,240 h18 M491,226 h18 M492,212 h16 M492,200 h16" stroke-width="1.5"/>
+<path d="M392,332 l10,-13 l10,13 l10,-13 l10,13 l10,-13 l10,13 l10,-13 l10,13 M528,332 l10,-13 l10,13 l10,-13 l10,13 l10,-13 l10,13 l10,-13 l10,13" stroke-width="1.8"/>
+<path d="M398,306 h82 M520,306 h80" stroke-width="1.5"/>
+<path d="M442,276 v-16 a7,7 0 0 1 14,0 v16 M464,276 v-16 a7,7 0 0 1 14,0 v16 M522,276 v-16 a7,7 0 0 1 14,0 v16 M544,276 v-16 a7,7 0 0 1 14,0 v16" stroke-width="1.8"/>
+<path d="M468,222 l5,-8 l5,8 l5,-8 l5,8 M512,222 l5,-8 l5,8 l5,-8 l5,8" stroke-width="1.6"/>
+<rect x="484" y="166" width="32" height="24"/>
+<path d="M494,190 v-11 a6,6 0 0 1 12,0 v11 M480,166 h40 M484,166 l-5,-9 M516,166 l5,-9 M500,166 V126"/>
+</g>
+<polygon points="500,126 530,135 500,146" fill="#c8402f" stroke="#2a2420" stroke-width="2.2" stroke-linejoin="round"/>
+<use xlink:href="#house" href="#house" x="252" y="408" color="#f1e3c4"/>
+<use xlink:href="#house" href="#house" transform="translate(735,392) scale(-1,1)" color="#e9a79a"/>
+<g transform="translate(566,402) scale(-0.82,0.82)" color="#c8402f">
+<use xlink:href="#person" href="#person"/>
+<path d="M-16,-104 h30 l-5,14 h-20 Z" fill="#d6b25e"/>
+<path d="M-18,-100 h32 l-5,13 h-22 Z M-14,-95 h24 M8,-58 L16,-92 M-9,-58 L-14,-90" fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<use xlink:href="#ox" href="#ox" transform="translate(205,540) scale(0.72)"/>
+<g transform="translate(300,520)" color="#c8402f">
+<use xlink:href="#person" href="#person"/>
+<path d="M6,-56 L22,-44 M-8,-56 L-18,-40 M24,-98 L22,0 M24,-98 q8,-11 15,0" fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round"/>
+</g>
+<use xlink:href="#ox" href="#ox" x="395" y="528"/>
+<use xlink:href="#spearman" href="#spearman" x="652" y="512" color="#c8402f"/>
+<use xlink:href="#spearman" href="#spearman" transform="translate(930,470) scale(0.85)" color="#2f6b6b"/>
+<g transform="translate(800,535)">
+<polygon points="-24,0 20,0 9,-50 -12,-51" fill="#c8402f"/>
+<ellipse cx="0" cy="-65" rx="12" ry="12" fill="#e2a27c"/>
+<polygon points="-40,-45 -23,-42 -25,-21 -42,-25" fill="#d98a5a"/>
+<g fill="none" stroke="#2a2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M14,-66 C14,-80 -4,-82 -7,-70 L-21,-65 L-7,-60 C-6,-53 12,-52 14,-66 Z"/>
+<path d="M-2,-68 q3,3 6,0 M-4,-74 l8,-1 M10,-67 q5,-3 4,4" stroke-width="1.7"/>
+<path d="M-7,-52 L11,-52 L22,-4 L-20,-4 Z"/>
+<path d="M-20,-4 q-8,3 -13,-2 M22,-4 q7,3 11,-1"/>
+<path d="M-4,-44 L-22,-36 M-18,-49 L-27,-38"/>
+<polygon points="-36,-46 -20,-44 -22,-24 -38,-28"/>
+<path d="M-33,-40 l4,1 M-33,-35 l4,1 M-27,-39 l3,1 M-32,-30 l4,1 M-27,-33 l3,1" stroke-width="1.4"/>
+</g>
+<path d="M-9,-40 q4,-5 8,0 q4,5 8,0 q4,-5 8,0 M-12,-28 q4,-5 8,0 q4,5 8,0 q4,-5 8,0 q4,5 8,0 M-15,-16 q4,-5 8,0 q4,5 8,0 q4,-5 8,0 q4,5 8,0 q4,-5 8,0" fill="none" stroke="#f0a394" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+<g fill="none" stroke="#2a2420" stroke-width="2" stroke-linecap="round">
+<path d="M690,618 v-36 M699,621 v-28 M708,617 v-40"/>
+</g>
+<ellipse cx="690" cy="578" rx="3.5" ry="8" fill="#7a4a2a"/><ellipse cx="708" cy="573" rx="3.5" ry="8" fill="#7a4a2a"/>
+<rect x="0" y="0" width="1000" height="48" fill="#efe0c2"/>
+<path d="M0,48 H1000" stroke="#2a2420" stroke-width="2.4"/>
+<text x="22" y="32" font-size="22" font-weight="600" fill="#2a2420" letter-spacing="1">Bronze Age</text>
+<g font-size="18" fill="#2a2420">
+<path d="M246,34 C240,24 244,12 252,12 C260,12 264,24 258,34 Z" fill="#a7a55a" stroke="#2a2420" stroke-width="1.8"/><text x="270" y="31">240</text>
+<rect x="336" y="16" width="24" height="14" rx="7" fill="#c08a5a" stroke="#2a2420" stroke-width="1.8"/><text x="368" y="31">185</text>
+<polygon points="434,32 440,16 454,14 462,32" fill="#b8b0a0" stroke="#2a2420" stroke-width="1.8" stroke-linejoin="round"/><text x="470" y="31">90</text>
+<polygon points="524,32 530,18 552,18 558,32" fill="#d6b25e" stroke="#2a2420" stroke-width="1.8" stroke-linejoin="round"/><text x="566" y="31">35</text>
+<circle cx="632" cy="24" r="9" fill="#e9c24a" stroke="#2a2420" stroke-width="1.8"/><text x="648" y="31">60</text>
+</g>
+<circle cx="900" cy="24" r="8" fill="#c8402f" stroke="#2a2420" stroke-width="1.8"/>
+<text x="916" y="31" font-size="18" fill="#2a2420">Sumer</text>
+<rect x="0" y="0" width="1000" height="640" fill="#3a2a1c" filter="url(#grain)" opacity="0.45"/>
+</svg>

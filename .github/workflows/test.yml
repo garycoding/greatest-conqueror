@@ -1,0 +1,28 @@
+name: Test
+
+# Build the package and run its tests, a required check on every pull request
+# into develop. The handbook has no Swift tooling page; this workflow is the
+# documented addition (docs/decisions.md, docs/CONTRIBUTING.md).
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  swift-test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test

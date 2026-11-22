@@ -1,0 +1,29 @@
+# Catch-all REUSE annotations so whole trees are covered. Per-file SPDX headers
+# still win where present. See LICENSING.md.
+# Verify: uvx --from "reuse[charset-normalizer]" reuse lint
+version = 1
+
+SPDX-PackageName = "greatest-conqueror"
+SPDX-PackageSupplier = "Gary Frattarola <garyf@parkviewlab.ai>"
+
+# --- Documentation and repository metadata → CC-BY-4.0 ----------------------
+[[annotations]]
+path = ["docs/**", "README.md", "LICENSING.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md", "VERSION.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# --- Code, build configuration, workflows, lockfiles → AGPL-3.0-or-later ----
+[[annotations]]
+path = [".github/**", "LICENSE", "Package.swift", "Package.resolved", "Sources/**", "Tests/**", "scripts/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# --- The game's artwork → AGPL-3.0-or-later, under the code's licence, ------
+# wherever it lies, including the drawings in docs/art/ (see docs/decisions.md).
+[[annotations]]
+path = ["docs/art/**", "Sources/Artwork/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

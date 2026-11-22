@@ -1,0 +1,153 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import CoreGraphics
+import Foundation
+import GameCore
+import Testing
+@testable import Artwork
+
+/// The people of the Bronze age (`BronzePeopleSprites`): every key of the
+/// batch has a sprite that stands on its anchor and carries a mask, every other
+/// key has none, a key always gives the same pixels, and the batch is drawn quickly.
+@Suite(.serialized) struct BronzePeopleTests {
+    private let source = BronzePeopleSprites()
+
+    @Test func theBatchIsTheChecklistsBronzePeople() {
+        let expected = SpriteKey.required(through: .bronze).filter { key in
+            // The boat is drawn with the boats' art, in its own batch (`BronzeBoatSprites`).
+            if case .unit(let kind, .bronze) = key.subject { return kind != .boat }
+            return false
+        }
+        #expect(source.poses == expected)
+        #expect(source.keys.count == expected.count * SpriteKey.framesPerPose)
+        let kinds = Set(source.poses.compactMap { key -> UnitKind? in
+            if case .unit(let kind, _) = key.subject { return kind }
+            return nil
+        })
+        #expect(kinds == [.worker, .scholar, .engineer, .merchant, .spearman, .archer, .chariot])
+    }
+
+    @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
+        for key in source.keys {
+            let sprite = try #require(source.sprite(key), "\(key)")
+            let mask = try #require(sprite.teamMask, "\(key) has no team colour")
+            #expect(mask.width == sprite.base.width && mask.height == sprite.base.height, "\(key)")
+            #expect(Self.Pixels(mask).hasCoverage, "\(key)")
+            guard case .unit(let kind, _) = key.subject else { continue }
+            let pixels = Self.Pixels(sprite.base)
+            if kind == .chariot {
+                #expect(pixels.wheelMeetsGround(at: sprite.anchor), "\(key): the anchor is not where the near wheel meets the ground")
+            } else {
+                #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
+                        "\(key): the anchor is not on the ground between the feet")
+            }
+        }
+    }
+
+    @Test func everyOtherKeyHasNone() {
+        let batch = Set(source.keys)
+        let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
+        var others: [SpriteKey] = []
+        for kind in UnitKind.allCases {
+            for age in Age.allCases {
+                for pose in poses {
+                    for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
+                }
+            }
+        }
+        for kind in BuildingKind.allCases {
+            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+        }
+        for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
+        others.append(SpriteKey(.outcrop, .complete))
+        for terrain in Terrain.allCases { others.append(SpriteKey(.terrain(terrain, variant: 0), .complete)) }
+        let outside = others.filter { !batch.contains($0) }
+        #expect(outside.count > 1000)
+        for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
+    }
+
+    @Test func theSameKeyGivesTheSamePixels() throws {
+        let again = BronzePeopleSprites()
+        for key in source.keys {
+            let first = try #require(source.sprite(key)), second = try #require(again.sprite(key))
+            #expect(Self.Pixels(first.base) == Self.Pixels(second.base), "\(key)")
+            #expect(first.teamMask.map(Self.Pixels.init) == second.teamMask.map(Self.Pixels.init), "\(key)")
+            #expect(first.anchor == second.anchor, "\(key)")
+        }
+    }
+
+    @Test func warfightersWorkingStandStill() throws {
+        for kind in [UnitKind.spearman, .archer, .chariot] {
+            for frame in [0, 8] {
+                let working = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .working, frame: frame)))
+                let standing = try #require(source.sprite(SpriteKey(.unit(kind, .bronze), .standing, frame: frame)))
+                #expect(Self.Pixels(working.base) == Self.Pixels(standing.base), "\(kind) \(frame)")
+            }
+        }
+    }
+
+    @Test func theBatchRendersInUnderFourSeconds() {
+        let fresh = BronzePeopleSprites()
+        let clock = ContinuousClock()
+        let elapsed = clock.measure {
+            for key in fresh.keys { _ = fresh.sprite(key) }
+        }
+        #expect(elapsed < .seconds(4), "the batch took \(elapsed)")
+    }
+
+    // MARK: Pixels
+
+    /// An image's pixels as premultiplied RGBA bytes, rows from the top.
+    private struct Pixels: Equatable {
+        let width: Int
+        let height: Int
+        let bytes: [UInt8]
+
+        init(_ image: CGImage) {
+            width = image.width; height = image.height
+            let context = Raster.bitmap(width: width, height: height)!
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            // `Raster.bitmap` packs its rows, four bytes to a pixel.
+            let data = context.data!.bindMemory(to: UInt8.self, capacity: context.bytesPerRow * height)
+            bytes = Array(UnsafeBufferPointer(start: data, count: context.bytesPerRow * height))
+        }
+
+        var hasCoverage: Bool { stride(from: 3, to: bytes.count, by: 4).contains { bytes[$0] > 128 } }
+
+        /// Whether the pixel is the dark line, opaque: the outline, the legs, a hoof or a tyre.
+        func ink(_ x: Int, _ row: Int) -> Bool {
+            guard x >= 0, x < width, row >= 0, row < height else { return false }
+            let i = (row * width + x) * 4
+            return bytes[i + 3] > 200 && bytes[i] < 90 && bytes[i + 1] < 90 && bytes[i + 2] < 90
+        }
+
+        /// The anchor as a column and a row from the top.
+        func place(_ anchor: SpriteAnchor) -> (x: Int, row: Int) {
+            (Int((anchor.x * Double(width)).rounded()), height - Int((anchor.y * Double(height)).rounded()))
+        }
+
+        /// The lowest row with ink in it.
+        var lowestInk: Int? {
+            (0..<height).reversed().first { row in (0..<width).contains { ink($0, row) } }
+        }
+
+        /// A person stands on the anchor: the lowest ink is on its row, and the
+        /// ink near the ground (the feet and what touches the ground) spans
+        /// its column, with ink on both sides of it when `bothSides`.
+        func standsOn(_ anchor: SpriteAnchor, bothSides: Bool) -> Bool {
+            let (x, ground) = place(anchor)
+            guard let lowest = lowestInk, abs(lowest - ground) <= 3 else { return false }
+            let columns = (max(0, ground - 14)...min(height - 1, ground + 2)).flatMap { row in (0..<width).filter { ink($0, row) } }
+            guard let left = columns.min(), let right = columns.max() else { return false }
+            return bothSides ? left < x - 2 && right > x + 2 : left <= x + 3 && right >= x - 3
+        }
+
+        /// The near wheel's tyre touches the ground at the anchor, and nothing lies lower.
+        func wheelMeetsGround(at anchor: SpriteAnchor) -> Bool {
+            let (x, ground) = place(anchor)
+            guard let lowest = lowestInk, abs(lowest - ground) <= 3 else { return false }
+            return ((ground - 3)...(ground + 1)).contains { row in ((x - 2)...(x + 2)).contains { ink($0, row) } }
+        }
+    }
+}
