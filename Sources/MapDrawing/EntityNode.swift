@@ -149,9 +149,12 @@ final class EntityNode: SKNode {
         let sprite = context.cache.sprite(for: entity.kind, subject: subject, civilization: look.civilization,
                                           pose: look.pose, frame: look.frame, view: look.view)
         body.texture = sprite.texture
-        body.size = sprite.size
+        // A stand-in may be drawn larger than the kind it stands in for (`StandIn.scale`).
+        let scale = StandIn.scale(entity.kind)
+        let size = CGSize(width: sprite.size.width * scale, height: sprite.size.height * scale)
+        body.size = size
         body.anchorPoint = sprite.anchor
-        drawnHeight = sprite.drawnHeight ?? 0
+        drawnHeight = (sprite.drawnHeight ?? 0) * scale
         if let height = sprite.drawnHeight, case .building(let kind) = entity.kind {
             barHeight = max(height + 8, Stature.building(kind) + 10)
         }
@@ -167,7 +170,7 @@ final class EntityNode: SKNode {
             let t = TeamColour.of(look.civilization)
             node.color = NSColor(srgbRed: t.red, green: t.green, blue: t.blue, alpha: 1)
             node.texture = maskTexture
-            node.size = sprite.size
+            node.size = size
             node.anchorPoint = sprite.anchor
             node.isHidden = false
         } else {

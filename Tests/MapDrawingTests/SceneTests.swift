@@ -150,7 +150,7 @@ import Testing
     @Test func constructionProgressShowsOnABuildingUnderConstruction() {
         let view = Samples.farmsAgeSkirmish()
         let (scene, _, _) = scene(view)
-        let tower = view.entities.first { $0.kind == .building(.watchTower) && $0.activity != .idle }!
+        let tower = view.entities.first { $0.kind == .building(.tower) && $0.activity != .idle }!
         let visibleBars = scene.entityNodes[tower.id]!.children.filter { !($0 is SKShapeNode) && $0 !== scene.entityNodes[tower.id]!.body && !$0.isHidden }
         #expect(visibleBars.count >= 1)
         let bar = visibleBars.first!.children.first as? SKSpriteNode
@@ -270,7 +270,7 @@ import Testing
         scene.rightClick(at: point(scene, Double(gold.tile.x) + 0.5, Double(gold.tile.y) + 0.5, lift: 6))
         #expect(log.orders.last == .gather(units: [worker.id], site: gold.id))
 
-        let enemy = view.entities.first { $0.owner == PlayerID(1) && $0.kind == .unit(.spearman) }!
+        let enemy = view.entities.first { $0.owner == PlayerID(1) && $0.kind == .unit(.soldier1) }!
         scene.rightClick(at: point(scene, enemy.position.x, enemy.position.y, lift: 20))
         #expect(log.orders.last == .attack(units: [worker.id], target: enemy.id))
         #expect(log.orders.count == 3)
@@ -364,6 +364,26 @@ import Testing
     }
 
     // MARK: Groups
+
+    @Test func fSelectsTheFounderAndCentresTheViewOnIt() {
+        var view = Samples.townsAgeOpening()
+        let (none, noneSession, _) = scene(view)
+        #expect(!none.handleKeyDown(.founder))
+        #expect(noneSession.selection.isEmpty)
+        let founder = EntityID(9300)
+        view.entities.append(EntityView(id: founder, owner: view.player, kind: .unit(.founder), position: MapPosition(x: 20.5, y: 14.5),
+                                        tile: GridPoint(20, 14), facing: .right, health: 1, maxHealth: 1, activity: .idle))
+        let (scene, session, log) = scene(view)
+        #expect(scene.handleKeyDown(.founder))
+        #expect(session.selection == [founder])
+        #expect(session.camera.centre.distance(to: MapPosition(x: 20.5, y: 14.5)) < 1e-9)
+        // Placing a town centre with the founder selected founds it, free.
+        session.placing = .townCentre
+        let origin = (0..<view.mapHeight).lazy.flatMap { y in (0..<view.mapWidth).lazy.map { GridPoint($0, y) } }
+            .first { Placement.canPlace(.townCentre, at: $0, in: view, catalogue: .standard) }!
+        scene.click(at: scene.geometry.scenePoint(for: Placement.centre(.townCentre, origin: origin, catalogue: .standard)))
+        guard case .found(founder, _) = log.orders.last else { Issue.record("no found order: \(log.orders)"); return }
+    }
 
     @Test func shiftCAsksForTheCarAndACarGlowsOutToItsRadius() {
         var view = Samples.townsAgeOpening()

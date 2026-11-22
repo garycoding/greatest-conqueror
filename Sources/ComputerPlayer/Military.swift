@@ -15,12 +15,14 @@ extension Turn {
         }
         for i in memory.seen.indices where i < now.count { memory.seen[i] = max(memory.seen[i] * tuning.recall, Double(now[i])) }
         var places = memory.lastSeenPeople ?? []
-        for enemy in enemyUnits {
+        for enemy in enemyUnits + enemyVessels {
             places.removeAll { $0.distance(to: enemy.position) < 6 }
             places.append(enemy.position)
         }
         // A place looked at again and found empty is forgotten.
-        places.removeAll { place in view.visibility(at: place.tile) == .visible && !enemyUnits.contains { $0.position.distance(to: place) < 6 } }
+        places.removeAll { place in
+            view.visibility(at: place.tile) == .visible && !(enemyUnits + enemyVessels).contains { $0.position.distance(to: place) < 6 }
+        }
         memory.lastSeenPeople = Array(places.suffix(8))
     }
 
@@ -128,7 +130,7 @@ extension Turn {
     /// (a new age's warfighters may cost a resource not yet mined).
     private func nextWarfighter(at building: EntityView) -> UnitKind? {
         guard case .building(let kind) = building.kind else { return nil }
-        let made = catalogue.production.filter { $0.maker == kind && $0.unit.isWarfighter && $0.age <= view.age }
+        let made = catalogue.production.filter { $0.maker == .building(kind) && $0.unit.isWarfighter && $0.age <= view.age }
         let ages = Set(made.map(\.age)).sorted(by: >)
         for age in ages.prefix(view.age >= .ships ? 2 : 1) {
             if let kind = nextWarfighter(of: made.filter { $0.age == age }.map(\.unit)) { return kind }

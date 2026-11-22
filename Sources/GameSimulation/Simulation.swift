@@ -70,6 +70,12 @@ public struct Simulation: GameSimulating {
     var searchBudget = Rule.searchesPerTick
     var searchesLeft = 0
     var deathsPending = false
+    /// Defeat and founders are settled at the end of a tick in which something
+    /// died or a founder's town centre was finished.
+    var settlePending = false
+    /// Navy ships that reached the shore this tick, to land their troops once
+    /// every entity has acted (`landPassengers`).
+    var landings: [(ship: EntityID, at: MapPosition)] = []
 
     // MARK: Starting a match
 
@@ -172,6 +178,9 @@ public struct Simulation: GameSimulating {
                 if e.complete { housing[e.owner.rawValue] += tables.building(kind).housing }
             } else if let kind = e.unitKind {
                 population[e.owner.rawValue] += tables.unit(kind).population
+                for passenger in e.passengers ?? [] {
+                    population[e.owner.rawValue] += passenger.unitKind.map { tables.unit($0).population } ?? 0
+                }
             }
             stampSight(of: i, by: 1)
         }
@@ -190,8 +199,9 @@ public struct Simulation: GameSimulating {
         for i in 0..<count where entities[i].alive {
             if entities[i].isPerson { updatePerson(i) } else { updateBuilding(i) }
         }
-        if deathsPending {
-            removeDead()
+        if !landings.isEmpty { landPassengers() }
+        if deathsPending || settlePending {
+            if deathsPending { removeDead() }
             settleTeams()
         }
     }
@@ -284,10 +294,11 @@ public struct Simulation: GameSimulating {
     @discardableResult
     mutating func spawnPerson(_ kind: UnitKind, owner: PlayerID, at position: MapPosition) -> EntityID {
         let stats = tables.unit(kind)
+        let health = stats.figures(at: players[owner.rawValue].age).health
         let id = EntityID(nextEntity)
         nextEntity += 1
         let entity = Entity(id: id, owner: owner, kind: .unit(kind), position: position, origin: position.tile,
-                            size: GridPoint(1, 1), health: stats.health, maxHealth: stats.health, sight: stats.sight,
+                            size: GridPoint(1, 1), health: health, maxHealth: health, sight: stats.sight,
                             stamp: position.tile)
         indexOfEntity.append(Int32(entities.count))
         entities.append(entity)
@@ -301,11 +312,12 @@ public struct Simulation: GameSimulating {
     @discardableResult
     mutating func placeBuilding(_ kind: BuildingKind, owner: PlayerID, origin: GridPoint, complete: Bool) -> Int {
         let stats = tables.building(kind)
+        let health = stats.figures(at: players[owner.rawValue].age).health
         let id = EntityID(nextEntity)
         nextEntity += 1
         var entity = Entity(id: id, owner: owner, kind: .building(kind),
                             position: Placement.centre(kind, origin: origin, catalogue: catalogue), origin: origin,
-                            size: stats.footprint, health: complete ? stats.health : 1, maxHealth: stats.health,
+                            size: stats.footprint, health: complete ? health : 1, maxHealth: health,
                             sight: stats.sight, stamp: origin)
         entity.complete = complete
         entity.built = complete ? stats.buildTime : 0

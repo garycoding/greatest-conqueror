@@ -17,7 +17,7 @@ import Testing
     @Test func theBatchIsTheKnightTheMusketeerAndTheCannonStandingWalkingAndFighting() {
         let expected = SpriteKey.required(through: .cannons).filter { key in
             guard case .unit(let kind, .alchemy) = key.subject else { return false }
-            return [.knight, .musketeer, .cannon].contains(kind) && key.pose != .working
+            return [.knight2, .soldier3, .cannon1].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
         #expect(source.poses.count == 9)
@@ -33,7 +33,7 @@ import Testing
             #expect(Self.Pixels(mask).hasCoverage, "\(key)")
             guard case .unit(let kind, _) = key.subject else { continue }
             let pixels = Self.Pixels(sprite.base)
-            if kind == .musketeer {
+            if kind == .soldier3 {
                 #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
                         "\(key): the anchor is not on the ground between the feet")
             } else {
@@ -63,7 +63,7 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.knight, .musketeer, .cannon] {
+        for kind in [UnitKind.knight2, .soldier3, .cannon1] {
             #expect(source.sprite(SpriteKey(.unit(kind, .alchemy), .working, frame: 0)) == nil, "\(kind) working")
         }
     }
@@ -156,19 +156,19 @@ import Testing
 struct AlchemyWarriorsRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["ALCHEMY_WARRIORS_RENDERS"] ?? "/", isDirectory: true)
 
-    private static let kinds: [UnitKind] = [.knight, .musketeer, .cannon]
+    private static let kinds: [UnitKind] = [.knight2, .soldier3, .cannon1]
 
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
         switch (kind, pose) {
-        case (.knight, .standing): "standing: the horse breathes, the lance at rest"
-        case (.knight, .walking): "walking: the charge at the trot, the lance couched"
-        case (.knight, .fighting): "fighting: the sword at close quarters"
-        case (.musketeer, .standing): "standing: a breath, and a blink"
-        case (.musketeer, .walking): "walking: the musket at the trail, the rest in hand"
-        case (.musketeer, .fighting): "fighting: aim, fire, and the slow reload"
-        case (.cannon, .standing): "standing: the crew wait by the gun"
-        case (.cannon, .walking): "walking: pushed and hauled, the wheels turning with the stride"
-        case (.cannon, .fighting): "fighting: fire, recoil, sponge, ram, and run it up"
+        case (.knight2, .standing): "standing: the horse breathes, the lance at rest"
+        case (.knight2, .walking): "walking: the charge at the trot, the lance couched"
+        case (.knight2, .fighting): "fighting: the sword at close quarters"
+        case (.soldier3, .standing): "standing: a breath, and a blink"
+        case (.soldier3, .walking): "walking: the musket at the trail, the rest in hand"
+        case (.soldier3, .fighting): "fighting: aim, fire, and the slow reload"
+        case (.cannon1, .standing): "standing: the crew wait by the gun"
+        case (.cannon1, .walking): "walking: pushed and hauled, the wheels turning with the stride"
+        case (.cannon1, .fighting): "fighting: fire, recoil, sponge, ram, and run it up"
         default: pose.rawValue
         }
     }
@@ -211,7 +211,7 @@ struct AlchemyWarriorsRenders {
         for kind in Self.kinds {
             let look = try #require(AlchemyWarriorsLooks.look(kind))
             let canvas = AlchemyWarriorsLooks.canvas(kind)
-            let scale = kind == .knight ? 3.0 : kind == .cannon ? 3.1 : 4.0
+            let scale = kind == .knight2 ? 3.0 : kind == .cannon1 ? 3.1 : 4.0
             let large = canvas.scaled(to: scale)
             var frames: [CGImage] = []
             for pose in [SpritePose.standing, .walking, .fighting] {
@@ -225,8 +225,8 @@ struct AlchemyWarriorsRenders {
                     let big = Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour)
                     // Walking, a figure covers 4 units of ground a frame, as the approved worker
                     // does; the gun covers what its wheels roll.
-                    let step = kind == .cannon ? AlchemyWarriorsCannon.groundPerFrame : 4
-                    let x = walking ? 290 + Double(i) * step * scale : 230 + (kind == .knight ? 100 : kind == .cannon ? 220 : 140)
+                    let step = kind == .cannon1 ? AlchemyWarriorsCannon.groundPerFrame : 4
+                    let x = walking ? 290 + Double(i) * step * scale : 230 + (kind == .knight2 ? 100 : kind == .cannon1 ? 220 : 140)
                     Preview.place(big, anchor: large.anchor, at: CGPoint(x: x, y: groundLine), in: context)
                     let sprite = try #require(sprites.sprite(SpriteKey(.unit(kind, .alchemy), pose, frame: frame)))
                     let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
@@ -258,8 +258,8 @@ struct AlchemyWarriorsRenders {
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Alchemy age's knight, musketeer and cannon beside the Iron age's horseman, swordsman and catapult, in the colours of Rome and Angkor",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
-        let columns: [(UnitKind, Look)] = [(.horseman, .iron), (.knight, .alchemy), (.swordsman, .iron), (.musketeer, .alchemy), 
-                                          (.cannon, .alchemy)]
+        let columns: [(UnitKind, Look)] = [(.knight1, .iron), (.knight2, .alchemy), (.soldier2, .iron), (.soldier3, .alchemy), 
+                                          (.cannon1, .alchemy)]
         for (i, (kind, age)) in columns.enumerated() {
             let left = Double(i * column)
             Preview.label("\(kind.stageName(at: .towns)), \(age == .iron ? "Iron" : "Alchemy") age", in: context,

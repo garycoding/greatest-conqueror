@@ -84,7 +84,7 @@ enum TestViews {
         view.events = []
         view.tick = tick
         for i in 0..<extra {
-            view.add(.unit(i % 2 == 0 ? .spearman : .musketeer), owner: me, at: 11 + Double(i % 5), 12 + Double(i / 5))
+            view.add(.unit(i % 2 == 0 ? .soldier1 : .soldier3), owner: me, at: 11 + Double(i % 5), 12 + Double(i / 5))
         }
         view.population = 15 + extra
         view.populationLimit = 40
@@ -105,11 +105,11 @@ enum TestViews {
         for id in [18, 19, 20, 21] { view.set(EntityID(id), .idle) }
         let farHouse = view.add(.building(.house), owner: enemy, at: 29, 5)
         view.add(.building(.house), owner: ally, at: 16, 3)
-        view.add(.unit(.spearman), owner: ally, at: 11, 11)
-        view.add(.unit(.spearman), owner: ally, at: 12, 11)
+        view.add(.unit(.soldier1), owner: ally, at: 11, 11)
+        view.add(.unit(.soldier1), owner: ally, at: 12, 11)
         if allyAttacking {
             for (x, y) in [(27.0, 6.0), (28.0, 7.0), (30.0, 6.0)] {
-                view.add(.unit(.spearman), owner: ally, at: x, y, .fighting)
+                view.add(.unit(.soldier1), owner: ally, at: x, y, .fighting)
             }
         }
         view.setVisibility(.visible) { $0.x >= 24 && $0.y < 12 }
@@ -184,11 +184,11 @@ enum TestViews {
         // The player's base, about (22, 22).
         let centre = view.add(.building(.townCentre), owner: me, at: 22.5, 22.5)
         for i in 0..<8 { view.add(.building(.house), owner: me, at: 16 + Double(i % 4) * 3, 16 + Double(i / 4) * 14) }
-        view.add(.building(.barracks), owner: me, at: 30.5, 26.5, .training(.spearman, 0.5, queued: 1))
+        view.add(.building(.barracks), owner: me, at: 30.5, 26.5, .training(.soldier1, 0.5, queued: 1))
         let pen = view.add(.building(.house), owner: me, at: 14, 26)
         view.add(.building(.boatHouse), owner: me, at: 18, 34)
         view.add(.building(.boatHouse), owner: me, at: 30, 12)
-        view.add(.building(.watchTower), owner: me, at: 28.5, 30.5)
+        view.add(.building(.tower), owner: me, at: 28.5, 30.5)
         for i in 0..<120 {
             let x = 14 + Double(i % 20), y = 18 + Double(i / 20) * 2
             let activity: Activity = switch i % 6 {
@@ -201,7 +201,7 @@ enum TestViews {
         }
         for i in 0..<6 { view.add(.unit(.worker), owner: me, at: 20 + Double(i), 30, i < 3 ? .idle : .constructing) }
         for i in 0..<6 { view.add(.unit(.worker), owner: me, at: 21 + Double(i % 3), 21, .gathering(.gold)) }
-        let kinds: [UnitKind] = [.spearman, .musketeer, .horseman, .spearman, .musketeer]
+        let kinds: [UnitKind] = [.soldier1, .soldier3, .knight1, .soldier1, .soldier3]
         for i in 0..<50 {
             view.add(.unit(kinds[i % 5]), owner: me, at: 32 + Double(i % 10), 20 + Double(i / 10), i % 3 == 0 ? .moving : .idle)
         }
@@ -224,7 +224,7 @@ enum TestViews {
         view.add(.building(.townCentre), owner: enemy, at: 76.5, 48.5)
         for i in 0..<6 { view.add(.building(.house), owner: enemy, at: 70 + Double(i) * 3, 56) }
         view.add(.building(.barracks), owner: enemy, at: 84.5, 44.5)
-        view.add(.building(.watchTower), owner: enemy, at: 72.5, 42.5)
+        view.add(.building(.tower), owner: enemy, at: 72.5, 42.5)
         for i in 0..<60 { view.add(.unit(.worker), owner: enemy, at: 66 + Double(i % 12), 58 + Double(i / 12), .gathering(.gold)) }
         for i in 0..<41 { view.add(.unit(kinds[i % 3]), owner: enemy, at: 80 + Double(i % 6), 50 + Double(i / 6), .idle) }
         return view

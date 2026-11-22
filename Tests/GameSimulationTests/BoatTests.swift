@@ -33,13 +33,14 @@ private func lakeside() -> Simulation {
 
     @Test func aBoatComesOutOnTheWaterAndSailsOnlyThere() {
         var sim = lakeside()
+        sim.players[0].age = .farms
         sim.exploreAll(me)
         sim.give(me, [.wood: 200])
         let house = sim.add(.boatHouse, me, 8, 12)
-        #expect(sim.apply(.train(at: house, unit: .boat), from: me) == .accepted)
-        let made = sim.run(until: { !$0.people(me, .boat).isEmpty }, limit: 30 * Tick.rate)
+        #expect(sim.apply(.train(at: house, unit: .fishingBoat), from: me) == .accepted)
+        let made = sim.run(until: { !$0.people(me, .fishingBoat).isEmpty }, limit: 30 * Tick.rate)
         #expect(made)
-        let boat = sim.people(me, .boat)[0]
+        let boat = sim.people(me, .fishingBoat)[0]
         let at = sim.living(boat).position.tile
         #expect(sim.terrain[sim.tileIndex(at)].isWater)
         // Across the lake it sails; onto the land it cannot go, and stops at the water's edge.
@@ -56,7 +57,7 @@ private func lakeside() -> Simulation {
         var sim = lakeside()
         sim.exploreAll(me)
         _ = sim.add(.boatHouse, me, 8, 12)
-        let boat = sim.add(.boat, me, 10.5, 12.5)
+        let boat = sim.add(.fishingBoat, me, 10.5, 12.5)
         let fish = sim.sites.first { $0.kind == .fish }!.id
         let food = sim.resources(me)[.food]
         #expect(sim.apply(.gather(units: [boat], site: fish), from: me) == .accepted)
@@ -68,7 +69,7 @@ private func lakeside() -> Simulation {
         var sim = lakeside()
         sim.exploreAll(me)
         _ = sim.add(.boatHouse, me, 8, 12)
-        let boat = sim.add(.boat, me, 15.5, 15.5)
+        let boat = sim.add(.fishingBoat, me, 15.5, 15.5)
         let worker = sim.add(.worker, me, 9.5, 16.5)
         let rock = sim.sites.first { $0.kind == .gold && $0.tile == GridPoint(16, 16) }!.id
         let quarry = sim.sites.first { $0.kind == .gold && $0.tile == GridPoint(6, 6) }!.id

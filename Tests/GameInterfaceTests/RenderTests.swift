@@ -80,13 +80,13 @@ struct EmptyMap: View {
         SelectionPanel(session: session(bronze, select: [bronze.id(of: .building(.barracks))])).padding(8)
     })
     #expect(render("bronze-panel-army-and-workers", width: 1000, height: 260) {
-        SelectionPanel(session: session(bronze, select: bronze.ids(ofUnits: [.worker, .spearman, .knight]))).padding(8)
+        SelectionPanel(session: session(bronze, select: bronze.ids(ofUnits: [.worker, .soldier1, .knight2]))).padding(8)
     })
     #expect(render("bronze-panel-enemy-town-centre", width: 1000, height: 250) {
         SelectionPanel(session: session(bronze, select: [bronze.id(of: .building(.townCentre), owner: PlayerID(1))])).padding(8)
     })
     #expect(render("bronze-panel-spearman", width: 1000, height: 250) {
-        let spear = bronze.entities.first { $0.owner == bronze.player && $0.kind == .unit(.spearman) }!.id
+        let spear = bronze.entities.first { $0.owner == bronze.player && $0.kind == .unit(.soldier1) }!.id
         return SelectionPanel(session: session(bronze, select: [spear])).padding(8)
     })
 
@@ -114,7 +114,7 @@ struct EmptyMap: View {
         return GameHUD(session: s) { EmptyMap() }
     })
     #expect(render("bronze-hud-army", width: 1440, height: 900, scale: 1) {
-        GameHUD(session: session(bronze, select: bronze.ids(ofUnits: [.spearman, .knight]))) { EmptyMap() }
+        GameHUD(session: session(bronze, select: bronze.ids(ofUnits: [.soldier1, .knight2]))) { EmptyMap() }
     })
     var bronzePaused = bronze; bronzePaused.isPaused = true
     #expect(render("bronze-hud-paused", width: 1440, height: 900, scale: 1) { GameHUD(session: session(bronzePaused)) { EmptyMap() } })

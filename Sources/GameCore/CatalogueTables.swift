@@ -196,8 +196,17 @@ enum TableReader {
                 attack = Attack(damage: damage, range: range, interval: max(1, Tick.seconds(1 / hits)))
             }
             if let kind = UnitKind.allCases.first(where: { $0.machineName == name }) {
-                if let line = unitLines[kind] {
-                    throw s.fault(row, "kind", "\(name) has a row already, on line \(line)")
+                if let line = unitLines[kind], let base = units[kind] {
+                    // A navy ship's later row is its upgrade in that age.
+                    guard kind.isUpgradedWithAge else {
+                        throw s.fault(row, "kind", "\(name) has a row already, on line \(line)")
+                    }
+                    guard age > base.age, !base.levels.contains(where: { $0.age == age }) else {
+                        throw s.fault(row, "age", "\(name) has a row for the age of \(age.name) or an earlier one already, on line \(line)")
+                    }
+                    units[kind]?.levels.append(AgeUpgrade(age: age, health: health, attack: attack))
+                    units[kind]?.levels.sort { $0.age < $1.age }
+                    continue
                 }
                 unitLines[kind] = row.line
                 for column in ["build_seconds", "demolish_seconds", "demolish_return"] where !s.isEmpty(row, column) {
@@ -226,7 +235,7 @@ enum TableReader {
                         throw s.fault(row, "age", "\(name) has a row for the age of \(age.name) or an earlier one already, on line \(line)")
                     }
                     if var a = attack { a.area = nil; attack = a }
-                    buildings[kind]?.levels.append(BuildingLevel(age: age, health: health, attack: attack))
+                    buildings[kind]?.levels.append(AgeUpgrade(age: age, health: health, attack: attack))
                     buildings[kind]?.levels.sort { $0.age < $1.age }
                     continue
                 }
@@ -271,14 +280,21 @@ enum TableReader {
         let p = try CellReader(production, columns: TableColumns.production)
         var made: [ProductionStats] = []
         for row in production.rows {
-            guard let maker = BuildingKind.allCases.first(where: { $0.machineName == p.text(row, "maker") }) else {
-                throw p.fault(row, "maker", "\"\(p.text(row, "maker"))\" is not a kind of building")
+            let makerName = p.text(row, "maker")
+            let maker: EntityKind
+            if let building = BuildingKind.allCases.first(where: { $0.machineName == makerName }) {
+                maker = .building(building)
+            } else if let unit = UnitKind.allCases.first(where: { $0.machineName == makerName }), unit.isUnit {
+                maker = .unit(unit)
+            } else {
+                throw p.fault(row, "maker", "\"\(makerName)\" is not a kind of building or of unit")
             }
             guard let unit = UnitKind.allCases.first(where: { $0.machineName == p.text(row, "unit") }) else {
                 throw p.fault(row, "unit", "\"\(p.text(row, "unit"))\" is not a kind of unit")
             }
+            guard unit.isUnit else { throw p.fault(row, "unit", "no maker makes a \(unit.machineName)") }
             if made.contains(where: { $0.maker == maker && $0.unit == unit }) {
-                throw p.fault(row, "unit", "\(maker.machineName) makes \(unit.machineName) on an earlier line already")
+                throw p.fault(row, "unit", "\(makerName) makes \(unit.machineName) on an earlier line already")
             }
             let age = try p.age(row, "age")
             guard let seconds = try p.positive(row, "seconds") else { throw p.fault(row, "seconds", "seconds is empty") }
@@ -286,7 +302,10 @@ enum TableReader {
         }
         for item in made {
             units[item.unit]?.trainedAt.append(item.maker)
-            buildings[item.maker]?.trains.append(item.unit)
+            switch item.maker {
+            case .building(let kind): buildings[kind]?.trains.append(item.unit)
+            case .unit(let kind): units[kind]?.trains.append(item.unit)
+            }
         }
 
         let a = try CellReader(ages, columns: TableColumns.ages)
@@ -309,6 +328,6 @@ enum TableReader {
         return Catalogue(units: UnitKind.allCases.map { units[$0]! }, buildings: BuildingKind.allCases.map { buildings[$0]! },
                          production: made, advances: advances, gathering: shape.gathering, bonuses: shape.bonuses,
                          startingResources: shape.startingResources, startingPeople: shape.startingPeople,
-                         populationMaximum: shape.populationMaximum, car: shape.car)
+                         founderPeople: shape.founderPeople, shipCargo: shape.shipCargo, populationMaximum: shape.populationMaximum, car: shape.car)
     }
 }

@@ -130,7 +130,7 @@ struct AlchemyBoatsRenders {
         }
         // Two smacks on the lake, for scale.
         for (x, y, view, mirrored) in [(5.0, 5.4, SpriteView.side, false), (8.6, 8.4, .frontQuarter, true)] {
-            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.boat, .alchemy), .standing, view: view), at: (x, y), mirrored: mirrored))
+            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.fishingBoat, .alchemy), .standing, view: view), at: (x, y), mirrored: mirrored))
         }
         func draw(_ things: [Thing], in context: CGContext) throws {
             for thing in things.sorted(by: { $0.depth < $1.depth }) {
@@ -210,7 +210,7 @@ struct AlchemyBoatsRenders {
                                   at: CGPoint(x: 190 + Double(v) * 355, y: 380), in: context)
                     Preview.label(view.rawValue, in: context, at: CGPoint(x: 130 + Double(v) * 355, y: 250), size: 18)
                     // At game size: the view, and beside it the same view mirrored, as for a facing toward the left.
-                    let sprite = try #require(source.sprite(SpriteKey(.unit(.boat, .alchemy), pose, frame: frame, view: view)))
+                    let sprite = try #require(source.sprite(SpriteKey(.unit(.fishingBoat, .alchemy), pose, frame: frame, view: view)))
                     let tinted = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
                     Preview.place(tinted, anchor: sprite.anchor, at: CGPoint(x: 120 + Double(v) * 355, y: 110), in: context)
                     context.saveGState()
@@ -265,7 +265,7 @@ struct AlchemyBoatsRenders {
             (.walking, .front, false, 9.6, 4.0), (.walking, .back, false, 4.8, 11.0), (.working, .side, true, 7.6, 7.6),
         ]
         for (pose, view, mirrored, x, y) in boats {
-            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.boat, .alchemy), pose, view: view), at: (x, y), mirrored: mirrored, offset: false))
+            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.fishingBoat, .alchemy), pose, view: view), at: (x, y), mirrored: mirrored, offset: false))
         }
         things.sort { $0.depth < $1.depth }
         var frames: [CGImage] = []

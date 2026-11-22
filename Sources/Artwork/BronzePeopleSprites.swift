@@ -51,7 +51,7 @@ public struct BronzePeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.worker, .spearman]
+    static let viewed: Set<UnitKind> = [.worker, .soldier1]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         guard case .unit(let kind, .bronze) = subject else { return false }
@@ -64,8 +64,9 @@ enum BronzePeopleLooks {
     static func look(_ kind: UnitKind) -> (any PersonLook)? {
         switch kind {
         case .worker: BronzePeopleHerder()
-        case .spearman: BronzePeopleSpearman()
-        case .swordsman, .horseman, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .car, .boat: nil
+        case .soldier1: BronzePeopleSpearman()
+        case .soldier2, .knight1, .knight2, .soldier3, .cannon1, .soldier4, .cannon2, .car, .fishingBoat,
+             .doctor, .knight3, .navyShip, .founder: nil
         }
     }
 
@@ -73,7 +74,7 @@ enum BronzePeopleLooks {
     /// thrust reaches beyond it.
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
-        case .spearman: wide
+        case .soldier1: wide
         default: .person
         }
     }

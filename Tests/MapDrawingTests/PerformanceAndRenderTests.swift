@@ -116,7 +116,7 @@ import UniformTypeIdentifiers
             let view = Samples.farmsAgeSkirmish()
             let (session, _) = makeSession(view, camera: Camera(centre: MapPosition(x: 15, y: 10), zoom: 1))
             let own = view.entities.filter { $0.owner == view.player }
-            session.selection = own.filter { [EntityKind.unit(.worker), .unit(.spearman), .building(.townCentre)].contains($0.kind) }.map(\.id)
+            session.selection = own.filter { [EntityKind.unit(.worker), .unit(.soldier1), .building(.townCentre)].contains($0.kind) }.map(\.id)
             session.placing = .house
             let image = render(session: session, sprites: EmptySpriteSource()) { scene in
                 // A house beside the barracks (allowed), pointer over the open ground.

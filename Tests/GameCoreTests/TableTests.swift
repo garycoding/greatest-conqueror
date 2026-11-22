@@ -33,15 +33,49 @@ private func fault(_ texts: TableTexts) -> TableError? {
         // A few figures, as the tables give them and as the simulation reads them.
         #expect(catalogue.stats(.worker).cost == ResourceAmounts([.food: 50]))
         #expect(catalogue.production(of: .worker, at: .townCentre)?.time == Tick.seconds(12))
-        #expect(catalogue.stats(.spearman).attack == Attack(damage: 5, range: 1, interval: Tick.seconds(1.5)))
-        #expect(catalogue.stats(.musketeer).attack?.interval == Tick.seconds(3))
-        #expect(catalogue.stats(.horseman).attack?.interval == Tick.seconds(1.4))
-        #expect(catalogue.stats(.cannon).attack?.area == 1.5)
+        #expect(catalogue.stats(.soldier1).attack == Attack(damage: 5, range: 1, interval: Tick.seconds(1.5)))
+        #expect(catalogue.stats(.soldier3).attack?.interval == Tick.seconds(3))
+        #expect(catalogue.stats(.knight1).attack?.interval == Tick.seconds(1.4))
+        #expect(catalogue.stats(.cannon1).attack?.area == 1.5)
         #expect(catalogue.stats(.townCentre).buildTime == Tick.seconds(120))
         #expect(catalogue.stats(.worker).gathers(.wood) == 0.6 && catalogue.stats(.worker).farming == 0.9)
-        #expect(catalogue.stats(.boat).gathers(.food) == 0.7 && catalogue.stats(.boat).gathers(.wood) == 0)
+        #expect(catalogue.stats(.fishingBoat).gathers(.food) == 0.7 && catalogue.stats(.fishingBoat).gathers(.wood) == 0)
         #expect(catalogue.advance(from: .farms)?.cost == ResourceAmounts([.food: 500, .gold: 250]))
         #expect(catalogue.advance(from: .cannons)?.time == Tick.seconds(250))
+        // Repair, healing and the radius of the idle search (requirements 12 and 13).
+        #expect(catalogue.stats(.worker).repairing == 5 && catalogue.stats(.worker).radius == 6)
+        #expect(catalogue.stats(.doctor).healing == 3 && catalogue.stats(.doctor).radius == 6)
+        #expect(catalogue.stats(.doctor).attack == nil)
+        // The ages of the buildings (requirement 10).
+        #expect([BuildingKind.boatHouse, .barracks, .tower, .farm].allSatisfy { catalogue.stats($0).age == .farms })
+        #expect([BuildingKind.stable, .castle].allSatisfy { catalogue.stats($0).age == .ships })
+        #expect(catalogue.stats(.cannonFactory).age == .cannons && catalogue.stats(.hospital).age == .hospitals)
+        // The makers of requirement 17, the navy ship among them.
+        #expect(catalogue.production(of: .cannon1, at: .cannonFactory)?.age == .cannons)
+        #expect(catalogue.production(of: .cannon1, at: .castle)?.age == .cannons)
+        #expect(catalogue.production(of: .navyShip, at: .boatHouse)?.age == .ships)
+        #expect(catalogue.production(of: .doctor, at: .hospital)?.age == .hospitals)
+        #expect(catalogue.production(of: .knight3, at: .unit(.navyShip))?.age == .hospitals)
+        // Every later age's upgrade of the tower, the castle and the navy ship (requirement 24).
+        #expect(catalogue.stats(.tower).levels.map(\.age) == [.ships, .cannons, .hospitals])
+        #expect(catalogue.stats(.castle).levels.map(\.age) == [.cannons, .hospitals])
+        #expect(catalogue.stats(.navyShip).levels.map(\.age) == [.cannons, .hospitals])
+        #expect(catalogue.stats(.navyShip).figures(at: .hospitals).health == 700)
+        #expect(catalogue.stats(.navyShip).figures(at: .ships).attack?.range == 7)
+    }
+
+    @Test func theTiersOfEachAgeAndEveryEarlierTierAreMade() {
+        let c = Catalogue.standard
+        func made(at maker: BuildingKind, by age: Age) -> Set<UnitKind> {
+            Set(c.made(by: .building(maker)).filter { $0.age <= age }.map(\.unit))
+        }
+        #expect(made(at: .barracks, by: .farms) == [.soldier1])
+        #expect(made(at: .barracks, by: .hospitals) == [.soldier1, .soldier2, .soldier3, .soldier4])
+        #expect(made(at: .stable, by: .hospitals) == [.knight1, .knight2, .knight3])
+        #expect(made(at: .castle, by: .ships) == [.soldier1, .soldier2, .knight1])
+        #expect(made(at: .cannonFactory, by: .hospitals) == [.cannon1, .cannon2])
+        #expect(c.made(by: .unit(.navyShip)).allSatisfy { $0.unit.isWarfighter && $0.age == .hospitals })
+        #expect(c.made(by: .unit(.navyShip)).count == 9)
     }
 
     @Test func everyKindAndEveryAdvanceHasItsRows() throws {
@@ -49,12 +83,17 @@ private func fault(_ texts: TableTexts) -> TableError? {
         #expect(catalogue.units.map(\.kind) == UnitKind.allCases)
         #expect(catalogue.buildings.map(\.kind) == BuildingKind.allCases)
         #expect(catalogue.advances.map(\.from) == Array(Age.allCases.dropLast()))
-        // Every unit but the car, which is summoned, has a maker; every maker is a building that makes it.
-        for kind in UnitKind.allCases where kind != .car {
-            #expect(!catalogue.stats(kind).trainedAt.isEmpty, "\(kind) has no maker")
+        // Every unit has a maker (the car and the founder are not units); every
+        // maker, a building or the navy ship, lists what it makes.
+        for kind in UnitKind.allCases {
+            #expect(catalogue.stats(kind).trainedAt.isEmpty != kind.isUnit, "\(kind)")
         }
         for item in catalogue.production {
-            #expect(catalogue.stats(item.maker).trains.contains(item.unit))
+            switch item.maker {
+            case .building(let kind): #expect(catalogue.stats(kind).trains.contains(item.unit))
+            case .unit(let kind): #expect(catalogue.stats(kind).trains.contains(item.unit))
+            }
+            #expect(catalogue.stats(item.unit).trainedAt.contains(item.maker))
             #expect(item.age >= catalogue.stats(item.unit).age, "\(item.maker) makes \(item.unit) before its age")
         }
         // Each file names its columns in the order the documentation gives them.
@@ -64,14 +103,17 @@ private func fault(_ texts: TableTexts) -> TableError? {
     }
 
     @Test func aBadCellIsReportedWithItsFileLineAndColumn() {
-        // The spearman is the fifth line of stats.csv; health is its sixth column.
-        let health = fault(defaults(.stats, replacing: "spearman,farms,60,0,20,55,", with: "spearman,farms,60,0,20,lots,"))
+        // Soldier 1 is the fifth line of stats.csv; health is its sixth column.
+        let health = fault(defaults(.stats, replacing: "soldier1,farms,60,0,20,55,", with: "soldier1,farms,60,0,20,lots,"))
         #expect(health == TableError(file: "stats.csv", line: 5, column: 6,
                                      message: "\"lots\" is not a whole number of at least 0"))
         #expect(health?.description == "stats.csv, line 5, column 6: \"lots\" is not a whole number of at least 0")
         // An age that is not one, in production.csv's third column.
-        let age = fault(defaults(.production, replacing: "barracks,spearman,farms,14", with: "barracks,spearman,bronze,14"))
-        #expect(age?.file == "production.csv" && age?.line == 4 && age?.column == 3)
+        let age = fault(defaults(.production, replacing: "barracks,soldier1,farms,14", with: "barracks,soldier1,bronze,14"))
+        #expect(age?.file == "production.csv" && age?.line == 5 && age?.column == 3)
+        // A maker that makes nothing: the founder.
+        let maker = fault(defaults(.production, replacing: "hospital,doctor,", with: "founder,doctor,"))
+        #expect(maker?.file == "production.csv" && maker?.column == 1)
         // A negative duration in ages.csv's sixth column.
         let seconds = fault(defaults(.ages, replacing: "towns,farms,300,100,0,90", with: "towns,farms,300,100,0,-90"))
         #expect(seconds?.file == "ages.csv" && seconds?.line == 2 && seconds?.column == 6)
@@ -99,22 +141,31 @@ private func fault(_ texts: TableTexts) -> TableError? {
         #expect(farm.demolishTime == Tick.seconds(4) && farm.demolishReturn == 0.25)
         #expect(ResourceAmounts([.wood: 60, .gold: 3]).share(0.25) == ResourceAmounts([.wood: 15]))
         let tooMuch = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,", with: "farm,farms,0,60,0,150,,,,20,10,1.5,"))
-        #expect(tooMuch?.file == "stats.csv" && tooMuch?.line == 18 && tooMuch?.column == 12)
+        #expect(tooMuch?.file == "stats.csv" && tooMuch?.line == 27 && tooMuch?.column == 12)
         let missing = fault(defaults(.stats, replacing: "farm,farms,0,60,0,150,,,,20,10,0.5,", with: "farm,farms,0,60,0,150,,,,20,,0.5,"))
         #expect(missing?.column == 11 && missing?.message == "a building needs demolish_seconds")
         let unit = fault(defaults(.stats, replacing: "worker,towns,50,0,0,25,3,0.6667,1,,,,", with: "worker,towns,50,0,0,25,3,0.6667,1,,5,,"))
         #expect(unit?.line == 2 && unit?.column == 11)
     }
 
-    @Test func aTowersLaterRowIsItsUpgradeAndAHousesIsAFault() throws {
-        var texts = TableTexts.defaults
-        texts.stats += "watchTower,ships,0,100,0,600,6,0.5,8,40,,,,,,,,,\n"
-        let tower = try Catalogue(tables: texts).stats(.watchTower)
+    @Test func aTowersOrAShipsLaterRowIsItsUpgradeAndAHousesIsAFault() throws {
+        let catalogue = Catalogue.standard
+        let tower = catalogue.stats(.tower)
         #expect(tower.age == .farms && tower.health == 400)
-        #expect(tower.levels == [BuildingLevel(age: .ships, health: 600, attack: Attack(damage: 6, range: 8, interval: Tick.seconds(2)))])
+        #expect(tower.levels[0] == AgeUpgrade(age: .ships, health: 550, attack: Attack(damage: 5, range: 7.5, interval: Tick.seconds(2))))
+        #expect(tower.figures(at: .farms) == AgeFigures(health: 400, attack: tower.attack))
+        #expect(tower.figures(at: .hospitals).health == 850)
+        let ship = catalogue.stats(.navyShip)
+        #expect(ship.age == .ships && ship.health == 400 && ship.levels.count == 2)
+        var texts = TableTexts.defaults
+        texts.stats += "tower,ships,0,100,0,600,6,0.5,8,40,,,,,,,,,\n"
+        #expect(fault(texts)?.message.contains("tower has a row for the age of ships") == true)
+        texts = TableTexts.defaults
         texts.stats += "house,farms,0,30,0,300,,,,20,10,0.5,,,,,,,\n"
-        let house = fault(texts)
-        #expect(house?.message == "house has a row already, on line 14")
+        #expect(fault(texts)?.message == "house has a row already, on line 20")
+        texts = TableTexts.defaults
+        texts.stats += "doctor,hospitals,50,0,30,40,,,,,,,,,,,3,,6\n"
+        #expect(fault(texts)?.message == "doctor has a row already, on line 3")
     }
 
     @Test func cellsMayBeQuotedAndSpacedAndLinesEndInReturns() throws {
@@ -132,7 +183,7 @@ private func fault(_ texts: TableTexts) -> TableError? {
         let back = try JSONDecoder().decode(NetMessage.self, from: JSONEncoder().encode(NetMessage.start(start)))
         guard case .start(let received) = back else { Issue.record("not a start"); return }
         #expect(received.catalogue == tuned && received.catalogue != Catalogue.standard)
-        #expect(NetMessage.protocolVersion == 2)
+        #expect(NetMessage.protocolVersion == 3)
     }
 }
 

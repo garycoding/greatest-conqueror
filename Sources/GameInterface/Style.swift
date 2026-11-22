@@ -33,8 +33,9 @@ enum Palette {
 
     static func tint(of unit: UnitKind) -> Color {
         switch unit {
-        case .worker: ochre
-        case .car, .boat: paperDeep
+        case .worker, .founder: ochre
+        case .doctor: teal
+        case .car, .fishingBoat, .navyShip: paperDeep
         default: brick
         }
     }
@@ -202,15 +203,18 @@ struct PersonGlyph: View {
             context.fill(head, with: .color(Color(red: 0.93, green: 0.78, blue: 0.62)))
             var mark = Path()
             switch kind {
-            case .spearman, .swordsman:
+            case .soldier1, .soldier2:
                 mark.move(to: CGPoint(x: mid + u * 0.34, y: u * 0.96)); mark.addLine(to: CGPoint(x: mid + u * 0.34, y: u * 0.12))
-            case .musketeer, .rifleman:
+            case .soldier3, .soldier4:
                 mark.addArc(center: CGPoint(x: mid + u * 0.30, y: u * 0.62), radius: u * 0.26,
                             startAngle: .degrees(-70), endAngle: .degrees(70), clockwise: false)
-            case .horseman, .knight, .cannon, .fieldGun, .car, .boat:
+            case .knight1, .knight2, .knight3, .cannon1, .cannon2, .car, .fishingBoat, .navyShip:
                 mark.addEllipse(in: CGRect(x: mid - u * 0.46, y: u * 0.76, width: u * 0.24, height: u * 0.24))
                 mark.addEllipse(in: CGRect(x: mid + u * 0.22, y: u * 0.76, width: u * 0.24, height: u * 0.24))
-            case .worker:
+            case .doctor:
+                mark.move(to: CGPoint(x: mid, y: u * 0.52)); mark.addLine(to: CGPoint(x: mid, y: u * 0.84))
+                mark.move(to: CGPoint(x: mid - u * 0.16, y: u * 0.68)); mark.addLine(to: CGPoint(x: mid + u * 0.16, y: u * 0.68))
+            case .worker, .founder:
                 break
             }
             context.stroke(mark, with: .color(Palette.ink), lineWidth: 1.3)
@@ -244,12 +248,16 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.2, 0.5, 0.6, 0.42), wall), (roof(0.12, 0.2, 0.76, 0.32), roofColour)]
             case .barracks:
                 parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Palette.teal), (rect(0.44, 0.04, 0.05, 0.22), Palette.ink), (rect(0.49, 0.04, 0.2, 0.1), roofColour)]
-            case .watchTower:
+            case .tower:
                 parts = [(rect(0.34, 0.3, 0.32, 0.62), wall), (rect(0.24, 0.14, 0.52, 0.2), Color(red: 0.55, green: 0.38, blue: 0.24))]
             case .farm:
                 parts = [(rect(0.06, 0.5, 0.88, 0.4), Color(red: 0.76, green: 0.66, blue: 0.36))]
             case .stable:
                 parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Color(red: 0.55, green: 0.38, blue: 0.24))]
+            case .cannonFactory:
+                parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (rect(0.62, 0.08, 0.14, 0.4), Palette.ink), (roof(0.02, 0.24, 0.6, 0.24), roofColour)]
+            case .hospital:
+                parts = [(rect(0.1, 0.4, 0.8, 0.5), wall), (rect(0.44, 0.5, 0.12, 0.3), Palette.brick), (rect(0.35, 0.59, 0.3, 0.12), Palette.brick)]
             case .castle:
                 parts = [(rect(0.1, 0.35, 0.8, 0.55), Color(red: 0.62, green: 0.6, blue: 0.56)), (rect(0.04, 0.15, 0.2, 0.75), Color(red: 0.62, green: 0.6, blue: 0.56)), (rect(0.76, 0.15, 0.2, 0.75), Color(red: 0.62, green: 0.6, blue: 0.56))]
             case .boatHouse:

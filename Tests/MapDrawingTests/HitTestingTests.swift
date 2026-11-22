@@ -52,7 +52,7 @@ import Testing
     @Test func ofTwoBuildingsTheNearerToTheViewerWins() {
         // The tower at (15.5, 13.5) is nearer the viewer than the barracks at (13.5, 6.5); a point on both blocks picks the tower.
         let g = geometry(14, 10)
-        let tower = entity(Int(view.entities.first { $0.kind == .building(.watchTower) }!.id.rawValue))
+        let tower = entity(Int(view.entities.first { $0.kind == .building(.tower) }!.id.rawValue))
         let point = g.scenePoint(for: tower.position)
         #expect(MapHitTesting.entity(at: CGPoint(x: point.x, y: point.y + 20), in: view, geometry: g)?.id == tower.id)
     }
@@ -97,7 +97,7 @@ import Testing
             #expect(e.owner == view.player)
             if case .unit = e.kind {} else { Issue.record("a building was boxed") }
         }
-        #expect(!ids.contains(EntityID(view.entities.last { $0.owner == PlayerID(1) && $0.kind == .unit(.spearman) }!.id.rawValue)))
+        #expect(!ids.contains(EntityID(view.entities.last { $0.owner == PlayerID(1) && $0.kind == .unit(.soldier1) }!.id.rawValue)))
         // An empty box holds nothing, and a box over a building alone holds nothing.
         #expect(MapHitTesting.ownPeople(in: CGRect(x: 0, y: 0, width: 5, height: 5), view: view, geometry: g).isEmpty)
         let tc = g.scenePoint(for: entity(1).position)

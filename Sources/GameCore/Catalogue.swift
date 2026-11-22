@@ -37,8 +37,13 @@ public struct UnitStats: Hashable, Codable, Sendable {
     /// Tiles within which it sees.
     public var sight: Double
     public var attack: Attack?
-    /// The building kinds at which it is made (`Catalogue.production`).
-    public var trainedAt: [BuildingKind]
+    /// The makers at which it is made (`Catalogue.production`): buildings, or the navy ship.
+    public var trainedAt: [EntityKind]
+    /// For a navy ship, what it makes (`Catalogue.production`); empty for every other kind.
+    public var trains: [UnitKind]
+    /// For a navy ship, its upgrade in each later age that `stats.csv` gives a
+    /// row of its own, in the order of the ages (requirement 24).
+    public var levels: [AgeUpgrade]
     /// How many places it takes under the population limit.
     public var population: Int
     /// Units of each resource it takes from a site a second, by `Resource.rawValue`:
@@ -46,19 +51,20 @@ public struct UnitStats: Hashable, Codable, Sendable {
     public var gathering: [Double]
     /// Food a second it earns tending a farm.
     public var farming: Double
-    /// Health points a second it restores to a wounded unit (a later step's doctor).
+    /// Health points a second it restores to a wounded unit: a doctor's (requirement 13).
     public var healing: Double?
-    /// Health points a second it restores to a damaged building (a later step's rule).
+    /// Health points a second it restores to a damaged building: a worker's (requirement 12).
     public var repairing: Double?
-    /// The radius within which it looks, idle, for work to heal or repair.
+    /// The radius in tiles within which it looks, idle, for a unit to heal or a building to repair.
     public var radius: Double?
 
     public init(kind: UnitKind, age: Age, cost: ResourceAmounts, health: Int, armour: Int, speed: Double, sight: Double,
-                attack: Attack?, trainedAt: [BuildingKind] = [], population: Int = 1, gathering: [Double] = [],
+                attack: Attack?, trainedAt: [EntityKind] = [], trains: [UnitKind] = [], levels: [AgeUpgrade] = [],
+                population: Int = 1, gathering: [Double] = [],
                 farming: Double = 0, healing: Double? = nil, repairing: Double? = nil, radius: Double? = nil) {
         self.kind = kind; self.age = age; self.cost = cost; self.health = health
         self.armour = armour; self.speed = speed; self.sight = sight; self.attack = attack
-        self.trainedAt = trainedAt; self.population = population
+        self.trainedAt = trainedAt; self.trains = trains; self.levels = levels; self.population = population
         self.gathering = gathering.count == Resource.allCases.count ? gathering : Array(repeating: 0, count: Resource.allCases.count)
         self.farming = farming; self.healing = healing; self.repairing = repairing; self.radius = radius
     }
@@ -85,7 +91,8 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     /// The tiles it covers, from its origin toward +x and +y.
     public var footprint: GridPoint
     public var sight: Double
-    /// Towers, castles and the town centre shoot at opponents in range.
+    /// Towers, castles and the town centre shoot at opponents in range; for a
+    /// tower or a castle, this is its attack in the age in which it first appears.
     public var attack: Attack?
     /// Population places it provides.
     public var housing: Int
@@ -94,14 +101,13 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     /// What may be made here (`Catalogue.production`).
     public var trains: [UnitKind]
     /// For a tower or a castle, its upgrade in each later age that `stats.csv`
-    /// gives a row of its own, in the order of the ages (requirement 24). The
-    /// upgrade itself is a later step's rule; the rows are read and kept.
-    public var levels: [BuildingLevel]
+    /// gives a row of its own, in the order of the ages (requirement 24).
+    public var levels: [AgeUpgrade]
 
     public init(kind: BuildingKind, age: Age, cost: ResourceAmounts, buildTime: Int, demolishTime: Int? = nil,
                 demolishReturn: Double = 0.5, health: Int, armour: Int,
                 footprint: GridPoint, sight: Double, attack: Attack? = nil, housing: Int = 0,
-                accepts: [Resource] = [], trains: [UnitKind] = [], levels: [BuildingLevel] = []) {
+                accepts: [Resource] = [], trains: [UnitKind] = [], levels: [AgeUpgrade] = []) {
         self.kind = kind; self.age = age; self.cost = cost; self.buildTime = buildTime
         self.demolishTime = demolishTime ?? max(1, buildTime / 2); self.demolishReturn = demolishReturn
         self.health = health
@@ -110,8 +116,9 @@ public struct BuildingStats: Hashable, Codable, Sendable {
     }
 }
 
-/// A building's figures from a later age on (`BuildingStats.levels`).
-public struct BuildingLevel: Hashable, Codable, Sendable {
+/// A tower's, a castle's or a navy ship's figures from a later age on
+/// (`BuildingStats.levels`, `UnitStats.levels`; requirement 24).
+public struct AgeUpgrade: Hashable, Codable, Sendable {
     public var age: Age
     public var health: Int
     public var attack: Attack?
@@ -119,22 +126,51 @@ public struct BuildingLevel: Hashable, Codable, Sendable {
     public init(age: Age, health: Int, attack: Attack?) { self.age = age; self.health = health; self.attack = attack }
 }
 
+/// The figures that the age upgrades: the maximum health and the attack.
+public struct AgeFigures: Hashable, Sendable {
+    public var health: Int
+    public var attack: Attack?
+}
+
+/// The upgrade for an age: the last of `levels` reached by `age`, else the
+/// kind's own figures.
+func figures(base health: Int, _ attack: Attack?, levels: [AgeUpgrade], at age: Age) -> AgeFigures {
+    var out = AgeFigures(health: health, attack: attack)
+    for level in levels where level.age <= age { out = AgeFigures(health: level.health, attack: level.attack) }
+    return out
+}
+
+extension UnitStats {
+    /// Its health and attack for an owner in `age` (requirement 24).
+    public func figures(at age: Age) -> AgeFigures { GameCore.figures(base: health, attack, levels: levels, at: age) }
+}
+
+extension BuildingStats {
+    /// Its health and attack for an owner in `age` (requirement 24).
+    public func figures(at age: Age) -> AgeFigures { GameCore.figures(base: health, attack, levels: levels, at: age) }
+}
+
 extension BuildingKind {
     /// The kinds upgraded at each new age, whose later rows in `stats.csv` are
     /// their upgrades (requirement 24): the tower and the castle.
-    public var isUpgradedWithAge: Bool { self == .watchTower || self == .castle }
+    public var isUpgradedWithAge: Bool { self == .tower || self == .castle }
 }
 
 /// One maker and one unit it makes (`production.csv`): the age from which it
-/// makes it, and the ticks each takes.
+/// makes it, and the ticks each takes. A maker is a building, or the navy
+/// ship (requirement 17).
 public struct ProductionStats: Hashable, Codable, Sendable {
-    public var maker: BuildingKind
+    public var maker: EntityKind
     public var unit: UnitKind
     public var age: Age
     public var time: Int
 
-    public init(maker: BuildingKind, unit: UnitKind, age: Age, time: Int) {
+    public init(maker: EntityKind, unit: UnitKind, age: Age, time: Int) {
         self.maker = maker; self.unit = unit; self.age = age; self.time = time
+    }
+
+    public init(maker: BuildingKind, unit: UnitKind, age: Age, time: Int) {
+        self.init(maker: .building(maker), unit: unit, age: age, time: time)
     }
 }
 
@@ -213,6 +249,11 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var startingResources: ResourceAmounts
     /// Workers each player begins with, beside the town centre.
     public var startingPeople: Int
+    /// Workers who appear beside the town centre a founder builds, when it is
+    /// finished (ruled 2026-11-22).
+    public var founderPeople: Int
+    /// How many troops a navy ship carries (requirement 16).
+    public var shipCargo: Int
     /// The population limit can never exceed this, however many houses stand.
     public var populationMaximum: Int
     /// What a person's car does; nil for no car.
@@ -220,10 +261,10 @@ public struct Catalogue: Hashable, Codable, Sendable {
 
     public init(units: [UnitStats], buildings: [BuildingStats], production: [ProductionStats], advances: [AdvanceStats],
                 gathering: GatheringStats, bonuses: [Bonus], startingResources: ResourceAmounts, startingPeople: Int,
-                populationMaximum: Int, car: CarStats? = nil) {
+                founderPeople: Int = 2, shipCargo: Int = 20, populationMaximum: Int, car: CarStats? = nil) {
         self.units = units; self.buildings = buildings; self.production = production; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses
-        self.startingResources = startingResources; self.startingPeople = startingPeople
+        self.startingResources = startingResources; self.startingPeople = startingPeople; self.founderPeople = founderPeople; self.shipCargo = shipCargo
         self.populationMaximum = populationMaximum; self.car = car
     }
 
@@ -232,9 +273,17 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public func advance(from age: Age) -> AdvanceStats? { advances.first { $0.from == age } }
 
     /// How a maker makes a unit, if it does.
-    public func production(of unit: UnitKind, at maker: BuildingKind) -> ProductionStats? {
+    public func production(of unit: UnitKind, at maker: EntityKind) -> ProductionStats? {
         production.first { $0.unit == unit && $0.maker == maker }
     }
+
+    /// How a building makes a unit, if it does.
+    public func production(of unit: UnitKind, at maker: BuildingKind) -> ProductionStats? {
+        production(of: unit, at: .building(maker))
+    }
+
+    /// What a maker makes, in the order of `production.csv`.
+    public func made(by maker: EntityKind) -> [ProductionStats] { production.filter { $0.maker == maker } }
 
     /// The last age a player can reach with these tables.
     public var lastAge: Age {

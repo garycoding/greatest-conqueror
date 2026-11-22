@@ -7,8 +7,8 @@ import GameCore
 // also recorded as `GameEvent.refused` for the player's next view. Costs are
 // paid when an order is accepted.
 //
-// Which refusal: `.notNow` whilst paused, after the outcome, or for a defeated
-// player; `.notYours` when an entity named is not the player's (or does not
+// Which refusal: `.notNow` whilst paused, after the outcome, or for a player
+// of a defeated team; `.notYours` when an entity named is not the player's (or does not
 // exist), or when none of the people named can carry the order out;
 // `.invalidTarget` when the target cannot be acted on in that way, or is not in
 // the player's sight; then the age, population and cost checks of the order.
@@ -27,7 +27,9 @@ extension Simulation {
             isPaused = paused
             return .accepted
         }
-        if isPaused || outcome != nil || players[p].isDefeated { return .refused(.notNow) }
+        // A defeated player whose team stands still gives orders: a person
+        // comes back through a founder (ruled 2026-11-22).
+        if isPaused || outcome != nil || teams[players[p].teamIndex].isDefeated { return .refused(.notNow) }
         switch order {
         case .move(let units, let to): return move(units, to: to, player: player)
         case .gather(let units, let site): return gather(units, at: site, player: player)
@@ -43,6 +45,10 @@ extension Simulation {
         case .reseed(let farm): return reseed(farm, player: player)
         case .summonCar: return summonCar(player: player)
         case .setKillRadius(let cars, let on): return setKillRadius(cars, on: on, player: player)
+        case .heal(let doctors, let target): return heal(doctors, target, player: player)
+        case .board(let units, let ship): return board(units, ship, player: player)
+        case .land(let ships, let at): return land(ships, at: at, player: player)
+        case .found(let founder, let at): return found(founder, at: at, player: player)
         case .setPaused: return .accepted
         }
     }
@@ -81,33 +87,40 @@ extension Simulation {
         guard point.x >= 0, point.y >= 0, point.x < Double(width), point.y < Double(height) else {
             return .refused(.invalidTarget)
         }
-        var centre = point
-        if !open(point.tile) {
-            guard let free = nearestOpenTile(to: point.tile) else { return .refused(.invalidTarget) }
-            centre = free.centre
-        }
-        // People sent together spread over a small square around the point.
-        let side = Int(Double(people.count).squareRoot().rounded(.up))
-        for (k, i) in people.enumerated() {
-            let col = Double(k % side) - Double(side - 1) / 2, row = Double(k / side) - Double(side - 1) / 2
-            var spot = MapPosition(x: centre.x + col * Rule.formationSpacing, y: centre.y + row * Rule.formationSpacing)
-            if !(spot.x >= 0 && spot.y >= 0 && spot.x < Double(width) && spot.y < Double(height)) || !open(spot.tile) {
-                spot = centre
+        // People on foot and vessels each go to the nearest tile they may enter:
+        // land for the one, water for the other.
+        for afloat in [false, true] {
+            let group = people.filter { entities[$0].isAfloat == afloat }
+            guard !group.isEmpty else { continue }
+            var centre = point
+            if !open(point.tile.x, point.tile.y, afloat: afloat) {
+                guard let free = nearestTile(to: point.tile, afloat: afloat) else { return .refused(.invalidTarget) }
+                centre = free.centre
             }
-            assign(i, .move(spot))
+            // People sent together spread over a small square around the point.
+            let side = Int(Double(group.count).squareRoot().rounded(.up))
+            for (k, i) in group.enumerated() {
+                let col = Double(k % side) - Double(side - 1) / 2, row = Double(k / side) - Double(side - 1) / 2
+                var spot = MapPosition(x: centre.x + col * Rule.formationSpacing, y: centre.y + row * Rule.formationSpacing)
+                if !(spot.x >= 0 && spot.y >= 0 && spot.x < Double(width) && spot.y < Double(height))
+                    || !open(spot.tile.x, spot.tile.y, afloat: afloat) {
+                    spot = centre
+                }
+                assign(i, .move(spot))
+            }
         }
         return .accepted
     }
 
     mutating func gather(_ ids: [EntityID], at site: SiteID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player),
-              people.contains(where: { [.worker, .boat].contains(entities[$0].unitKind) }) else { return .refused(.notYours) }
+              people.contains(where: { [.worker, .fishingBoat].contains(entities[$0].unitKind) }) else { return .refused(.notYours) }
         let p = player.rawValue
         guard let s = siteIndex(of: site), isExplored(sites[s].tile, byPlayer: p) else {
             return .refused(.invalidTarget)
         }
         // Workers gather on land, boats in the water (ruled 2026-11-21).
-        let gatherer: UnitKind = isAfloat(sites[s]) ? .boat : .worker
+        let gatherer: UnitKind = isAfloat(sites[s]) ? .fishingBoat : .worker
         let workers = people.filter { entities[$0].unitKind == gatherer }
         guard !workers.isEmpty else { return .refused(.invalidTarget) }
         let kind = sites[s].kind
@@ -122,7 +135,8 @@ extension Simulation {
 
     mutating func work(_ ids: [EntityID], at building: EntityID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let able = people.filter { entities[$0].unitKind == .worker }
+        // A founder works only at the town centre it founded (`hasWork`).
+        let able = people.filter { entities[$0].unitKind == .worker || entities[$0].isFounder }
         guard !able.isEmpty else { return .refused(.notYours) }
         guard let b = ownBuilding(building, player) else { return .refused(.invalidTarget) }
         var busy = able.filter { hasWork(at: b, person: $0) }
@@ -202,18 +216,29 @@ extension Simulation {
         return .accepted
     }
 
+    /// A founder cannot be dismissed (as in Cities of Progress).
     mutating func dismiss(_ ids: [EntityID], player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        for i in people { kill(i) }
+        let leaving = people.filter { !entities[$0].isFounder }
+        guard !leaving.isEmpty else { return .refused(.notYours) }
+        for i in leaving { kill(i) }
         return .accepted
     }
 
     // MARK: Buildings
 
+    /// The index of a maker of the player's: a building, or a unit that makes
+    /// units (a navy ship).
+    func ownMaker(_ id: EntityID, _ player: PlayerID) -> Int? {
+        guard let i = index(of: id), entities[i].owner == player else { return nil }
+        if entities[i].isPerson { return entities[i].unitKind.map { tables.unit($0).trains.isEmpty } == false ? i : nil }
+        return i
+    }
+
     mutating func train(_ kind: UnitKind, at building: EntityID, player: PlayerID) -> OrderResult {
-        guard let b = ownBuilding(building, player) else { return .refused(.notYours) }
-        guard entities[b].complete, let buildingKind = entities[b].buildingKind,
-              let made = catalogue.production(of: kind, at: buildingKind), let stats = tables.units[kind.rawValue]
+        guard let b = ownMaker(building, player) else { return .refused(.notYours) }
+        guard entities[b].complete, let made = catalogue.production(of: kind, at: entities[b].kind),
+              let stats = tables.units[kind.rawValue]
         else { return .refused(.invalidTarget) }
         let p = player.rawValue
         guard players[p].age >= made.age else { return .refused(.ageNotReached(made.age)) }
@@ -226,7 +251,7 @@ extension Simulation {
     }
 
     mutating func cancelTraining(at building: EntityID, player: PlayerID) -> OrderResult {
-        guard let b = ownBuilding(building, player) else { return .refused(.notYours) }
+        guard let b = ownMaker(building, player) else { return .refused(.notYours) }
         guard let last = entities[b].queue.popLast() else { return .refused(.invalidTarget) }
         if entities[b].queue.isEmpty { entities[b].trainProgress = 0 }
         let p = player.rawValue
@@ -291,6 +316,82 @@ extension Simulation {
         }
         guard !cars.isEmpty else { return .refused(.notYours) }
         for i in cars { entities[i].killRadiusOff = on ? nil : true }
+        return .accepted
+    }
+}
+
+// MARK: Doctors, ships and founders
+
+extension Simulation {
+    /// The open tile nearest a tile that a person on foot, or a vessel, may enter.
+    func nearestTile(to t: GridPoint, afloat: Bool) -> GridPoint? {
+        if open(t.x, t.y, afloat: afloat) { return t }
+        for r in 1...max(width, height) {
+            var best: GridPoint?
+            var bestDistance = Int.max
+            for y in (t.y - r)...(t.y + r) {
+                for x in (t.x - r)...(t.x + r) where abs(x - t.x) == r || abs(y - t.y) == r {
+                    guard open(x, y, afloat: afloat) else { continue }
+                    let d = (x - t.x) * (x - t.x) + (y - t.y) * (y - t.y)
+                    if d < bestDistance { best = GridPoint(x, y); bestDistance = d }
+                }
+            }
+            if let best { return best }
+        }
+        return nil
+    }
+
+    /// Doctors heal a wounded unit of the player's (requirement 13).
+    mutating func heal(_ ids: [EntityID], _ target: EntityID, player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let doctors = people.filter { entities[$0].unitKind.flatMap { tables.unit($0).healing } ?? 0 > 0 }
+        guard !doctors.isEmpty else { return .refused(.notYours) }
+        guard let t = index(of: target), doctors.contains(where: { canHeal($0, t) }) else { return .refused(.invalidTarget) }
+        for i in doctors where canHeal(i, t) {
+            entities[i].fraction = 0
+            assign(i, .heal(target))
+        }
+        return .accepted
+    }
+
+    /// Troops board a navy ship of the player's that is at the shore, as many
+    /// as it has room for, in id order (requirement 16).
+    mutating func board(_ ids: [EntityID], _ ship: EntityID, player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let troops = people.filter { Self.boards(entities[$0].unitKind) }
+        guard !troops.isEmpty else { return .refused(.notYours) }
+        guard let s = index(of: ship), entities[s].owner == player, entities[s].unitKind == .navyShip,
+              atShore(s) else { return .refused(.invalidTarget) }
+        let room = catalogue.shipCargo - cargo(of: s)
+        guard room > 0 else { return .refused(.invalidTarget) }
+        for i in troops.prefix(room) { assign(i, .board(ship)) }
+        return .accepted
+    }
+
+    /// Navy ships of the player's that carry troops sail to the shore near a
+    /// point on land, and land them there (requirement 16).
+    mutating func land(_ ids: [EntityID], at point: MapPosition, player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let ships = people.filter { entities[$0].unitKind == .navyShip && cargo(of: $0) > 0 }
+        guard !ships.isEmpty else { return .refused(.notYours) }
+        guard point.x >= 0, point.y >= 0, point.x < Double(width), point.y < Double(height),
+              open(point.tile) else { return .refused(.invalidTarget) }
+        for i in ships { assign(i, .land(point)) }
+        return .accepted
+    }
+
+    /// A founder lays out a town centre, free, and goes to build it (ruled
+    /// 2026-11-22); one at a time, until one is finished.
+    mutating func found(_ founder: EntityID, at origin: GridPoint, player: PlayerID) -> OrderResult {
+        guard let f = index(of: founder), entities[f].owner == player, entities[f].isFounder else {
+            return .refused(.notYours)
+        }
+        guard !entities.contains(where: { $0.alive && $0.foundedBy == founder }) else { return .refused(.notNow) }
+        let p = player.rawValue
+        guard canPlace(.townCentre, at: origin, player: p) else { return .refused(.placementBlocked) }
+        let b = placeBuilding(.townCentre, owner: player, origin: origin, complete: false)
+        entities[b].foundedBy = founder
+        if let f = index(of: founder) { assign(f, .work(entities[b].id)) }
         return .accepted
     }
 }

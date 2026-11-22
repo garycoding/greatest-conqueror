@@ -45,10 +45,14 @@ public enum MapCommands {
     /// The order a right-click gives to the player's selected people, or `nil` if
     /// none of the selection is a person of the player's.
     ///
-    /// - Ground: move. A site: workers gather there, or boats if it is in the
-    ///   water (others move to it). An own building that is unfinished or
-    ///   damaged, or a complete farm: workers work there. Another of the
-    ///   player's or an ally's: move to it. An opponent: attack.
+    /// - Ground: move; but navy ships carrying troops, right-clicked onto
+    ///   land, land them there (requirement 16). A site: workers gather there,
+    ///   or fishing boats if it is in the water (others move to it). An own
+    ///   building that is unfinished or damaged, or a complete farm: workers
+    ///   (or a founder, at the town centre it founded) work there. An own navy
+    ///   ship: troops board it (requirement 16). An own wounded unit: doctors
+    ///   heal it (requirement 13). Another of the player's or an ally's: move
+    ///   to it. An opponent: attack.
     public static func contextualOrder(on target: MapTarget, view: PlayerView, selection: [EntityID],
                                        catalogue: Catalogue = .standard) -> Order? {
         let people = selection.compactMap { view.entity($0) }.filter {
@@ -62,18 +66,32 @@ public enum MapCommands {
 
         switch target {
         case .ground(let position):
+            let tile = position.tile
+            let onLand = tile.x >= 0 && tile.y >= 0 && tile.x < view.mapWidth && tile.y < view.mapHeight
+                && view.terrain[tile.y * view.mapWidth + tile.x].isPassable
+            let loaded = people.filter { $0.kind == .unit(.navyShip) && ($0.passengers ?? 0) > 0 }.map(\.id)
+            if onLand && !loaded.isEmpty { return .land(ships: loaded, at: position) }
             return .move(units: everyone, to: position)
         case .site(let site):
             // A site in the water is gathered by boats, one on land by workers (ruled 2026-11-21).
             let afloat = view.terrain.indices.contains(site.tile.y * view.mapWidth + site.tile.x)
                 && view.terrain[site.tile.y * view.mapWidth + site.tile.x].isWater
-            let gatherers = ids { afloat ? $0 == .boat : $0 == .worker }
+            let gatherers = ids { afloat ? $0 == .fishingBoat : $0 == .worker }
             return gatherers.isEmpty ? .move(units: everyone, to: site.tile.centre) : .gather(units: gatherers, site: site.id)
         case .entity(let entity):
+            if entity.owner == view.player, entity.kind == .unit(.navyShip) {
+                let troops = ids(\.isWarfighter)
+                if !troops.isEmpty { return .board(units: troops, ship: entity.id) }
+            }
+            if entity.owner == view.player, case .unit(let kind) = entity.kind, kind.isUnit, !kind.isAfloat,
+               entity.health < entity.maxHealth {
+                let doctors = ids { catalogue.stats($0).healing ?? 0 > 0 }.filter { $0 != entity.id }
+                if !doctors.isEmpty { return .heal(doctors: doctors, target: entity.id) }
+            }
             if entity.owner == view.player, case .building(let kind) = entity.kind {
                 var unfinished = false
                 if case .underConstruction = entity.activity { unfinished = true }
-                let workers = ids { $0 == .worker }
+                let workers = ids { $0 == .worker || (unfinished && $0 == .founder) }
                 if (unfinished || entity.health < entity.maxHealth || kind == .farm), !workers.isEmpty {
                     return .work(units: workers, at: entity.id)
                 }

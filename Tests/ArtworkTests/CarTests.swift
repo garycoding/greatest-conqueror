@@ -250,7 +250,7 @@ struct CarRenders {
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("A person's car beside the Industrial field gun and worker, at one scale, in the colours of Rome, Angkor, Shang, Tonga, Samoa and Greece",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 24)
-        let armoured = try #require(IndustrialWarriorsLooks.look(.fieldGun))
+        let armoured = try #require(IndustrialWarriorsLooks.look(.cannon2))
         let worker = try #require(IndustrialPeopleLooks.look(.worker))
         let car = CarSprites(), warriors = IndustrialWarriorSprites(), people = IndustrialPeopleSprites()
         for (row, civilization) in civilizations.enumerated() {
@@ -261,7 +261,7 @@ struct CarRenders {
             let drawnCar = try #require(CarSaloon.render(.standing, frame: 0, canvas: carLarge))
             Preview.place(Preview.tinted(base: drawnCar.base, mask: drawnCar.mask, colour: tint), anchor: carLarge.anchor,
                           at: CGPoint(x: 230, y: groundY), in: context)
-            let armouredLarge = IndustrialWarriorsLooks.canvas(.fieldGun).scaled(to: scale)
+            let armouredLarge = IndustrialWarriorsLooks.canvas(.cannon2).scaled(to: scale)
             let drawnArmoured = try #require(armoured.render(.standing, frame: 0, canvas: armouredLarge))
             Preview.place(Preview.tinted(base: drawnArmoured.base, mask: drawnArmoured.mask, colour: tint), anchor: armouredLarge.anchor,
                           at: CGPoint(x: 640, y: groundY), in: context)
@@ -271,7 +271,7 @@ struct CarRenders {
                           at: CGPoint(x: 930, y: groundY), in: context)
             let small: [(any SpriteSource, SpriteKey, Double)] = [
                 (car, SpriteKey(.unit(.car, .stone), .standing), 1150), (car, SpriteKey(.unit(.car, .stone), .walking, frame: 3), 1350),
-                (warriors, SpriteKey(.unit(.fieldGun, .industrial), .standing), 1560),
+                (warriors, SpriteKey(.unit(.cannon2, .industrial), .standing), 1560),
                 (people, SpriteKey(.unit(.worker, .industrial), .standing), 1730),
             ]
             for (source, key, x) in small {

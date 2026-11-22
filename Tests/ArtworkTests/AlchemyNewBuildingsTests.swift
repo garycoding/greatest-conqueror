@@ -18,7 +18,8 @@ import Testing
     }
 
     @Test func theBatchIsTheAlchemyAgesNewBuildings() {
-        let alchemy = Catalogue.standard.buildings.filter { $0.age == .cannons }.map(\.kind)
+        // The castle, which Cities of Progress drew from its Alchemy age; it is of the age of ships now.
+        let alchemy: [BuildingKind] = [.castle]
         #expect(Set(alchemy) == Set(AlchemyNewBuildingsArt.kinds))
         #expect(Self.batch.count == 2)
     }
@@ -199,7 +200,7 @@ struct AlchemyNewBuildingsRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let cellW = 580, cellH = 540, label = 34, columns = 5
         let rows: [(BuildingKind, [(String, SpriteKey)])] = [
-            (.castle, [("Iron watch tower", SpriteKey(.building(.watchTower, .iron), .complete))]),
+            (.castle, [("Iron watch tower", SpriteKey(.building(.tower, .iron), .complete))]),
         ]
         let width = cellW * columns, height = (cellH + label) * rows.count + 70
         let context = try #require(Raster.bitmap(width: width, height: height))
@@ -276,8 +277,8 @@ struct AlchemyNewBuildingsRenders {
             (SpriteKey(.site(.tree), .complete), 9.5, 3.5, nil),
             (SpriteKey(.site(.gold), .complete), 5.5, 19.5, nil),
             (SpriteKey(.unit(.worker, .iron), .walking), 13.2, 14.5, .rome),
-            (SpriteKey(.unit(.swordsman, .iron), .standing), 12.6, 12.9, .rome),
-            (SpriteKey(.unit(.horseman, .iron), .standing), 15.8, 15.6, .rome),
+            (SpriteKey(.unit(.soldier2, .iron), .standing), 12.6, 12.9, .rome),
+            (SpriteKey(.unit(.knight1, .iron), .standing), 15.8, 15.6, .rome),
         ]
         for (key, x, y, civilization) in things.sorted(by: { ($0.1 + $0.2, $0.1) < ($1.1 + $1.2, $1.1) }) {
             guard let sprite = source.sprite(key) ?? others.sprite(key) else { continue }

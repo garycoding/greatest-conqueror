@@ -44,6 +44,12 @@ public enum Job: Hashable, Codable, Sendable {
     case repairing
     case demolishing
     case attacking
+    /// A doctor healing a unit, or walking to it.
+    case healing
+    /// A troop walking to a navy ship to board it.
+    case boarding
+    /// A navy ship sailing to the shore to land its troops.
+    case landing
 }
 
 /// A person or building as a player sees it.
@@ -69,6 +75,10 @@ public struct EntityView: Hashable, Codable, Sendable {
     public var laserTarget: MapPosition?
     /// For a car whose person has turned its kill radius off, true; nil otherwise.
     public var killRadiusOff: Bool?
+    /// For a navy ship, the troops aboard (requirement 16); nil for everything else.
+    public var passengers: Int?
+    /// For a navy ship making a unit, `Activity.training`; nil otherwise.
+    public var making: Activity?
 
     public init(id: EntityID, owner: PlayerID, kind: EntityKind, position: MapPosition, tile: GridPoint,
                 facing: Facing, health: Int, maxHealth: Int, activity: Activity, remaining: Int? = nil) {

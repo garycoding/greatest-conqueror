@@ -40,7 +40,7 @@ private final class Store: Sendable {
 enum BronzeBuildingsArt {
     /// The buildings drawn in the Bronze look; the farm's Bronze look is the
     /// Iron farm's (`IronNewBuildingsArt.lookAlikes`).
-    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .watchTower, .boatHouse]
+    static let kinds: [BuildingKind] = [.townCentre, .house, .barracks, .tower, .boatHouse]
 
     /// The building, pose and view a key names, if it is one of this batch's: a
     /// building of `kinds` in the Bronze look, complete or under construction,
@@ -77,9 +77,11 @@ enum BronzeBuildingsArt {
         case .townCentre: 118
         case .house: 78
         case .barracks: 96
-        case .watchTower: 120
+        case .tower: 120
         // Iron-age buildings are drawn by their own batch; the boat house fits in their height too.
         case .farm, .stable, .castle, .boatHouse: 80
+        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        case .cannonFactory, .hospital: 80
         }
     }
 
@@ -107,10 +109,12 @@ extension BronzeBuildingsPainter {
         case .townCentre: townCentre(complete: complete)
         case .house: house(complete: complete)
         case .barracks: barracks(complete: complete)
-        case .watchTower: watchTower(complete: complete)
+        case .tower: watchTower(complete: complete)
         case .boatHouse: boatHouse(complete: complete)
         // Iron-age buildings are drawn by their own batch.
         case .farm, .stable, .castle: break
+        // Drawn as stand-ins (`StandIn`) until their own art is made.
+        case .cannonFactory, .hospital: break
         }
     }
 }

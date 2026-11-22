@@ -17,7 +17,7 @@ import Testing
     @Test func theBatchIsTheRiflemanAndTheFieldGunStandingWalkingAndFighting() {
         let expected = SpriteKey.required(through: .hospitals).filter { key in
             guard case .unit(let kind, .industrial) = key.subject else { return false }
-            return [.rifleman, .fieldGun].contains(kind) && key.pose != .working
+            return [.soldier4, .cannon2].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
         #expect(source.poses.count == 6)
@@ -33,7 +33,7 @@ import Testing
             #expect(Self.Pixels(mask).hasCoverage, "\(key)")
             guard case .unit(let kind, _) = key.subject else { continue }
             let pixels = Self.Pixels(sprite.base)
-            if kind == .rifleman {
+            if kind == .soldier4 {
                 #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
                         "\(key): the anchor is not on the ground between the feet")
             } else {
@@ -63,7 +63,7 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.rifleman, .fieldGun] {
+        for kind in [UnitKind.soldier4, .cannon2] {
             #expect(source.sprite(SpriteKey(.unit(kind, .industrial), .working, frame: 0)) == nil, "\(kind) working")
         }
     }
@@ -157,24 +157,24 @@ import Testing
 struct IndustrialWarriorsRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["INDUSTRIAL_WARRIORS_RENDERS"] ?? "/", isDirectory: true)
 
-    private static let kinds: [UnitKind] = [.rifleman, .fieldGun]
+    private static let kinds: [UnitKind] = [.soldier4, .cannon2]
 
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
         switch (kind, pose) {
-        case (.rifleman, .standing): "standing: at the order, a breath and a blink"
-        case (.rifleman, .walking): "walking: the rifle at the trail"
-        case (.rifleman, .fighting): "fighting: aim, fire, work the bolt, fire again"
-        case (.fieldGun, .standing): "standing: the crew wait by the gun"
-        case (.fieldGun, .walking): "walking: pushed and hauled, the wheels turning with the stride"
-        case (.fieldGun, .fighting): "fighting: fire and recoil, open the breech, load, close"
+        case (.soldier4, .standing): "standing: at the order, a breath and a blink"
+        case (.soldier4, .walking): "walking: the rifle at the trail"
+        case (.soldier4, .fighting): "fighting: aim, fire, work the bolt, fire again"
+        case (.cannon2, .standing): "standing: the crew wait by the gun"
+        case (.cannon2, .walking): "walking: pushed and hauled, the wheels turning with the stride"
+        case (.cannon2, .fighting): "fighting: fire and recoil, open the breech, load, close"
         default: pose.rawValue
         }
     }
 
     private static func scale(_ kind: UnitKind) -> Double {
         switch kind {
-        case .rifleman: 4
-        case .fieldGun: 3.1
+        case .soldier4: 4
+        case .cannon2: 3.1
         default: 3.6
         }
     }
@@ -183,7 +183,7 @@ struct IndustrialWarriorsRenders {
     /// units, as the approved worker does; the gun and the car what their wheels roll.
     private static func step(_ kind: UnitKind) -> Double {
         switch kind {
-        case .fieldGun: IndustrialWarriorsFieldGun.groundPerFrame
+        case .cannon2: IndustrialWarriorsFieldGun.groundPerFrame
         default: 4
         }
     }
@@ -238,7 +238,7 @@ struct IndustrialWarriorsRenders {
                     context.draw(ground, in: CGRect(x: 0, y: 0, width: width, height: height))
                     let drawn = try #require(look.render(pose, frame: frame, canvas: large))
                     let big = Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour)
-                    let start = kind == .rifleman ? 290.0 : 360.0
+                    let start = kind == .soldier4 ? 290.0 : 360.0
                     let x = walking ? start + Double(i) * Self.step(kind) * scale : start + 80
                     Preview.place(big, anchor: large.anchor, at: CGPoint(x: x, y: groundLine), in: context)
                     let sprite = try #require(sprites.sprite(SpriteKey(.unit(kind, .industrial), pose, frame: frame)))
@@ -272,8 +272,8 @@ struct IndustrialWarriorsRenders {
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Industrial age's rifleman, field gun and armoured car beside the Alchemy age's musketeer, cannon and knight, "
                       + "in the colours of Rome, Angkor, Shang and Olmec", in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
-        let columns: [(UnitKind, Look)] = [(.musketeer, .alchemy), (.rifleman, .industrial), (.cannon, .alchemy), (.fieldGun, .industrial),
-                                          (.knight, .alchemy)]
+        let columns: [(UnitKind, Look)] = [(.soldier3, .alchemy), (.soldier4, .industrial), (.cannon1, .alchemy), (.cannon2, .industrial),
+                                          (.knight2, .alchemy)]
         for (i, (kind, age)) in columns.enumerated() {
             let left = Double(i * column)
             Preview.label("\(kind.stageName(at: Age(rawValue: age.rawValue)!)), \(age == .alchemy ? "Alchemy" : "Industrial") age", in: context,

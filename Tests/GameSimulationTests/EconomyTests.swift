@@ -140,7 +140,7 @@ private let load = Catalogue.standard.gathering.load
     @Test func onlyWorkersGatherOnLand() {
         var sim = duel(sites: [(.gold, 8, 6)])
         sim.exploreAll(me)
-        let spearman = sim.add(.spearman, me, 6.5, 6.5)
+        let spearman = sim.add(.soldier1, me, 6.5, 6.5)
         #expect(sim.apply(.gather(units: [spearman], site: SiteID(0)), from: me) == .refused(.notYours))
     }
 }
@@ -213,7 +213,7 @@ private let load = Catalogue.standard.gathering.load
         #expect(build(.house, 39, 20) == .refused(.placementBlocked))   // off the map
         #expect(build(.house, 25, 25) == .refused(.placementBlocked))   // unexplored
         #expect(build(.barracks, 8, 2) == .refused(.ageNotReached(.farms)))
-        let boat = sim.add(.boat, me, 6.5, 7.5)
+        let boat = sim.add(.fishingBoat, me, 6.5, 7.5)
         #expect(sim.apply(.construct(workers: [boat], building: .house, at: GridPoint(8, 2)), from: me) == .refused(.notYours))
         sim.players[0].resources[.wood] = 10
         #expect(build(.house, 8, 2) == .refused(.notEnough(ResourceAmounts([.wood: 20]))))
@@ -242,6 +242,8 @@ private let load = Catalogue.standard.gathering.load
 
     @Test func workersRepairADamagedBuilding() {
         var sim = duel()
+        // The starting workers, idle, would repair it too (requirement 12).
+        _ = sim.apply(.dismiss(units: sim.people(me, .worker)), from: me)
         let house = sim.add(.house, me, 8, 2)
         let i = sim.index(of: house)!
         sim.entities[i].health = 50
@@ -250,9 +252,10 @@ private let load = Catalogue.standard.gathering.load
         do { let reached = sim.run(until: { $0.living(builder).doing == .working }, limit: 200); #expect(reached) }
         let start = sim.living(house).health
         sim.run(100)
-        // At full health per buildTime worker-ticks.
+        // At repair_per_second health points a second (requirement 12).
         let stats = Catalogue.standard.stats(.house)
-        #expect(sim.living(house).health - start == 100 * stats.health / stats.buildTime)
+        let rate = Catalogue.standard.stats(.worker).repairing!
+        #expect(abs(Double(sim.living(house).health - start) - rate * 100 / Double(Tick.rate)) <= 1)
         do { let reached = sim.run(until: { $0.living(house).health == stats.health }, limit: 1_000); #expect(reached) }
         sim.step()
         #expect(sim.living(builder).task == .idle)
@@ -301,7 +304,7 @@ private let load = Catalogue.standard.gathering.load
 
     @Test func onlyWorkersDemolishAndOnlyTheirOwnBuildings() {
         var sim = duel()
-        let spearman = sim.add(.spearman, me, 6.5, 6.5)
+        let spearman = sim.add(.soldier1, me, 6.5, 6.5)
         let builder = sim.add(.worker, me, 7.5, 6.5)
         #expect(sim.apply(.demolish(workers: [spearman], building: sim.townCentre(me)), from: me) == .refused(.notYours))
         #expect(sim.apply(.demolish(workers: [builder], building: sim.townCentre(them)), from: me) == .refused(.invalidTarget))
@@ -369,8 +372,8 @@ private let load = Catalogue.standard.gathering.load
         sim.give(me, [.gold: 100])
         let centre = sim.townCentre(me)
         let barracks = sim.add(.barracks, me, 8, 8)
-        #expect(sim.apply(.train(at: barracks, unit: .spearman), from: me) == .refused(.ageNotReached(.farms)))
-        #expect(sim.apply(.train(at: centre, unit: .spearman), from: me) == .refused(.invalidTarget))
+        #expect(sim.apply(.train(at: barracks, unit: .soldier1), from: me) == .refused(.ageNotReached(.farms)))
+        #expect(sim.apply(.train(at: centre, unit: .soldier1), from: me) == .refused(.invalidTarget))
         #expect(sim.apply(.train(at: centre, unit: .car), from: me) == .refused(.invalidTarget))
         #expect(sim.apply(.train(at: sim.townCentre(them), unit: .worker), from: me) == .refused(.notYours))
         sim.players[0].resources = ResourceAmounts()

@@ -27,7 +27,7 @@ import Testing
     }
 
     @Test func everyKindIsDrawnInEveryView() {
-        #expect(kinds.map(\.0) == [.worker, .musketeer, .knight, .cannon])
+        #expect(kinds.map(\.0) == [.worker, .soldier3, .knight2, .cannon1])
         for (kind, source, _) in kinds {
             #expect(source.drawsViews(of: .unit(kind, .alchemy)), "\(kind)")
         }
@@ -51,7 +51,7 @@ import Testing
     }
 
     @Test func aViewOfAPoseTheKindLacksHasNoSprite() {
-        #expect(warriors.sprite(SpriteKey(.unit(.knight, .alchemy), .working, view: .front)) == nil)
+        #expect(warriors.sprite(SpriteKey(.unit(.knight2, .alchemy), .working, view: .front)) == nil)
     }
 
     /// Whether any pixel of a mask is set.
@@ -83,7 +83,7 @@ struct FacingsAlchemyRenders {
         try closeUp(kind, look: try #require(AlchemyPeopleLooks.look(kind)), canvas: .person)
     }
 
-    @Test(arguments: [UnitKind.knight, .musketeer, .cannon])
+    @Test(arguments: [UnitKind.knight2, .soldier3, .cannon1])
     func theWarriors(_ kind: UnitKind) throws {
         let width = AlchemyWarriorsLooks.canvas(kind).width
         try sheet(kind, source: AlchemyWarriorSprites(), width: width)

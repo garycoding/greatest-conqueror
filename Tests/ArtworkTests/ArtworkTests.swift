@@ -35,7 +35,7 @@ struct StonePeopleTests {
     /// The batch: every person of the checklist in its Stone-age look, each pose at every frame.
     static let batch: [SpriteKey] = SpriteKey.required(through: .towns).filter {
         // The car, of no age, is its own batch, and the boat belongs to the boats' batch (`StoneBoatSprites`).
-        if case .unit(let kind, .stone) = $0.subject { return kind != .car && kind != .boat }
+        if case .unit(let kind, .stone) = $0.subject { return kind != .car && kind != .fishingBoat }
         return false
     }.flatMap { key in (0..<12).map { SpriteKey(key.subject, key.pose, frame: $0) } }
 

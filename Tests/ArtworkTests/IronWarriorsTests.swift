@@ -16,7 +16,7 @@ import Testing
     @Test func theBatchIsTheIronWarriorsStandingWalkingAndFighting() {
         let expected = SpriteKey.required(through: .ships).filter { key in
             guard case .unit(let kind, .iron) = key.subject else { return false }
-            return [.swordsman, .horseman].contains(kind) && key.pose != .working
+            return [.soldier2, .knight1].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
         #expect(source.poses.count == 6)
@@ -32,7 +32,7 @@ import Testing
             #expect(Self.Pixels(mask).hasCoverage, "\(key)")
             guard case .unit(let kind, _) = key.subject else { continue }
             let pixels = Self.Pixels(sprite.base)
-            if kind == .swordsman {
+            if kind == .soldier2 {
                 #expect(pixels.standsOn(sprite.anchor, bothSides: key.pose == .standing),
                         "\(key): the anchor is not on the ground between the feet")
             } else {
@@ -62,7 +62,7 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.swordsman, .horseman] {
+        for kind in [UnitKind.soldier2, .knight1] {
             #expect(source.sprite(SpriteKey(.unit(kind, .iron), .working, frame: 0)) == nil, "\(kind) working")
         }
     }

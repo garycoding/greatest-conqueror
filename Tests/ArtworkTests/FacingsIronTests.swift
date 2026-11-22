@@ -51,7 +51,7 @@ import Testing
         for kind: UnitKind in [.worker] {
             #expect(people.drawsViews(of: .unit(kind, .iron)), "\(kind)")
         }
-        for kind: UnitKind in [.swordsman, .horseman] {
+        for kind: UnitKind in [.soldier2, .knight1] {
             #expect(warriors.drawsViews(of: .unit(kind, .iron)), "\(kind)")
         }
         #expect(!people.drawsViews(of: .unit(.worker, .bronze)))
@@ -69,7 +69,7 @@ struct FacingsIronRenders {
 
     static let kinds: [(UnitKind, String)] = [(.worker, "the farmer (worker)"), 
 
-                                              (.swordsman, "the swordsman"), (.horseman, "the horseman")]
+                                              (.soldier2, "the swordsman"), (.knight1, "the horseman")]
 
     static func canvas(_ kind: UnitKind) -> Canvas {
         IronPeopleLooks.look(kind) != nil ? IronPeopleLooks.canvas(kind) : IronWarriorsLooks.canvas(kind)

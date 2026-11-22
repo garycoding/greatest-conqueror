@@ -61,8 +61,9 @@ enum IndustrialPeopleLooks {
     static func look(_ kind: UnitKind) -> (any PersonLook)? {
         switch kind {
         case .worker: IndustrialPeopleFactoryHand()
-        case .spearman, .swordsman, .horseman, .knight, .musketeer, .cannon,
-             .rifleman, .fieldGun, .car, .boat: nil
+        case .soldier1, .soldier2, .knight1, .knight2, .soldier3, .cannon1,
+             .soldier4, .cannon2, .car, .fishingBoat,
+             .doctor, .knight3, .navyShip, .founder: nil
         }
     }
 }

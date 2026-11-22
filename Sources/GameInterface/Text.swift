@@ -22,6 +22,37 @@ public enum InterfaceText {
         }
     }
 
+    /// The name of an entity at the age of its owner. A worker's name follows
+    /// its work: gatherer, hunter, farmer, lumberjack, miner, builder or
+    /// repairer; idle, walking or demolishing, it is a worker.
+    public static func name(of entity: EntityView, at age: Age) -> String {
+        guard entity.kind == .unit(.worker) else { return name(of: entity.kind, at: age) }
+        if let job = entity.job {
+            switch job {
+            case .gathering(let site): return workerName(gathering: site)
+            case .working(.farm): return "Farmer"
+            case .constructing: return "Builder"
+            case .repairing: return "Repairer"
+            default: return "Worker"
+            }
+        }
+        switch entity.activity {
+        case .gathering(let site): return workerName(gathering: site)
+        case .carrying(let resource, _): return resource == .wood ? "Lumberjack" : resource == .gold ? "Miner" : "Worker"
+        case .constructing: return "Builder"
+        default: return "Worker"
+        }
+    }
+
+    static func workerName(gathering site: SiteKind) -> String {
+        switch site {
+        case .tree: "Lumberjack"
+        case .prey: "Hunter"
+        case .gold: "Miner"
+        case .fish: "Gatherer"
+        }
+    }
+
     /// The name of an entity's kind at the age of its owner.
     public static func name(of kind: EntityKind, at age: Age) -> String {
         switch kind {

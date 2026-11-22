@@ -225,7 +225,7 @@ extension Simulation {
         route.plannedFor = goal.anchor
         route.plannedAt = tick
         route.stuck = entities[i].route.stuck
-        let afloat = entities[i].isBoat
+        let afloat = entities[i].isAfloat
         if !entities[i].route.forceSearch && clearWay(from, goal.nearestPoint(to: from), goal: goal, afloat: afloat) {
             route.direct = true
             entities[i].route = route
@@ -248,7 +248,7 @@ extension Simulation {
         let d = (dx * dx + dy * dy).squareRoot()
         let reached = d <= speed
         let to = reached ? target : MapPosition(x: from.x + dx * speed / d, y: from.y + dy * speed / d)
-        guard clearWay(from, to, goal: nil, afloat: entities[i].isBoat) else {
+        guard clearWay(from, to, goal: nil, afloat: entities[i].isAfloat) else {
             entities[i].route.planned = false
             entities[i].route.forceSearch = true
             entities[i].route.stuck += 1

@@ -38,7 +38,7 @@ public struct AlchemyWarriorSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views.
-    static let viewed: Set<UnitKind> = [.knight, .musketeer, .cannon]
+    static let viewed: Set<UnitKind> = [.knight2, .soldier3, .cannon1]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .alchemy) = subject { return Self.viewed.contains(kind) }
@@ -60,17 +60,17 @@ public struct AlchemyWarriorSprites: ViewedSpriteSource {
 enum AlchemyWarriorsLooks {
     static func look(_ kind: UnitKind) -> (any PersonLook)? {
         switch kind {
-        case .knight: AlchemyWarriorsKnight()
-        case .musketeer: AlchemyWarriorsMusketeer()
-        case .cannon: AlchemyWarriorsCannon()
+        case .knight2: AlchemyWarriorsKnight()
+        case .soldier3: AlchemyWarriorsMusketeer()
+        case .cannon1: AlchemyWarriorsCannon()
         default: nil
         }
     }
 
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
-        case .knight: AlchemyWarriorsKnight.canvas
-        case .cannon: AlchemyWarriorsCannon.canvas
+        case .knight2: AlchemyWarriorsKnight.canvas
+        case .cannon1: AlchemyWarriorsCannon.canvas
         default: AlchemyWarriorsMusketeer.canvas
         }
     }

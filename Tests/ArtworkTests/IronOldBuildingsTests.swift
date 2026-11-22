@@ -56,7 +56,7 @@ import Testing
                 #expect(Self.source.drawsViews(of: subject) == (subject == .building(.boatHouse, .iron)), "\(subject)")
             }
         }
-        #expect(!Self.source.drawsViews(of: .unit(.boat, .iron)))
+        #expect(!Self.source.drawsViews(of: .unit(.fishingBoat, .iron)))
         let sprites = GameSprites()
         for key in Self.backs {
             let routed = try #require(sprites.sprite(key), "\(key)")
@@ -319,8 +319,8 @@ private enum IronOldBuildingsPreview {
             Placed(kind: .house, x: 7, y: 3, complete: true, civilization: .sumer),
             Placed(kind: .house, x: 4, y: 4, complete: false, civilization: .sumer),
             Placed(kind: .barracks, x: 10, y: 10, complete: true, civilization: .sumer),
-            Placed(kind: .watchTower, x: 9, y: 3, complete: false, civilization: .sumer),
-            Placed(kind: .watchTower, x: 13, y: 8, complete: true, civilization: .sumer),
+            Placed(kind: .tower, x: 9, y: 3, complete: false, civilization: .sumer),
+            Placed(kind: .tower, x: 13, y: 8, complete: true, civilization: .sumer),
         ]
         func depth(_ p: Placed) -> Double {
             let f = Catalogue.standard.stats(p.kind).footprint

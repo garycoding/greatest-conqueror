@@ -224,7 +224,7 @@ struct StoneBoatsRenders {
                                   at: CGPoint(x: 180 + Double(v) * 335, y: 400), in: context)
                     Preview.label(view.rawValue, in: context, at: CGPoint(x: 120 + Double(v) * 335, y: 300), size: 18)
                     // At game size: the view, and beside it the same view mirrored, as for a facing toward the left.
-                    let sprite = try #require(source.sprite(SpriteKey(.unit(.boat, .stone), pose, frame: frame, view: view)))
+                    let sprite = try #require(source.sprite(SpriteKey(.unit(.fishingBoat, .stone), pose, frame: frame, view: view)))
                     let tinted = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
                     Preview.place(tinted, anchor: sprite.anchor, at: CGPoint(x: 120 + Double(v) * 335, y: 120), in: context)
                     context.saveGState()
@@ -352,7 +352,7 @@ struct StoneBoatsRenders {
             (.walking, .front, false, 9.2, 4.0), (.walking, .back, false, 4.8, 10.6), (.working, .side, true, 7.6, 7.6),
         ]
         for (pose, view, mirrored, x, y) in boats {
-            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.boat, .stone), pose, view: view), at: (x, y), mirrored: mirrored, offset: false))
+            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.fishingBoat, .stone), pose, view: view), at: (x, y), mirrored: mirrored, offset: false))
         }
         things.sort { $0.depth < $1.depth }
         var frames: [CGImage] = []

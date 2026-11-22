@@ -21,6 +21,15 @@ struct Digest {
     mutating func add(_ p: MapPosition) { add(p.x); add(p.y) }
     mutating func add(_ amounts: ResourceAmounts) { for a in amounts.amounts { add(a) } }
     mutating func add(_ v: Double?) { if let v { add(true); add(v) } else { add(false) } }
+    mutating func add(_ kind: EntityKind) {
+        switch kind {
+        case .unit(let k): add(0); add(k.rawValue)
+        case .building(let k): add(1); add(k.rawValue)
+        }
+    }
+    mutating func add(_ levels: [AgeUpgrade]) {
+        add(levels.count); for l in levels { add(l.age.rawValue); add(l.health); add(l.attack) }
+    }
     mutating func add(_ attack: Attack?) {
         guard let attack else { add(false); return }
         add(true); add(attack.damage); add(attack.range); add(attack.interval); add(attack.area)
@@ -33,24 +42,26 @@ struct Digest {
             add(u.kind.rawValue); add(u.age.rawValue); add(u.cost); add(u.health); add(u.armour); add(u.speed); add(u.sight)
             add(u.attack); add(u.population); for g in u.gathering { add(g) }; add(u.farming)
             add(u.healing); add(u.repairing); add(u.radius)
-            add(u.trainedAt.count); for b in u.trainedAt { add(b.rawValue) }
+            add(u.trainedAt.count); for b in u.trainedAt { add(b) }
+            add(u.trains.count); for t in u.trains { add(t.rawValue) }
+            add(u.levels)
         }
         for b in c.buildings {
             add(b.kind.rawValue); add(b.age.rawValue); add(b.cost); add(b.buildTime); add(b.health); add(b.armour)
             add(b.footprint); add(b.sight); add(b.attack); add(b.housing)
             add(b.accepts.count); for r in b.accepts { add(r.rawValue) }
             add(b.trains.count); for u in b.trains { add(u.rawValue) }
-            add(b.levels.count); for l in b.levels { add(l.age.rawValue); add(l.health); add(l.attack) }
+            add(b.levels); add(b.demolishTime); add(b.demolishReturn)
         }
         add(c.production.count)
-        for p in c.production { add(p.maker.rawValue); add(p.unit.rawValue); add(p.age.rawValue); add(p.time) }
+        for p in c.production { add(p.maker); add(p.unit.rawValue); add(p.age.rawValue); add(p.time) }
         add(c.advances.count)
         for a in c.advances { add(a.from.rawValue); add(a.cost); add(a.time) }
         add(c.gathering.farmYield); add(c.gathering.farmReseed); add(c.gathering.load)
         for a in c.gathering.amountBySite { add(a) }
         add(c.bonuses.count)
         for b in c.bonuses { add(b.attacker.rawValue); add(b.defender.rawValue); add(b.multiplier) }
-        add(c.startingResources); add(c.startingPeople); add(c.populationMaximum)
+        add(c.startingResources); add(c.startingPeople); add(c.founderPeople); add(c.shipCargo); add(c.populationMaximum)
         if let car = c.car { add(true); add(car.killRadius); add(car.perPerson); add(car.laserRange); add(car.laserTime) } else { add(false) }
     }
 
@@ -103,6 +114,9 @@ extension Simulation {
         case .work(let b): d.add(3); d.add(b.rawValue)
         case .attack(let t): d.add(4); d.add(t.rawValue)
         case .demolish(let b): d.add(5); d.add(b.rawValue)
+        case .heal(let t): d.add(6); d.add(t.rawValue)
+        case .board(let s): d.add(7); d.add(s.rawValue)
+        case .land(let p): d.add(8); d.add(p)
         }
         d.add(Int(e.doing.rawValue))
         let r = e.route
@@ -118,5 +132,8 @@ extension Simulation {
         d.add(e.queue.count)
         for k in e.queue { d.add(k.rawValue) }
         d.add(e.trainProgress); d.add(e.advancing ?? -1); d.add(e.spawned)
+        d.add(e.foundedBy?.rawValue ?? -1); d.add(e.restUntil ?? -1)
+        d.add(e.passengers?.count ?? 0)
+        for passenger in e.passengers ?? [] { add(passenger, to: &d) }
     }
 }

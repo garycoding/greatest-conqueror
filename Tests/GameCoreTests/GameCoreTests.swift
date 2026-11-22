@@ -34,13 +34,18 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     for age in Age.allCases { #expect((c.advance(from: age) != nil) == (age.next != nil), "\(age)") }
     #expect(c.lastAge == .hospitals)
     #expect([BuildingKind.townCentre, .house].allSatisfy { c.stats($0).age == .towns })
-    #expect([BuildingKind.barracks, .watchTower].allSatisfy { c.stats($0).age == .farms })
+    #expect([BuildingKind.barracks, .tower].allSatisfy { c.stats($0).age == .farms })
     // Everything trainable is trained somewhere that trains it, and the reverse.
     for stats in c.units where !stats.trainedAt.isEmpty {
-        for building in stats.trainedAt { #expect(c.stats(building).trains.contains(stats.kind), "\(stats.kind) at \(building)") }
+        for maker in stats.trainedAt {
+            switch maker {
+            case .building(let b): #expect(c.stats(b).trains.contains(stats.kind), "\(stats.kind) at \(b)")
+            case .unit(let u): #expect(c.stats(u).trains.contains(stats.kind), "\(stats.kind) at \(u)")
+            }
+        }
     }
     for stats in c.buildings {
-        for unit in stats.trains { #expect(c.stats(unit).trainedAt.contains(stats.kind), "\(unit) at \(stats.kind)") }
+        for unit in stats.trains { #expect(c.stats(unit).trainedAt.contains(.building(stats.kind)), "\(unit) at \(stats.kind)") }
     }
     // Workers deliver food, wood and gold to the town centre; boats food and gold to the boat house.
     #expect(c.stats(.townCentre).accepts == [.food, .wood, .gold])
@@ -87,8 +92,8 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     }
     #expect(keys.contains(SpriteKey(.unit(.worker, .stone), .working)))
     #expect(keys.contains(SpriteKey(.unit(.worker, .bronze), .working)))
-    #expect(keys.contains(SpriteKey(.unit(.spearman, .bronze), .fighting)))
-    #expect(!keys.contains(SpriteKey(.unit(.swordsman, .iron), .fighting)))
+    #expect(keys.contains(SpriteKey(.unit(.soldier1, .bronze), .fighting)))
+    #expect(!keys.contains(SpriteKey(.unit(.soldier2, .iron), .fighting)))
     #expect(keys.contains(SpriteKey(.site(.gold), .complete)))
 }
 
@@ -143,7 +148,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum EncodingFixture { static let expected: UInt64 = 0xFE6D_956D_0BE2_8961 }
+enum EncodingFixture { static let expected: UInt64 = 0x49C5_5E08_68C3_5139 }
 
 @Test func samplesAreConsistent() {
     for view in [Samples.townsAgeOpening(), Samples.farmsAgeSkirmish()] {

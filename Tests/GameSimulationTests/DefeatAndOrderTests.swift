@@ -20,12 +20,12 @@ extension Simulation {
 }
 
 @Suite struct Defeat {
-    @Test func aPlayerWhoLosesEverythingWhilstAnAllyLivesStaysInTheMatchWithNothing() {
+    @Test func aPersonWhoLosesEverythingWhilstAnAllyLivesIsDefeatedAndReceivesAFounder() {
         var sim = trio()
         sim.destroyAll(me)
-        #expect(sim.entities.allSatisfy { $0.owner != me })
+        #expect(sim.entities.filter { $0.owner == me }.map(\.unitKind) == [.founder])
         let view = sim.view(for: me)
-        #expect(!view.players[0].isDefeated)
+        #expect(view.players[0].isDefeated)
         #expect(view.population == 0)
         #expect(sim.outcome == nil)
     }
@@ -39,15 +39,6 @@ extension Simulation {
         #expect(sim.view(for: me).events.contains(.allyDefeated(PlayerID(1))))
         #expect(sim.view(for: PlayerID(1)).events.contains(.allyDefeated(me)))
         #expect(sim.view(for: PlayerID(2)).outcome == .won(TeamID(1)))
-    }
-
-    @Test func boatsKeepNobodyInTheMatch() {
-        var sim = duel()
-        let boat = sim.add(.boat, them, 30.5, 30.5)
-        for i in sim.entities.indices where sim.entities[i].owner == them && sim.entities[i].id != boat { sim.kill(i) }
-        sim.step()
-        #expect(sim.outcome == .won(TeamID(0)))
-        #expect(sim.entity(boat) == nil)
     }
 
     @Test func aPlayerWithoutAnAllyIsDefeatedAtOnce() {

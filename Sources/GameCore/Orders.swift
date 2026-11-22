@@ -13,22 +13,23 @@ public enum Order: Hashable, Codable, Sendable {
     /// town centre (boats to the nearest boat house).
     case gather(units: [EntityID], site: SiteID)
     /// Workers work at a building: they construct it, repair it, or tend it if
-    /// it is a farm. Repair costs nothing and restores health at the rate of
-    /// construction.
+    /// it is a farm. Repair costs nothing; each worker restores
+    /// `UnitStats.repairing` health points a second (requirement 12).
     case work(units: [EntityID], at: EntityID)
     /// Workers construct a new building with its footprint's origin at `at`.
     case construct(workers: [EntityID], building: BuildingKind, at: GridPoint)
-    /// Workers pull down one of the player's own buildings, taking half its
-    /// construction time; the player receives half its cost, and training or
-    /// an advance under way there is cancelled and refunded.
+    /// Workers pull down one of the player's own buildings, taking its
+    /// `demolish_seconds` of work; the player receives its `demolish_return`
+    /// share of its cost, and training or an advance under way there is
+    /// cancelled and refunded.
     case demolish(workers: [EntityID], building: EntityID)
     /// Attack a unit or building that is not an ally's. A warfighter whose
     /// target is gone takes the nearest opponent in sight. Towers and town
     /// centres shoot units only.
     case attack(units: [EntityID], target: EntityID)
-    /// Queue a unit for training at a building.
+    /// Queue a unit for training at a maker: a building, or a navy ship.
     case train(at: EntityID, unit: UnitKind)
-    /// Remove the last unit from a building's queue, refunding its cost.
+    /// Remove the last unit from a maker's queue, refunding its cost.
     case cancelTraining(at: EntityID)
     /// Begin the advance to the next age at one of the player's town centres,
     /// paying its cost; the player reaches the next age when the advance's
@@ -49,6 +50,17 @@ public enum Order: Hashable, Codable, Sendable {
     case summonCar
     /// Turn the kill radius of the person's own cars on or off (ruled 2026-11-21).
     case setKillRadius(cars: [EntityID], on: Bool)
+    /// Doctors heal a wounded unit of the player's up to its maximum health (requirement 13).
+    case heal(doctors: [EntityID], target: EntityID)
+    /// Troops (soldiers, knights and cannons) board a navy ship of the
+    /// player's that is at the shore, as many as it has room for (requirement 16).
+    case board(units: [EntityID], ship: EntityID)
+    /// Navy ships sail to the shore near a point on land and land their troops there (requirement 16).
+    case land(ships: [EntityID], at: MapPosition)
+    /// A founder lays out a town centre, free, at `at`, and goes to build it
+    /// (ruled 2026-11-22). When it is finished, `Catalogue.founderPeople`
+    /// workers appear beside it and the founder becomes a worker.
+    case found(founder: EntityID, at: GridPoint)
 }
 
 /// Why an order was refused. The interface shows it to the player.

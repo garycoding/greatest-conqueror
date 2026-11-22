@@ -34,7 +34,7 @@ import Testing
     }
 
     @Test func siteGivesGatherForWorkersOnly() {
-        let worker = id(.unit(.worker)), spearman = id(.unit(.spearman))
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
         let tree = view.sites.first { $0.kind == .tree }!
         #expect(MapCommands.contextualOrder(on: .site(tree), view: view, selection: [worker, spearman])
                 == .gather(units: [worker], site: tree.id))
@@ -47,7 +47,7 @@ import Testing
         let worker = id(.unit(.worker))
         var boat = view.entity(worker)!
         boat.id = EntityID(9_000)
-        boat.kind = .unit(.boat)
+        boat.kind = .unit(.fishingBoat)
         view.entities.append(boat)
         var gold = view.sites.first { $0.kind == .gold }!
         gold.id = SiteID(9_000)
@@ -63,8 +63,8 @@ import Testing
     }
 
     @Test func ownUnfinishedOrDamagedBuildingGivesWorkForWorkers() {
-        let worker = id(.unit(.worker)), spearman = id(.unit(.spearman))
-        let tower = view.entities.first { $0.kind == .building(.watchTower) && $0.activity != .idle }!
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
+        let tower = view.entities.first { $0.kind == .building(.tower) && $0.activity != .idle }!
         #expect(MapCommands.contextualOrder(on: .entity(tower), view: view, selection: [worker, spearman])
                 == .work(units: [worker], at: tower.id))
         var damaged = view.entity(id(.building(.house)))!
@@ -84,7 +84,7 @@ import Testing
     @Test func aFarmTakesWorkers() {
         var v = view
         v.age = .ships
-        let worker = id(.unit(.worker)), spearman = id(.unit(.spearman))
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
         let place = EntityView(id: EntityID(9000), owner: v.player, kind: .building(.farm),
                                position: MapPosition(x: 20.5, y: 20.5), tile: GridPoint(20, 20), facing: .right, health: 150,
                                maxHealth: 150, activity: .idle)
@@ -106,7 +106,7 @@ import Testing
             v.entities[v.entities.count - 1].job = job
         }
         for i in v.entities.indices where v.entities[i].id == workers[0] { v.entities[i].job = .gathering(.tree) }
-        let clubman = id(.unit(.spearman))
+        let clubman = id(.unit(.soldier1))
         let onScreen = [workers[0], extra, idle, clubman]   // `far` is off the screen
         // Lumberjacks on the screen, whether chopping or carrying; not the idle one, the clubman or the one off the screen.
         #expect(MapCommands.selection(afterDoubleClickOn: workers[0], onScreen: onScreen, view: v) == [workers[0], extra])
@@ -118,8 +118,8 @@ import Testing
     }
 
     @Test func anOpponentGivesAttack() {
-        let clubman = id(.unit(.spearman))
-        let enemy = view.entity(id(.unit(.spearman), owner: 1))!
+        let clubman = id(.unit(.soldier1))
+        let enemy = view.entity(id(.unit(.soldier1), owner: 1))!
         #expect(MapCommands.contextualOrder(on: .entity(enemy), view: view, selection: [clubman])
                 == .attack(units: [clubman], target: enemy.id))
         let enemyTown = view.entity(id(.building(.townCentre), owner: 1))!
@@ -128,10 +128,58 @@ import Testing
     }
 
     @Test func nothingIsOrderedWithoutOwnPeopleSelected() {
-        let enemy = view.entity(id(.unit(.spearman), owner: 1))!
+        let enemy = view.entity(id(.unit(.soldier1), owner: 1))!
         let house = id(.building(.house))
         #expect(MapCommands.contextualOrder(on: .ground(MapPosition(x: 1, y: 1)), view: view, selection: []) == nil)
         #expect(MapCommands.contextualOrder(on: .ground(MapPosition(x: 1, y: 1)), view: view, selection: [enemy.id]) == nil)
         #expect(MapCommands.contextualOrder(on: .ground(MapPosition(x: 1, y: 1)), view: view, selection: [house]) == nil)
     }
+
+    // MARK: Navy ships, doctors and founders (requirements 13 and 16, ruled 2026-11-22)
+
+    /// The skirmish with a navy ship of the player's beside its first worker.
+    func withShip(passengers: Int) -> (PlayerView, EntityID) {
+        var view = self.view
+        var ship = view.entity(id(.unit(.worker)))!
+        ship.id = EntityID(9_100)
+        ship.kind = .unit(.navyShip)
+        ship.passengers = passengers
+        view.entities.append(ship)
+        return (view, ship.id)
+    }
+
+    @Test func troopsRightClickedOntoTheirShipBoardIt() {
+        let (view, ship) = withShip(passengers: 0)
+        let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
+        #expect(MapCommands.contextualOrder(on: .entity(view.entity(ship)!), view: view, selection: [worker, spearman])
+                == .board(units: [spearman], ship: ship))
+    }
+
+    @Test func aLoadedShipRightClickedOntoLandLandsAndOntoWaterMoves() {
+        var (view, ship) = withShip(passengers: 3)
+        let land = MapPosition(x: 3.5, y: 4.5)
+        #expect(MapCommands.contextualOrder(on: .ground(land), view: view, selection: [ship]) == .land(ships: [ship], at: land))
+        view.terrain[4 * view.mapWidth + 3] = .deepWater
+        #expect(MapCommands.contextualOrder(on: .ground(land), view: view, selection: [ship]) == .move(units: [ship], to: land))
+        let (empty, unloaded) = withShip(passengers: 0)
+        #expect(MapCommands.contextualOrder(on: .ground(MapPosition(x: 3.5, y: 6.5)), view: empty, selection: [unloaded])
+                == .move(units: [unloaded], to: MapPosition(x: 3.5, y: 6.5)))
+    }
+
+    @Test func doctorsRightClickedOntoAWoundedUnitOfTheirsHealIt() {
+        var view = self.view
+        var doctor = view.entity(id(.unit(.worker)))!
+        doctor.id = EntityID(9_200)
+        doctor.kind = .unit(.doctor)
+        view.entities.append(doctor)
+        let spearman = id(.unit(.soldier1))
+        let i = view.entities.firstIndex { $0.id == spearman }!
+        view.entities[i].health = 1
+        #expect(MapCommands.contextualOrder(on: .entity(view.entities[i]), view: view, selection: [doctor.id])
+                == .heal(doctors: [doctor.id], target: spearman))
+        view.entities[i].health = view.entities[i].maxHealth
+        #expect(MapCommands.contextualOrder(on: .entity(view.entities[i]), view: view, selection: [doctor.id])
+                == .move(units: [doctor.id], to: view.entities[i].position))
+    }
 }
+
