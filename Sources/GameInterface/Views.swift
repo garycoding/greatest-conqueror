@@ -22,7 +22,7 @@ public struct ResourceBar: View {
                     .overlay(Circle().stroke(Palette.ink, lineWidth: 1.2)).frame(width: 16, height: 16)
                 Text(model.civilizationName).font(Typeface.text(15, bold: true))
             }
-            Text("\(model.ageName) Age")
+            Text(model.ageName)
                 .font(Typeface.text(13, bold: true))
                 .padding(.horizontal, 10).padding(.vertical, 3)
                 .cartoonBox(fill: Palette.ochre.opacity(0.55), radius: 10, lineWidth: 1.2)
