@@ -166,7 +166,7 @@ import Testing
         let (view, ship) = withShip(passengers: 0)
         let worker = id(.unit(.worker)), spearman = id(.unit(.soldier1))
         #expect(MapCommands.contextualOrder(on: .entity(view.entity(ship)!), view: view, selection: [worker, spearman])
-                == .board(units: [spearman], ship: ship))
+                == .board(units: [worker, spearman], ship: ship))
     }
 
     @Test func aLoadedShipRightClickedOntoLandLandsAndOntoWaterMoves() {

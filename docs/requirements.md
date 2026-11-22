@@ -60,7 +60,7 @@ These come from the person for whom the game is made and are settled (2026-11-21
 13. Doctors heal wounded units up to their maximum health. Each doctor adds a set number of health points a second, so more doctors heal a unit faster. An idle doctor heals any wounded unit of its player within a set radius, moving to stand beside it.
 14. Fishing boats catch fish (food) and mine gold in the water.
 15. Soldiers, knights and cannons attack.
-16. Navy ships carry up to 20 troops and attack with guns. Troops board a navy ship that is at the shore when the player right-clicks the ship with them selected, and land when the player right-clicks the shore with the ship selected. Troops aboard are lost if the ship is destroyed.
+16. Navy ships carry up to 20 troops and attack with guns. Troops are soldiers, knights, cannons, workers and doctors (ruled 2026-11-22). Troops board a navy ship that is at the shore when the player right-clicks the ship with them selected, and land when the player right-clicks the shore with the ship selected. Troops aboard are lost if the ship is destroyed.
 17. The units, by the age in which each maker can first make them:
 
 | Age | Unit | Maker |
