@@ -17,7 +17,7 @@ import Testing
                 NavyShipSprites()],
         .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(),
                    AlchemyBoatSprites(), NavyShipSprites()],
-        .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(),
+        .industrial: [IndustrialOldBuildingSprites(), IndustrialPeopleSprites(), IndustrialWarriorSprites(), IndustrialNewPeopleSprites(),
                       IndustrialBoatSprites(), NavyShipSprites()],
     ]
     var missing: [SpriteKey] = []
