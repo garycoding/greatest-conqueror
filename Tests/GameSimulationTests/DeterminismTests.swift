@@ -18,7 +18,7 @@ enum Script {
         let mine = view.entities.filter { $0.owner == view.player }
         guard let centre = mine.first(where: { $0.kind == .building(.townCentre) }) else { return [] }
         let held = view.resources
-        let bronze = view.age >= .bronze
+        let bronze = view.age >= .farms
         func people(_ kind: UnitKind) -> [EntityView] { mine.filter { $0.kind == .unit(kind) } }
         func idle(_ kind: UnitKind) -> [EntityID] { people(kind).filter { $0.activity == .idle }.map(\.id) }
         func buildings(_ kind: BuildingKind) -> [EntityView] { mine.filter { $0.kind == .building(kind) } }
@@ -42,61 +42,39 @@ enum Script {
             return nil
         }
         var out: [Order] = []
+        // The first worker builds; the rest gather.
+        let builder = people(.worker).first?.id
         if t == 1 {
-            let workers = people(.worker).map(\.id)
-            if let prey = nearest(.prey) { out.append(.gather(units: Array(workers.prefix(2)), site: prey)) }
-            if let tree = nearest(.tree) { out.append(.gather(units: Array(workers.dropFirst(2)), site: tree)) }
-            out.append(.train(at: centre.id, unit: .engineer))
+            let workers = people(.worker).map(\.id).filter { $0 != builder }
+            if let prey = nearest(.prey) { out.append(.gather(units: Array(workers.prefix(1)), site: prey)) }
+            if let tree = nearest(.tree) { out.append(.gather(units: Array(workers.dropFirst(1)), site: tree)) }
+            out.append(.train(at: centre.id, unit: .worker))
             return out
         }
-        // Idle workers go where the need is: food first, then wood, and in the
-        // Bronze age to the stock pen, copper and tin.
-        var herders = people(.worker).filter { $0.activity == .working }.count
-        var sent: [EntityID] = []
-        if let pen = complete(.stockPen) {
-            for worker in idle(.worker) + people(.worker).filter({ $0.activity != .working }).map(\.id)
-            where herders < 2 && !sent.contains(worker) {
-                out.append(.work(units: [worker], at: pen.id))
-                herders += 1
-                sent.append(worker)
-            }
-        }
-        for (k, worker) in idle(.worker).enumerated() where !sent.contains(worker) {
-            let kinds: [SiteKind] = bronze ? [.copper, .tin, .tree]
-                : held[.food] < 300 && nearest(.prey) != nil ? [.prey] : held[.wood] < 300 ? [.tree] : [.stone, .tree]
+        // Idle workers go where the need is: food, wood and gold in turn.
+        for (k, worker) in idle(.worker).enumerated() where worker != builder {
+            let kinds: [SiteKind] = held[.food] < 300 && nearest(.prey) != nil ? [.prey, .gold] : held[.wood] < 300 ? [.tree] : [.gold, .tree]
             if let site = nearest(kinds[k % kinds.count]) ?? nearest(.tree) { out.append(.gather(units: [worker], site: site)) }
         }
-        if let engineer = idle(.engineer).first {
-            let tree = nearest(.tree).flatMap { id in view.sites.first { $0.id == id }?.tile } ?? centre.tile
+        if let builder, idle(.worker).contains(builder) {
             let crowded = view.populationLimit - view.population <= 1 && buildings(.house).count < 3
-            if buildings(.storagePit).isEmpty, let at = spot(.storagePit, near: tree) {
-                out.append(.construct(engineers: [engineer], building: .storagePit, at: at))
-            } else if crowded, let at = spot(.house, near: centre.tile) {
-                out.append(.construct(engineers: [engineer], building: .house, at: at))
-            } else if bronze, buildings(.stockPen).isEmpty, let at = spot(.stockPen, near: centre.tile) {
-                out.append(.construct(engineers: [engineer], building: .stockPen, at: at))
+            if crowded, let at = spot(.house, near: centre.tile) {
+                out.append(.construct(workers: [builder], building: .house, at: at))
             } else if bronze, buildings(.barracks).isEmpty, let at = spot(.barracks, near: centre.tile) {
-                out.append(.construct(engineers: [engineer], building: .barracks, at: at))
+                out.append(.construct(workers: [builder], building: .barracks, at: at))
             } else if bronze, buildings(.watchTower).isEmpty, let at = spot(.watchTower, near: centre.tile) {
-                out.append(.construct(engineers: [engineer], building: .watchTower, at: at))
+                out.append(.construct(workers: [builder], building: .watchTower, at: at))
             }
         }
-        let scholars = idle(.scholar)
-        if !scholars.isEmpty { out.append(.work(units: scholars, at: centre.id)) }
-        // One person in training at a time, scholars and workers before warfighters.
-        if case .training = centre.activity {} else {
-            if people(.scholar).count < 2 { out.append(.train(at: centre.id, unit: .scholar)) }
-            else if people(.worker).count < 5 { out.append(.train(at: centre.id, unit: .worker)) }
-            else if t > 2_500 && held[.food] >= (bronze ? 150 : 400) { out.append(.train(at: centre.id, unit: .clubman)) }
+        // One worker in training at a time, up to six.
+        if case .training = centre.activity {} else if people(.worker).count < 6 {
+            out.append(.train(at: centre.id, unit: .worker))
         }
         if let barracks = complete(.barracks), t % 300 == 0 {
             out.append(.train(at: barracks.id, unit: .spearman))
-            let clubmen = people(.clubman).map(\.id)
-            if !clubmen.isEmpty { out.append(.upgrade(units: clubmen, to: .spearman, at: barracks.id)) }
         }
-        if view.ageProgress >= 1 { out.append(.advanceAge) }
-        if bronze && !view.improvements.contains(.betterTools) {
-            out.append(.research(at: centre.id, improvement: .betterTools))
+        if !bronze, view.ageProgress == 0, let advance = catalogue.advance(from: view.age), held.covers(advance.cost) {
+            out.append(.advanceAge(at: centre.id))
         }
         if t >= 4_000 && t % 200 == 0 {
             let fighters = mine.filter { e in
@@ -125,7 +103,6 @@ enum Script {
         var constructed = 0
         var trained = 0
         var destroyed = 0
-        var researched = 0
         var ages = 0
     }
 
@@ -140,7 +117,6 @@ enum Script {
                         case .constructed: log.constructed += 1
                         case .trained: log.trained += 1
                         case .destroyed: log.destroyed += 1
-                        case .researched: log.researched += 1
                         case .ageReached: log.ages += 1
                         default: break
                         }
@@ -158,7 +134,7 @@ enum Script {
 @Suite struct Determinism {
     /// The checksum at the end of the scripted match. A second process must
     /// reproduce it; a change to the rules that changes the match changes it.
-    static let storedChecksum: UInt64 = 0xD98A_E2B1_1D05_3CC3
+    static let storedChecksum: UInt64 = 0x9EBB_C067_B33B_549D
 
     @Test func theScriptedMatchEndsWithTheStoredChecksum() {
         var sim = Simulation(setup: Samples.twoPlayerSetup(seed: 7))
@@ -170,8 +146,7 @@ enum Script {
         #expect(log.accepted >= 30)
         #expect(log.constructed >= 4)
         #expect(log.trained >= 10)
-        #expect(log.ages >= 1 && sim.players[0].age == .bronze)
-        #expect(log.researched >= 1)
+        #expect(log.ages >= 1 && sim.players[0].age == .farms)
         #expect(log.destroyed >= 1)
         #expect(sim.checksum() == Self.storedChecksum, "\(String(sim.checksum(), radix: 16))")
     }

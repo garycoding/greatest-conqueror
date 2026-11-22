@@ -3,14 +3,12 @@
 
 import GameCore
 
-// Combat. A blow does the attack's damage, plus bronzeWeapons for a warfighter,
-// times `Catalogue.bonus` where one person kind strikes another, rounded, less
-// the defender's armour (plus shields for a warfighter), and never less than 1.
-// A blow at or within `Attack.range` lands at once: melee and ranged differ only
-// in reach. Allies never harm one another (requirement 6), and founders can
-// neither strike nor be harmed (requirement 27). A blow with an area (the
-// catapult's stone) also harms every opponent within that many tiles of the
-// target, and never an ally (requirements, "Military").
+// Combat. A blow does the attack's damage, times `Catalogue.bonus` where one
+// unit kind strikes another, rounded, less the defender's armour, and never
+// less than 1. A blow at or within `Attack.range` lands at once: melee and
+// ranged differ only in reach. Allies never harm one another, and nothing
+// harms a car. A blow with an area (a cannon's shot) also harms every
+// opponent within that many tiles of the target, and never an ally.
 
 extension Simulation {
     /// Whether people of a player may strike an entity.
@@ -89,14 +87,10 @@ extension Simulation {
     func harm(from attacker: Int, to target: Int, attack: Attack) -> Int {
         let a = entities[attacker], t = entities[target]
         var damage = Double(attack.damage)
-        if let kind = a.unitKind, kind.isWarfighter {
-            damage += Double(players[a.owner.rawValue].improvements.reduce(0) { $0 + catalogue.stats($1).warfighterDamage })
-        }
         if let ak = a.unitKind, let tk = t.unitKind { damage *= tables.bonus(ak, against: tk) }
-        var armour: Int
+        let armour: Int
         if let tk = t.unitKind {
             armour = tables.unit(tk).armour
-            if tk.isWarfighter { armour += players[t.owner.rawValue].improvements.reduce(0) { $0 + catalogue.stats($1).warfighterArmour } }
         } else if let tk = t.buildingKind {
             armour = tables.building(tk).armour
         } else {
@@ -156,8 +150,6 @@ extension Simulation {
                 buildingAt[k] = -1
                 blocked[k] = !terrain[k].isPassable || siteAt[k] >= 0 && sites[Int(siteAt[k])].kind.blocksTile
             }
-            // Whoever stood on a bridge piece that falls goes to the nearest open ground.
-            if kind == .bridge { moveAside(from: footprintTiles(origin: entities[i].origin, size: entities[i].size)) }
         }
         deathsPending = true
     }

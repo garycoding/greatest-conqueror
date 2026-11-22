@@ -12,13 +12,13 @@ import GameCore
 /// The map is made in this order: the starts are spread on a ring; the ground
 /// (grass, dirt, sand, forest) is shaped by smooth noise; lakes, rivers and coast
 /// are laid over it, never near a start; each start is cleared and given the same
-/// kit of sites (trees, prey, stone, copper, tin, gold within reach, iron and oil
-/// farther out); the rest of the map is scattered with further deposits, herds
+/// kit of sites (trees, prey and gold within reach); the rest of the map is
+/// scattered with further gold mines, herds
 /// and trees; any start that cannot walk to the others is joined to them by a
 /// path cut through water or trees; and last, the water is given its own
 /// resources, for boats (ruled 2026-11-21): shoals of fish, two tiles by two,
-/// and rocks of stone, copper, tin, gold and iron rising from it, one near each
-/// start that has water within reach and the rest scattered.
+/// and rocks of gold rising from it, one near each start that has water within
+/// reach and the rest scattered.
 public struct MapGenerator: MapGenerating {
     public init() {}
 
@@ -123,8 +123,6 @@ struct MapBuilder {
     private var sites: [ResourceSite?] = []
     /// The index in `sites` of the site on each tile, or -1.
     private var siteAt: [Int]
-    /// The tiles of the cluster `scatterCluster` last put.
-    private var lastCluster: [GridPoint] = []
     private var starts: [GridPoint] = []
     /// The centre of each start's town centre footprint, in tile units.
     private var centres: [(x: Double, y: Double)] = []
@@ -354,18 +352,12 @@ struct MapBuilder {
         return candidates.prefix(count).map(\.tile)
     }
 
-    /// Copper, tin and iron deposits near each player's start.
-    static let nearDeposits = 5
-
     private mutating func giveKit(to s: Int) {
         let (cx, cy) = centres[s]
         let near = Zone.near(x: cx, y: cy, maxSquared: 11 * 11)
         let items = [
             KitItem(kind: .tree, count: 14, minDistance: 6, maxDistance: 8.5, radius: 3),
             KitItem(kind: .prey, count: 4, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .stone, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .copper, count: Self.nearDeposits, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .tin, count: Self.nearDeposits, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .gold, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
         ]
         var slots = Array(0..<items.count)
@@ -375,11 +367,6 @@ struct MapBuilder {
             let slotAngle = turn + Double(slots[k]) * 2 * Double.pi / Double(items.count)
             place(item, aroundX: cx, y: cy, slotAngle: slotAngle, zone: near)
         }
-        let far = Zone.near(x: cx, y: cy, maxSquared: 26 * 26)
-        let iron = KitItem(kind: .iron, count: Self.nearDeposits, minDistance: 15, maxDistance: 22, radius: 2)
-        let oil = KitItem(kind: .oilField, count: 2, minDistance: 16, maxDistance: 23, radius: 2)
-        place(iron, aroundX: cx, y: cy, slotAngle: turn + 0.5, zone: far)
-        place(oil, aroundX: cx, y: cy, slotAngle: turn + 0.5 + Double.pi, zone: far)
     }
 
     /// Puts a cluster of `item` at the distance and angle asked for; if the
@@ -398,49 +385,27 @@ struct MapBuilder {
         for t in best { put(item.kind, t.x, t.y) }
     }
 
-    /// Clusters of every kind over the whole field, away from the starts.
-    /// Copper and tin come in pairs of clusters of the same size, so that the
-    /// field holds as many tin deposits as copper.
+    /// Clusters of prey and gold over the whole field, away from the starts.
     private mutating func scatter() {
         let area = Double(w * h) / 9216
         func clusters(_ n: Double) -> Int { max(2, Int((n * area).rounded())) }
-        for _ in 0..<clusters(6) {
-            let copper = scatterCluster(.copper, size: rng.int(3...4))
-            if copper > 0 && scatterCluster(.tin, size: copper, exactly: true, attempts: 120) == 0 {
-                removeLastCluster()
-            }
-        }
         let plan: [(SiteKind, Int, ClosedRange<Int>)] = [
             (.prey, clusters(14), 3...5),
-            (.stone, clusters(7), 3...4),
             (.gold, clusters(5), 3...4),
-            (.iron, clusters(5), 3...4),
-            (.oilField, clusters(4), 2...3),
         ]
         for (kind, count, size) in plan {
             for _ in 0..<count { _ = scatterCluster(kind, size: rng.int(size)) }
         }
     }
 
-    /// Takes away the cluster `scatterCluster` last put (a copper cluster for
-    /// which no tin cluster of the same size was found).
-    private mutating func removeLastCluster() {
-        for t in lastCluster {
-            let i = t.y * w + t.x
-            if siteAt[i] >= 0 { sites[siteAt[i]] = nil; siteAt[i] = -1 }
-        }
-        lastCluster = []
-    }
-
     /// Puts one cluster of up to `size` sites of `kind` somewhere away from the
-    /// starts (exactly `size` when `exactly`), and returns how many it put.
-    private mutating func scatterCluster(_ kind: SiteKind, size n: Int, exactly: Bool = false, attempts: Int = 30) -> Int {
+    /// starts, and returns how many it put.
+    private mutating func scatterCluster(_ kind: SiteKind, size n: Int, attempts: Int = 30) -> Int {
         for _ in 0..<attempts {
             let x = rng.below(w), y = rng.below(h)
             let tiles = clusterTiles(kind, count: n, x: x, y: y, radius: 2, zone: .away)
-            if exactly ? tiles.count == n : tiles.count >= min(n, 2) {
+            if tiles.count >= min(n, 2) {
                 for t in tiles { put(kind, t.x, t.y) }
-                lastCluster = tiles
                 return tiles.count
             }
         }
@@ -501,11 +466,11 @@ struct MapBuilder {
     }
 
     private mutating func seedWater() {
-        // Each start with water in reach: a shoal and a stone rock in the nearest water that holds them.
+        // Each start with water in reach: a shoal and a gold rock in the nearest water that holds them.
         for (cx, cy) in centres {
             let near = waterNear(cx, cy)
             if let t = near.first(where: { shoalFits($0.x, $0.y) }) { putShoal(t.x, t.y) }
-            if let t = near.first(where: { rockFits($0.x, $0.y) }) { put(.stone, t.x, t.y) }
+            if let t = near.first(where: { rockFits($0.x, $0.y) }) { put(.gold, t.x, t.y) }
         }
         // The rest of the water, in proportion to the field.
         let area = Double(w * h) / 9216
@@ -520,21 +485,9 @@ struct MapBuilder {
         for _ in 0..<shoals {
             if let t = randomWater({ shoalFits($0, $1) }) { putShoal(t.x, t.y) }
         }
-        // Rounds of rocks, each kind in its own place; copper and tin only
-        // together, so that the field holds as many tin deposits as copper.
+        // Rounds of gold rocks.
         for _ in 0..<rounds {
-            var chosen: [(SiteKind, GridPoint)] = []
-            for kind in [SiteKind.stone, .copper, .tin, .gold, .iron] {
-                for _ in 0..<200 {
-                    let x = rng.below(w), y = rng.below(h)
-                    if rockFits(x, y), !chosen.contains(where: { abs($0.1.x - x) <= 1 && abs($0.1.y - y) <= 1 }) {
-                        chosen.append((kind, GridPoint(x, y)))
-                        break
-                    }
-                }
-            }
-            let pair = chosen.filter { $0.0 == .copper || $0.0 == .tin }.count == 2
-            for (kind, t) in chosen where pair || (kind != .copper && kind != .tin) { put(kind, t.x, t.y) }
+            if let t = randomWater({ rockFits($0, $1) }) { put(.gold, t.x, t.y) }
         }
     }
 
@@ -570,7 +523,7 @@ struct MapBuilder {
 
     /// Cuts the cheapest path from each start that cannot reach the first start
     /// to the ground the first start can reach: a tile of water becomes sand
-    /// and a tree is felled; stone and metal deposits are never cut. A shortest
+    /// and a tree is felled; gold mines are never cut. A shortest
     /// path in which free tiles cost nothing and the others cost one.
     private mutating func joinStarts() {
         let anchor = starts[0].y * w + starts[0].x

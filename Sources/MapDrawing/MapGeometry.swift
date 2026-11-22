@@ -78,29 +78,19 @@ enum Stature {
     /// A person's height above the feet.
     static let person = 48.0
     /// Half the width a person is hit across.
-    static func personHalfWidth(_ kind: UnitKind) -> Double { kind == .chariot ? 26 : 14 }
-    static func personHeight(_ kind: UnitKind) -> Double { kind == .chariot ? 40 : person + 4 }
+    static func personHalfWidth(_ kind: UnitKind) -> Double { 14 }
+    static func personHeight(_ kind: UnitKind) -> Double { person + 4 }
 
     /// The height of a building's block.
     static func building(_ kind: BuildingKind) -> Double {
         switch kind {
         case .townCentre: 40
         case .house: 26
-        case .storagePit: 4
-        case .stockPen: 12
         case .barracks: 32
         case .watchTower: 58
-        case .palisade: 20
         case .farm: 3
         case .stable: 28
-        case .siegeWorkshop: 32
-        case .stoneWall: 24
         case .castle: 60
-        case .alchemistsWorkshop: 30
-        case .factory: 40
-        case .railwayDepot: 28
-        case .oilWell: 34
-        case .bridge: 6
         case .boatHouse: 30
         }
     }
@@ -110,8 +100,7 @@ enum Stature {
         switch kind {
         case .tree: 52
         case .prey: 22
-        case .stone, .copper, .tin, .gold, .iron: 26
-        case .oilField: 8
+        case .gold: 26
         case .fish: 6
         }
     }
@@ -193,23 +182,11 @@ public enum MapHitTesting {
         return person ?? building
     }
 
-    /// The tiles under a building that stands on its site, an oil well over
-    /// its field: the site there is hidden by the building and is not drawn.
-    public static func coveredSiteTiles(in view: PlayerView) -> Set<GridPoint> {
-        var tiles = Set<GridPoint>()
-        for e in view.entities {
-            guard case .building(let kind) = e.kind, Placement.site(for: kind) != nil else { continue }
-            for t in Placement.footprint(kind, at: e.tile) { tiles.insert(t) }
-        }
-        return tiles
-    }
-
     /// The site drawn under `point`, among those on explored tiles.
     public static func site(at point: CGPoint, in view: PlayerView, geometry: MapGeometry) -> ResourceSite? {
         let zoom = geometry.camera.zoom
         var best: ResourceSite?, bestDepth = -Double.infinity
-        let covered = coveredSiteTiles(in: view)
-        for site in view.sites where site.remaining > 0 && !covered.contains(site.tile) {
+        for site in view.sites where site.remaining > 0 {
             guard view.visibility(at: site.tile) != .unexplored else { continue }
             let quad = footprintCorners(origin: site.tile, size: GridPoint(1, 1), geometry: geometry)
             guard contains(quad, liftedBy: Stature.site(site.kind) * zoom, point) else { continue }

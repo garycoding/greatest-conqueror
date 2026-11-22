@@ -5,12 +5,12 @@
 /// the artwork (`Artwork`) supplies them, so that the two agree without either
 /// waiting for the other (docs/architecture.md, "Sprites").
 public enum SpriteSubject: Hashable, Codable, Sendable {
-    /// A person of a kind with the look of an age. Use `SpriteSubject.of(_:ownerAge:)`
-    /// to choose it: a peaceful sector's look follows the owner's age, whereas a
-    /// warfighter or founder keeps the look of the age its kind belongs to.
-    case unit(UnitKind, Age)
-    /// A building, in the style of the owner's age.
-    case building(BuildingKind, Age)
+    /// A unit of a kind in a look (`Age.look`). Use `SpriteSubject.of(_:ownerAge:)`
+    /// to choose it: a worker's or a boat's look follows the owner's age,
+    /// whereas a warfighter or the car keeps the look of the age its kind belongs to.
+    case unit(UnitKind, Look)
+    /// A building, in the look of the owner's age.
+    case building(BuildingKind, Look)
     case site(SiteKind)
     /// Plain rock on a deposit's tile, before the player reaches its age.
     case outcrop
@@ -22,10 +22,10 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
         switch entity.kind {
         case .unit(let kind):
             let own = catalogue.stats(kind).age
-            let look = (kind.isWarfighter || kind == .founder || kind == .car) ? own : max(own, ownerAge)
-            return .unit(kind, look)
+            let age = (kind.isWarfighter || kind == .car) ? own : max(own, ownerAge)
+            return .unit(kind, age.look)
         case .building(let kind):
-            return .building(kind, max(catalogue.stats(kind).age, ownerAge))
+            return .building(kind, max(catalogue.stats(kind).age, ownerAge).look)
         }
     }
 }
@@ -109,7 +109,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         case .moving, .carrying: return .walking
         case .gathering, .working, .constructing: return .working
         case .fighting: return .fighting
-        case .underConstruction, .training, .researching: return .standing
+        case .underConstruction, .training, .advancing: return .standing
         }
     }
 
@@ -119,27 +119,20 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         var keys: [SpriteKey] = []
         let ages = Age.allCases.filter { $0 <= age }
         for stats in catalogue.units where stats.age <= age {
-            let looks: [Age] = stats.kind.isWarfighter || stats.kind == .founder || stats.kind == .car ? [stats.age] : ages.filter { $0 >= stats.age }
-            for look in looks {
+            let looks: [Age] = stats.kind.isWarfighter || stats.kind == .car ? [stats.age] : ages.filter { $0 >= stats.age }
+            for look in looks.map(\.look) {
                 for pose in [SpritePose.standing, .walking, .working, .fighting] where pose != .fighting || stats.attack != nil {
                     keys.append(SpriteKey(.unit(stats.kind, look), pose))
                 }
             }
         }
         for stats in catalogue.buildings where stats.age <= age {
-            for look in ages where look >= stats.age {
-                if stats.kind == .bridge {
-                    for place in BridgePlace.drawings {
-                        keys.append(SpriteKey(.building(.bridge, look), place.pose(complete: true)))
-                        keys.append(SpriteKey(.building(.bridge, look), place.pose(complete: false)))
-                    }
-                    continue
-                }
+            for look in ages.filter({ $0 >= stats.age }).map(\.look) {
                 keys.append(SpriteKey(.building(stats.kind, look), .complete))
                 keys.append(SpriteKey(.building(stats.kind, look), .underConstruction))
             }
         }
-        for kind in SiteKind.allCases where kind.firstAge <= age {
+        for kind in SiteKind.allCases {
             keys.append(SpriteKey(.site(kind), .complete))
         }
         keys.append(SpriteKey(.outcrop, .complete))

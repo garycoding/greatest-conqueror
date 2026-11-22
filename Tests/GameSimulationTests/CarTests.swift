@@ -20,7 +20,7 @@ import Testing
         #expect(sim.apply(.summonCar, from: me) == .refused(.notNow))      // five each (ruled 2026-11-21)
         #expect(sim.people(me, .car).count == 5)
         // Free, and outside the population.
-        #expect(sim.view(for: me).population == sim.people(me, .worker).count + sim.people(me, .engineer).count)
+        #expect(sim.view(for: me).population == sim.people(me, .worker).count)
     }
 
     @Test func withoutATownCentreThereIsNoCar() {
@@ -40,14 +40,14 @@ import Testing
         let car = sim.people(me, .car)[0]
         let at = sim.living(car).position
         let near = sim.add(.cannon, them, at.x + 10.5, at.y)          // inside 11 tiles
-        let far = sim.add(.clubman, them, at.x + 14, at.y)            // outside
-        let mine = sim.add(.clubman, me, at.x + 2, at.y)              // the player's own
-        let archer = sim.add(.archer, them, at.x + 12.5, at.y)
+        let far = sim.add(.spearman, them, at.x + 14, at.y)            // outside
+        let mine = sim.add(.spearman, me, at.x + 2, at.y)              // the player's own
+        let musketeer = sim.add(.musketeer, them, at.x + 12.5, at.y)
         sim.step()
         #expect(sim.entity(near) == nil)
         #expect(sim.entity(far) != nil && sim.entity(mine) != nil)
-        // The archer may not target the car, nor harm it.
-        #expect(sim.apply(.attack(units: [archer], target: car), from: them) != .accepted)
+        // The musketeer may not target the car, nor harm it.
+        #expect(sim.apply(.attack(units: [musketeer], target: car), from: them) != .accepted)
         #expect(!sim.canStrike(them, sim.index(of: car)!))
         #expect(sim.view(for: me).events.contains(.destroyed(near)))
     }
@@ -57,11 +57,16 @@ import Testing
                                           teams: [0, 1, 0]))
         #expect(sim.apply(.summonCar, from: me) == .accepted)
         let car = sim.people(me, .car)[0]
-        // Everything else of the player's is destroyed: a founder comes, the car stays.
+        // Everything else of the player's is destroyed: whilst the ally stands, the car stays.
         for i in sim.entities.indices where sim.entities[i].owner == me && sim.entities[i].id != car { sim.kill(i) }
         sim.step()
         #expect(sim.entity(car) != nil)
-        #expect(sim.people(me, .founder).count == 1)
+        #expect(!sim.players[0].isDefeated && sim.outcome == nil)
+        // With the ally's all gone too, the team is defeated, the car with it.
+        for i in sim.entities.indices where sim.entities[i].owner == PlayerID(2) { sim.kill(i) }
+        sim.step()
+        #expect(sim.entity(car) == nil)
+        #expect(sim.players[0].isDefeated && sim.outcome == .won(TeamID(1)))
     }
 
     /// The kill radius turned off and on (ruled 2026-11-21): off, the car kills
@@ -75,7 +80,7 @@ import Testing
         #expect(sim.apply(.setKillRadius(cars: [car], on: false), from: me) == .accepted)
         #expect(sim.view(for: me).entities.first { $0.id == car }?.killRadiusOff == true)
         let at = sim.living(car).position
-        let near = sim.add(.clubman, them, at.x + 3, at.y)
+        let near = sim.add(.spearman, them, at.x + 3, at.y)
         sim.step()
         #expect(sim.entity(near) != nil, "the car killed with its radius off")
         let house = sim.add(.house, them, at.tile.x + 5, at.tile.y)

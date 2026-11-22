@@ -16,19 +16,19 @@ import Testing
     private let source = IndustrialPeopleSprites()
 
     @Test func theBatchIsTheChecklistsIndustrialPeacefulSectors() {
-        let expected = SpriteKey.required(through: .industrial).filter { key in
-            if case .unit(let kind, .industrial) = key.subject { return [.worker, .scholar, .engineer, .merchant].contains(kind) }
+        let expected = SpriteKey.required(through: .hospitals).filter { key in
+            if case .unit(let kind, .industrial) = key.subject { return [.worker].contains(kind) }
             return false
         }
         #expect(source.poses == expected)
         #expect(source.keys.count == expected.count * SpriteKey.framesPerPose)
-        // Standing, walking and working for all four; fighting for the two that can attack.
-        #expect(expected.count == 14)
+        // Standing, walking, working and fighting for the worker.
+        #expect(expected.count == 4)
         let fighting = Set(source.poses.filter { $0.pose == .fighting }.compactMap { key -> UnitKind? in
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(fighting == [.worker, .engineer])
+        #expect(fighting == [.worker])
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -49,14 +49,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -64,10 +64,6 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        // The scientist and the industrialist cannot attack, so neither has a fighting pose.
-        for kind in [UnitKind.scholar, .merchant] {
-            #expect(source.sprite(SpriteKey(.unit(kind, .industrial), .fighting)) == nil, "\(kind)")
-        }
     }
 
     @Test func theSameKeyGivesTheSamePixels() throws {
@@ -94,7 +90,7 @@ import Testing
 
     @Test func theKindsAreToldApartByTheirLooks() throws {
         // At game size, no two kinds' standing pictures are alike.
-        let kinds: [UnitKind] = [.worker, .scholar, .engineer, .merchant]
+        let kinds: [UnitKind] = [.worker]
         let pictures = try kinds.map { kind in
             IndustrialPeoplePixels(try #require(source.sprite(SpriteKey(.unit(kind, .industrial), .standing))).base)
         }
@@ -123,12 +119,12 @@ import Testing
 struct IndustrialPeopleRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["INDUSTRIAL_PEOPLE_RENDERS"] ?? "/", isDirectory: true)
     private let sprites = IndustrialPeopleSprites()
-    private static let kinds: [UnitKind] = [.worker, .scholar, .engineer, .merchant]
+    private static let kinds: [UnitKind] = [.worker]
     /// Added to the name of every file written, from `INDUSTRIAL_PEOPLE_RENDER_SUFFIX`, so that a later round keeps the earlier files.
     private let suffix = ProcessInfo.processInfo.environment["INDUSTRIAL_PEOPLE_RENDER_SUFFIX"] ?? ""
 
     /// A kind's Industrial-age name, with the sector's name.
-    private static func name(_ kind: UnitKind, _ age: Age = .industrial) -> String { "\(kind.stageName(at: age)) (\(kind))" }
+    private static func name(_ kind: UnitKind, _ age: Look = .industrial) -> String { "\(kind.stageName(at: Age(rawValue: age.rawValue)!)) (\(kind))" }
 
     /// What each kind does in each pose, for the animations' captions.
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
@@ -136,11 +132,7 @@ struct IndustrialPeopleRenders {
         case (_, .standing): "standing: a breath, and a blink"
         case (_, .walking): "walking: a 12-frame stride"
         case (.worker, .working): "working: shovelling coal"
-        case (.scholar, .working): "working: writing up the simmering flask"
-        case (.engineer, .working): "working: tightening the engine's great nut"
-        case (.merchant, .working): "working: consulting his watch"
         case (.worker, .fighting): "fighting: a swing of the shovel"
-        case (.engineer, .fighting): "fighting: a swing of the spanner"
         default: pose.rawValue
         }
     }
@@ -213,7 +205,7 @@ struct IndustrialPeopleRenders {
                     frames.append(context.makeImage()!)
                 }
             }
-            let name = kind.stageName(at: .industrial).lowercased().replacingOccurrences(of: " ", with: "-")
+            let name = kind.stageName(at: .hospitals).lowercased().replacingOccurrences(of: " ", with: "-")
             try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(name)\(suffix).gif"))
         }
     }
@@ -247,7 +239,7 @@ struct IndustrialPeopleRenders {
             let canvas = Canvas.person.scaled(to: scale)
             let oldX = left + alchemyAt, newX = oldX + 200
             Preview.label(Self.name(kind), in: context, at: CGPoint(x: newX - 90, y: Double(height) - 88), size: 19)
-            Preview.label(kind.stageName(at: .alchemy), in: context, at: CGPoint(x: oldX - 50, y: Double(height) - 88), size: 15)
+            Preview.label(kind.stageName(at: .cannons), in: context, at: CGPoint(x: oldX - 50, y: Double(height) - 88), size: 15)
             for (row, civilization) in civilizations.enumerated() {
                 let colour = TeamColour.of(civilization)
                 let baseline = Double(height - 104 - largeRow * (row + 1)) + 22

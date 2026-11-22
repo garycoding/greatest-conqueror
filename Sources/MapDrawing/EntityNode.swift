@@ -14,8 +14,6 @@ struct DrawContext {
     var myTeam: TeamID?
     /// The frame of animation now, 0 to 11.
     var frame: Int
-    /// The finished bridge pieces by tile, on whose decks people ride (ruled 2026-11-21).
-    var decks: [GridPoint: BridgePlace] = [:]
     /// The map's ground, so that a boat house can face its water (ruled 2026-11-22).
     var terrain: [Terrain] = []
     var mapWidth = 0
@@ -28,15 +26,6 @@ struct DrawContext {
         guard kind == .boatHouse, terrain.count == mapWidth * mapHeight, mapWidth > 0 else { return (.side, false) }
         return Placement.waterEdge(kind, at: origin, width: mapWidth, height: mapHeight, terrain: terrain,
                                    catalogue: catalogue).boatHouseView
-    }
-
-    /// How high a deck raises someone at `position`, in points: nothing off a bridge.
-    func deckHeight(at position: MapPosition) -> Double {
-        let tile = position.tile
-        guard let place = decks[tile] else { return 0 }
-        let along = place.run == .alongX ? position.x - Double(tile.x) : position.y - Double(tile.y)
-        let (back, front) = place.heights
-        return Double(back) + Double(front - back) * min(max(along, 0), 1)
     }
 
     func relation(of owner: PlayerID) -> EntityNode.Relation {
@@ -109,29 +98,18 @@ final class EntityNode: SKNode {
     required init?(coder aDecoder: NSCoder) { fatalError("EntityNode is not decoded") }
 
     /// Bring the node up to date with the entity. Nothing is touched where nothing changed.
-    /// How high a bridge's deck raises the person now, in points.
-    private var lift = 0.0
-
     func apply(_ entity: EntityView, context: DrawContext, selected: Bool, relation: Relation) {
         let previous = self.entity
         if let previous, previous == entity, isSelected == selected, self.relation == relation,
-           look?.frame == context.frame, lift == context.deckHeight(at: entity.position) {
+           look?.frame == context.frame {
             return
         }
         self.entity = entity
 
-        let lift: Double
-        if case .unit = entity.kind { lift = context.deckHeight(at: entity.position) } else { lift = 0 }
-        if previous?.position != entity.position || lift != self.lift {
-            self.lift = lift
+        if previous?.position != entity.position {
             let s = Projection.screen(entity.position)
-            position = CGPoint(x: s.x, y: s.y + lift)
+            position = CGPoint(x: s.x, y: s.y)
             zPosition = Projection.depth(entity.position)
-            // A bridge lies on the water, beneath whoever crosses it; the far
-            // lane before the near one where their depths are equal.
-            if entity.kind == .building(.bridge) {
-                zPosition = -4_000 + zPosition / 1_000 + Double(entity.bridgePlace?.lane ?? 0) / 10_000
-            }
         }
         if entity.kind == .unit(.car) {
             updateGlow(owner: entity.owner, context: context)
@@ -143,13 +121,10 @@ final class EntityNode: SKNode {
         let isBuilding: Bool
         if case .building = entity.kind { isBuilding = true } else { isBuilding = false }
         let summary = context.players[entity.owner]
-        var pose = SpriteKey.pose(for: entity.activity, isBuilding: isBuilding)
-        if entity.kind == .building(.bridge) {
-            pose = (entity.bridgePlace ?? BridgePlace(run: .alongX, lane: 0, index: 0, count: 1)).pose(complete: pose == .complete)
-        }
+        let pose = SpriteKey.pose(for: entity.activity, isBuilding: isBuilding)
         var buildingView = (view: SpriteView.side, mirrored: false)
         if case .building(let kind) = entity.kind { buildingView = context.buildingView(kind, at: entity.tile) }
-        let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .stone,
+        let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .towns,
                            pose: pose, frame: context.frame, view: isBuilding ? buildingView.view : entity.facing.view)
         if newLook != look {
             let first = look == nil

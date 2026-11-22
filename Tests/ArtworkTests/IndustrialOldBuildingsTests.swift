@@ -13,7 +13,7 @@ import Testing
     private static let source = IndustrialOldBuildingSprites()
 
     /// The buildings of the Stone, Bronze, Iron and Alchemy ages, the boat house among them: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .alchemy && $0.kind != .bridge }.map(\.kind)
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .cannons }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Industrial age's
     /// look, complete and under construction, at frame 0.
@@ -31,14 +31,13 @@ import Testing
 
     @Test func theBatchIsTheBuildingsOfTheEarlierAges() {
         #expect(Set(Self.kinds) == Set(IndustrialOldBuildingsArt.kinds))
-        #expect(Self.batch.count == 28)
-        #expect(!Self.kinds.contains(.factory) && !Self.kinds.contains(.railwayDepot) && !Self.kinds.contains(.oilWell))
+        #expect(Self.batch.count == 16)
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        var keys = SpriteKey.required(through: .ai)
+        var keys = SpriteKey.required(through: .hospitals)
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 keys.append(SpriteKey(.building(kind, age), .complete))
                 keys.append(SpriteKey(.building(kind, age), .underConstruction))
             }
@@ -62,7 +61,7 @@ import Testing
         for kind in BuildingKind.allCases where kind != .boatHouse {
             #expect(!Self.source.drawsViews(of: .building(kind, .industrial)), "\(kind)")
         }
-        for age in Age.allCases where age != .industrial {
+        for age in Look.allCases where age != .industrial {
             #expect(!Self.source.drawsViews(of: .building(.boatHouse, age)), "\(age)")
         }
         // The game's sprite in the back view is this batch's back view, not the side it would fall back to.
@@ -95,10 +94,10 @@ import Testing
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)
-            let subject = SpriteSubject.of(entity, ownerAge: .industrial)
+            let subject = SpriteSubject.of(entity, ownerAge: .hospitals)
             #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(kind)")
             #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(kind)")
-            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .alchemy), .complete)) == nil, "\(kind)")
+            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .cannons), .complete)) == nil, "\(kind)")
         }
     }
 
@@ -181,23 +180,9 @@ import Testing
             return Int((1 - sprite.anchor.y) * Double(pixels.height)) - drawn.minY
         }
         let castle = try height(.castle), hall = try height(.townCentre)
-        #expect(castle > (try height(.alchemistsWorkshop)))
-        for kind in Self.kinds where kind != .castle && kind != .alchemistsWorkshop {
+        for kind in Self.kinds where kind != .castle {
             #expect(try height(kind) <= castle, "\(kind)")
             if kind != .townCentre { #expect(try height(kind) < hall, "\(kind)") }
-        }
-    }
-
-    /// A stone wall and a palisade join their neighbours: each fills its tile out to the left and right corners.
-    @Test func theWallsFillTheirTilesToTheCorners() throws {
-        for kind in [BuildingKind.stoneWall, .palisade] {
-            let sprite = try #require(Self.source.sprite(SpriteKey(.building(kind, .industrial), .complete)))
-            let pixels = IndustrialOldBuildingsPixels(sprite.base)
-            let centreX = Int(sprite.anchor.x * Double(pixels.width)), centreY = Int((1 - sprite.anchor.y) * Double(pixels.height))
-            // A little inside each corner of the tile's diamond, at ground level, the wall is drawn.
-            for x in [centreX - 60, centreX + 59] {
-                #expect(pixels.alpha(x, centreY - 2) > 200, "\(kind) leaves its corner at \(x) empty")
-            }
         }
     }
 
@@ -319,7 +304,7 @@ private enum IndustrialOldBuildingsPreview {
     /// Shang's and Olmec's colours, and under construction in Rome's and Shang's.
     static func contactSheet(_ kinds: [BuildingKind]) -> CGImage? {
         let cellW = 440, cellH = 420, label = 34
-        let columns: [(age: Age, complete: Bool, civilization: Civilization)] = [
+        let columns: [(age: Look, complete: Bool, civilization: Civilization)] = [
             (.alchemy, true, .rome), (.alchemy, false, .rome),
             (.industrial, true, .rome), (.industrial, true, .angkor), (.industrial, true, .shang), (.industrial, true, .olmec),
             (.industrial, false, .rome), (.industrial, false, .shang),
@@ -383,26 +368,18 @@ private enum IndustrialOldBuildingsPreview {
             Placed(kind: .house, x: 7, y: 3, complete: true, civilization: .rome),
             Placed(kind: .house, x: 11, y: 7, complete: true, civilization: .rome),
             Placed(kind: .house, x: 5, y: 4, complete: false, civilization: .rome),
-            Placed(kind: .storagePit, x: 11, y: 4, complete: true, civilization: .rome),
-            Placed(kind: .stockPen, x: 6, y: 11, complete: true, civilization: .rome),
             Placed(kind: .barracks, x: 11, y: 11, complete: true, civilization: .rome),
             Placed(kind: .watchTower, x: 9, y: 2, complete: false, civilization: .rome),
             Placed(kind: .watchTower, x: 15, y: 9, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 8, complete: true, civilization: .rome),
             Placed(kind: .farm, x: 2, y: 12, complete: false, civilization: .rome),
             Placed(kind: .stable, x: 7, y: 14, complete: true, civilization: .rome),
-            Placed(kind: .siegeWorkshop, x: 12, y: 14, complete: true, civilization: .rome),
             Placed(kind: .castle, x: 17, y: 2, complete: true, civilization: .rome),
-            Placed(kind: .alchemistsWorkshop, x: 3, y: 16, complete: true, civilization: .rome),
-            Placed(kind: .alchemistsWorkshop, x: 12, y: 18, complete: false, civilization: .rome),
             Placed(kind: .castle, x: 18, y: 16, complete: false, civilization: .shang),
             Placed(kind: .house, x: 19, y: 11, complete: true, civilization: .olmec),
             Placed(kind: .barracks, x: 1, y: 3, complete: true, civilization: .shang),
             Placed(kind: .stable, x: 19, y: 7, complete: true, civilization: .angkor),
         ]
-        for y in 2..<9 { placed.append(Placed(kind: .stoneWall, x: 15, y: y, complete: y != 6, civilization: .rome)) }
-        for x in 10..<15 { placed.append(Placed(kind: .stoneWall, x: x, y: 1, complete: true, civilization: .rome)) }
-        for y in 10..<16 { placed.append(Placed(kind: .palisade, x: 16, y: y, complete: y != 13, civilization: .rome)) }
         func depth(_ p: Placed) -> Double {
             let f = Catalogue.standard.stats(p.kind).footprint
             return Double(p.x) + Double(p.y) + Double(f.x + f.y) / 2

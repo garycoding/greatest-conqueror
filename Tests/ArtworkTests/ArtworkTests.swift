@@ -9,7 +9,7 @@ import GameCore
 
 @Test func emptySourceHasNoSprites() {
     let source = EmptySpriteSource()
-    for key in SpriteKey.required(through: .bronze) { #expect(source.sprite(key) == nil) }
+    for key in SpriteKey.required(through: .farms) { #expect(source.sprite(key) == nil) }
 }
 
 /// The pixels of an image, as premultiplied RGBA bytes in sRGB.
@@ -33,7 +33,7 @@ struct Pixels: Equatable {
 @Suite(.serialized)
 struct StonePeopleTests {
     /// The batch: every person of the checklist in its Stone-age look, each pose at every frame.
-    static let batch: [SpriteKey] = SpriteKey.required(through: .stone).filter {
+    static let batch: [SpriteKey] = SpriteKey.required(through: .towns).filter {
         // The car, of no age, is its own batch, and the boat belongs to the boats' batch (`StoneBoatSprites`).
         if case .unit(let kind, .stone) = $0.subject { return kind != .car && kind != .boat }
         return false
@@ -44,9 +44,9 @@ struct StonePeopleTests {
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(kinds == [.worker, .scholar, .engineer, .founder, .clubman, .slinger])
-        // Standing, walking and working for all six, fighting for the four with an attack, 12 frames each.
-        #expect(Self.batch.count == (6 * 3 + 4) * 12)
+        #expect(kinds == [.worker])
+        // Standing, walking, working and fighting for the worker, 12 frames each.
+        #expect(Self.batch.count == 4 * 12)
         #expect(Set(CartoonSprites().keys) == Set(Self.batch))
     }
 
@@ -92,9 +92,8 @@ struct StonePeopleTests {
 
     @Test func aPersonIsAbout48PointsTall() throws {
         let sprites = CartoonSprites()
-        // Standing, from the top of the hair to the feet; the founder's antlers and
-        // banner rise above his head, so he is left out.
-        for key in Self.batch where key.pose == .standing && key.frame == 0 && key.subject != .unit(.founder, .stone) {
+        // Standing, from the top of the hair to the feet.
+        for key in Self.batch where key.pose == .standing && key.frame == 0 {
             let base = Pixels(try #require(sprites.sprite(key)).base)
             let rows = (0..<base.height).filter { y in (0..<base.width).contains { base.alpha($0, y) > 200 } }
             let height = Double(try #require(rows.last) - (try #require(rows.first))) / 2
@@ -131,16 +130,14 @@ struct StonePeopleTests {
             for frame in [-1, 12, 13, 100] { others.append(SpriteKey(key.subject, key.pose, frame: frame)) }
             others.append(SpriteKey(key.subject, "dancing"))
         }
-        // The scholar and the founder have no attack, so no fighting pose.
-        for kind in [UnitKind.scholar, .founder] { others.append(SpriteKey(.unit(kind, .stone), .fighting)) }
         // Every person in the look of a later age, and the kinds of later ages.
         for kind in UnitKind.allCases {
-            for age in Age.allCases where age != .stone || [.merchant, .spearman, .archer, .chariot].contains(kind) {
+            for age in Look.allCases where age != .stone || kind != .worker {
                 for pose in [SpritePose.standing, .walking, .working, .fighting] { others.append(SpriteKey(.unit(kind, age), pose)) }
             }
         }
         // Buildings, sites and terrain.
-        others += SpriteKey.required(through: .bronze).filter { if case .unit = $0.subject { return false }; return true }
+        others += SpriteKey.required(through: .farms).filter { if case .unit = $0.subject { return false }; return true }
         for key in others { #expect(sprites.sprite(key) == nil, "\(key)") }
     }
 
@@ -166,9 +163,7 @@ struct StonePeopleTests {
     }
 
     @Test func eachKindHasItsOwnNose() {
-        let noses: [UnitKind: Nose] = [.worker: .curve, .scholar: .bulb, .engineer: .button, .clubman: .hook, .slinger: .line, .founder: .curve]
-        // All five forms are used, so that faces differ from one kind to the next.
-        #expect(Set(noses.values) == Set(Nose.allCases))
+        let noses: [UnitKind: Nose] = [.worker: .curve]
         for (kind, nose) in noses {
             #expect(StonePeople.nose(kind) == nose, "\(kind)")
         }

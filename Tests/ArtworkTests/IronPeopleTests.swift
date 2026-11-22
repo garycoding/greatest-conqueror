@@ -14,19 +14,19 @@ import Testing
     private let source = IronPeopleSprites()
 
     @Test func theBatchIsTheChecklistsIronPeacefulSectors() {
-        let expected = SpriteKey.required(through: .iron).filter { key in
-            if case .unit(let kind, .iron) = key.subject { return [.worker, .scholar, .engineer, .merchant].contains(kind) }
+        let expected = SpriteKey.required(through: .ships).filter { key in
+            if case .unit(let kind, .iron) = key.subject { return [.worker].contains(kind) }
             return false
         }
         #expect(source.poses == expected)
         #expect(source.keys.count == expected.count * SpriteKey.framesPerPose)
-        // Standing, walking and working for all four; fighting for the two that can attack.
-        #expect(expected.count == 14)
+        // Standing, walking, working and fighting for the worker.
+        #expect(expected.count == 4)
         let fighting = Set(source.poses.filter { $0.pose == .fighting }.compactMap { key -> UnitKind? in
             if case .unit(let kind, _) = key.subject { return kind }
             return nil
         })
-        #expect(fighting == [.worker, .engineer])
+        #expect(fighting == [.worker])
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -40,28 +40,19 @@ import Testing
         }
     }
 
-    @Test func theTradersDonkeyStandsBehindHimOnItsOwnGround() throws {
-        let sprite = try #require(source.sprite(SpriteKey(.unit(.merchant, .iron), .walking, frame: 3)))
-        let pixels = Self.Pixels(sprite.base)
-        let (x, ground) = pixels.place(sprite.anchor)
-        // Ink well behind the trader's feet, near the ground: the donkey's hooves.
-        let behind = ((ground - 12)...ground).contains { row in (0..<(x - 30)).contains { pixels.ink($0, row) } }
-        #expect(behind)
-    }
-
     @Test func everyOtherKeyHasNone() {
         let batch = Set(source.keys)
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -69,10 +60,6 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        // The scholar and the merchant cannot attack, so neither has a fighting pose.
-        for kind in [UnitKind.scholar, .merchant] {
-            #expect(source.sprite(SpriteKey(.unit(kind, .iron), .fighting)) == nil, "\(kind)")
-        }
     }
 
     @Test func theSameKeyGivesTheSamePixels() throws {

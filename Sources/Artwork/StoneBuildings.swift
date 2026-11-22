@@ -6,13 +6,13 @@ import GameCore
 import Synchronization
 
 // The buildings of the Stone age, in the Stone-age look (docs/art-style.md):
-// the town centre, the house, the storage pit and the boat house, each complete
+// the town centre, the house and the boat house, each complete
 // and under construction, and the boat house seen from behind as well. This
 // file holds the batch's source and the drawing kit the buildings share; each
 // building is drawn in a file of its own.
 
 /// The sprites of the Stone age's buildings: `SpriteSubject.building(kind,
-/// .stone)` for the town centre, the house, the storage pit and the boat house
+/// .stone)` for the town centre, the house and the boat house
 /// (ruled 2026-11-21), in the poses
 /// `complete` and `underConstruction`, at frame 0 (buildings do not move), seen
 /// from the side; the boat house also from behind (`SpriteView.back`), so that
@@ -53,7 +53,7 @@ struct StoneBuildingsPiece: Hashable, Sendable {
     var back: Bool
 
     /// The kinds this batch draws.
-    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
+    static let kinds: [BuildingKind] = [.townCentre, .house, .boatHouse]
 
     init(kind: BuildingKind, complete: Bool, back: Bool = false) {
         self.kind = kind
@@ -85,7 +85,6 @@ struct StoneBuildingsPiece: Hashable, Sendable {
     var canvas: Canvas {
         switch kind {
         case .townCentre: Canvas(minX: -100, minY: -128, width: 200, height: 180, pixelsPerUnit: 2)
-        case .storagePit: Canvas(minX: -68, minY: -92, width: 136, height: 128, pixelsPerUnit: 2)
         // The boat house's canvas reaches past the footprint for its dock
         // (ruled 2026-11-22): 16 points to the right and 10 down, as in every age.
         case .boatHouse: Canvas(minX: -68, minY: -108, width: 152, height: 154, pixelsPerUnit: 2)
@@ -100,7 +99,6 @@ struct StoneBuildingsPiece: Hashable, Sendable {
             var sketch = StoneBuildingsSketch(layer: svg.layer)
             switch kind {
             case .townCentre: sketch.townCentre(complete: complete)
-            case .storagePit: sketch.storagePit(complete: complete)
             case .boatHouse: if back { sketch.boatHouseBack(complete: complete) } else { sketch.boatHouse(complete: complete) }
             default: sketch.house(complete: complete)
             }

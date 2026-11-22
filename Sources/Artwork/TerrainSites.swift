@@ -17,18 +17,14 @@ extension TerrainSprites {
     /// A tree: taller.
     static let treeCanvas = Canvas(minX: -36, minY: -104, width: 72, height: 124, pixelsPerUnit: 2)
 
-    /// A site in SVG. Iron and oil fields belong to later batches, and the
-    /// fish to the boats' (`StoneBoatSprites`). Without `shadow`, a rock is
+    /// A site in SVG. The fish belong to the boats' batch (`StoneBoatSprites`). Without `shadow`, a rock is
     /// drawn without its shadow on the ground, to rise from the water.
     static func drawSite(_ kind: SiteKind, _ svg: inout SVG, shadow: Bool = true) {
         switch kind {
         case .tree: drawTree(&svg)
         case .prey: drawDeer(&svg)
-        case .stone: drawStone(&svg, shadow: shadow)
-        case .copper: drawCopper(&svg, shadow: shadow)
-        case .tin: drawTin(&svg, shadow: shadow)
         case .gold: drawGold(&svg, shadow: shadow)
-        case .iron, .oilField, .fish: break
+        case .fish: break
         }
     }
 
@@ -223,45 +219,8 @@ extension TerrainSprites {
         svg.path(blob(points), stroke: line, width: 0.85)
     }
 
-    /// Stone to quarry: a pile of pale boulders, taller than any deposit, one
-    /// marked by the wedges that split it, with a broken piece at its foot.
-    private static func drawStone(_ svg: inout SVG, shadow: Bool) {
-        if shadow { groundShadow(&svg, at: P(0, 4), rx: 27, ry: 8.5) }
-        let faces = TerrainFaces(top: TerrainInk.stoneTop, lit: TerrainInk.stoneLit, shade: TerrainInk.stoneShade)
-        // The great boulder behind.
-        rock(&svg, TerrainRock(
-            outline: [P(-18, -1), P(-20, -8), P(-19, -16), P(-14, -24), P(-6, -29), P(3, -30), P(11, -26), P(16, -18),
-                      P(17, -9), P(14, -2), P(5, 0)],
-            top: [P(-19, -16), P(-14, -24), P(-6, -29), P(3, -30), P(11, -26), P(1, -18), P(-8, -18.4)],
-            shade: [P(11, -26), P(16, -18), P(17, -9), P(14, -2), P(5, 0), P(3.4, -9), P(1, -18)],
-            edges: [[P(-19, -16), P(-8, -18.4), P(1, -18), P(11, -26)], [P(1, -18), P(3.4, -9), P(5, 0)]]), faces) { svg in
-            // The marks of the wedges.
-            svg.line([P(-14, -11.6), P(-10, -10.2)], stroke: line, width: 0.8, opacity: 0.7)
-            svg.line([P(-13.4, -7), P(-9.4, -5.6)], stroke: line, width: 0.8, opacity: 0.7)
-        }
-        // The boulder at the left, in front.
-        rock(&svg, TerrainRock(
-            outline: [P(-22, 6), P(-23.4, 1), P(-21, -4), P(-16, -8), P(-10, -8.4), P(-6, -4.4), P(-5, 1.6), P(-8, 6),
-                      P(-15, 8)],
-            top: [P(-21, -4), P(-16, -8), P(-10, -8.4), P(-6, -4.4), P(-12.4, -2)],
-            shade: [P(-6, -4.4), P(-5, 1.6), P(-8, 6), P(-10.6, 2.4), P(-12.4, -2)],
-            edges: [[P(-21, -4), P(-12.4, -2), P(-6, -4.4)], [P(-12.4, -2), P(-10.6, 2.4), P(-8, 6)]]), faces)
-        // The boulder at the right, in front.
-        rock(&svg, TerrainRock(
-            outline: [P(-1, 8.4), P(-3, 3), P(-1, -3), P(5, -7.6), P(12, -8.6), P(18, -5), P(20, 1), P(17, 7), P(9, 10)],
-            top: [P(-1, -3), P(5, -7.6), P(12, -8.6), P(18, -5), P(9.4, -1)],
-            shade: [P(18, -5), P(20, 1), P(17, 7), P(9, 10), P(10.4, 4), P(9.4, -1)],
-            edges: [[P(-1, -3), P(9.4, -1), P(18, -5)], [P(9.4, -1), P(10.4, 4), P(9, 10)]]), faces)
-        // A piece broken off, at the front.
-        rock(&svg, TerrainRock(
-            outline: [P(-8, 12.6), P(-8.8, 10), P(-6, 7.8), P(-1.6, 8), P(0.6, 10.6), P(-1.4, 13.2), P(-5, 13.8)],
-            top: [P(-8.8, 10), P(-6, 7.8), P(-1.6, 8), P(0.6, 10.6), P(-4, 10.6)],
-            edges: [[P(-8.6, 10.2), P(-4, 10.6), P(0.4, 10.4)]]), faces)
-    }
-
     /// The outcrop: plain bedrock, low, dark and rounded, with no edge split or
-    /// squared and nothing showing in it, so that it reads neither as stone to
-    /// quarry nor as ore (requirement 19).
+    /// squared and nothing showing in it, so that it reads as no site.
     static func drawOutcrop(_ svg: inout SVG, shadow: Bool = true) {
         if shadow { groundShadow(&svg, at: P(0, 3), rx: 28, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.outcropTop, lit: TerrainInk.outcropLit, shade: TerrainInk.outcropShade)
@@ -281,73 +240,6 @@ extension TerrainSprites {
             outline: [P(14, 11.6), P(13.6, 8.6), P(16.6, 6.4), P(21, 6), P(25.4, 7.4), P(26.6, 10.2), P(24, 12.6), P(19, 13.4)],
             top: [P(13.6, 8.6), P(16.6, 6.4), P(21, 6), P(25.4, 7.4), P(20, 9.2)],
             edges: [[P(14, 8.8), P(20, 9.2), P(25.6, 7.8)]]), faces)
-    }
-
-    /// Copper: a mound of green ore, its lumps the colour of the metal.
-    private static func drawCopper(_ svg: inout SVG, shadow: Bool) {
-        if shadow { groundShadow(&svg, at: P(-1, 4), rx: 27, ry: 8) }
-        let faces = TerrainFaces(top: TerrainInk.copperTop, lit: TerrainInk.copperLit, shade: TerrainInk.copperShade)
-        rock(&svg, TerrainRock(
-            outline: [P(-21, 6), P(-24, -4), P(-18, -15), P(-7, -22), P(5, -23), P(15, -16), P(20, -5), P(17, 5), P(5, 10),
-                      P(-10, 10)],
-            top: [P(-18, -15), P(-7, -22), P(5, -23), P(15, -16), P(4, -12), P(-8, -11)],
-            shade: [P(15, -16), P(20, -5), P(17, 5), P(5, 10), P(6, -2), P(4, -12)],
-            edges: [[P(-16, -13.4), P(-8, -11), P(4, -12)], [P(4, -12), P(6, -2), P(5, 10)]]), faces) { svg in
-            nugget(&svg, [P(-11.4, -4.6), P(-9.4, -9.6), P(-5.6, -10.6), P(-2.2, -8), P(-2.8, -4.4), P(-5.6, -2.2),
-                          P(-9.4, -2.4)], colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-            nugget(&svg, [P(5.6, -9.4), P(8.6, -12.4), P(12.6, -11.4), P(13, -8.6), P(10.6, -6.4), P(7.4, -6.8)],
-                   colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-            nugget(&svg, [P(-16, -11.6), P(-14.4, -14.6), P(-11, -14.2), P(-10.4, -11.6), P(-13, -10.2)],
-                   colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-            nugget(&svg, [P(8.6, 2.2), P(10, -1.2), P(13.8, -0.8), P(14.6, 2.6), P(12, 4.6), P(9.8, 4.4)],
-                   colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-            nugget(&svg, [P(-1.6, 3.4), P(0, 1.6), P(2.4, 2.4), P(1.8, 4.6), P(-0.4, 5)],
-                   colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-            glint(&svg, at: P(15, -21), size: 1.1)
-        }
-        rock(&svg, TerrainRock(
-            outline: [P(-28, 9), P(-29.4, 5.4), P(-27, 1.6), P(-22, 0), P(-17.6, 1.4), P(-15.6, 5), P(-17.4, 8.6), P(-22, 10.4)],
-            top: [P(-29.4, 5.4), P(-27, 1.6), P(-22, 0), P(-17.6, 1.4), P(-21.6, 4.6)],
-            shade: [P(-17.6, 1.4), P(-15.6, 5), P(-17.4, 8.6), P(-20.6, 8), P(-21.6, 4.6)],
-            edges: [[P(-29, 5.2), P(-21.6, 4.6), P(-17.6, 1.4)]]), faces) { svg in
-            nugget(&svg, [P(-26, 6.4), P(-25, 4.4), P(-22.6, 4.8), P(-22, 7), P(-24.4, 8.2)],
-                   colour: TerrainInk.copper, glint: TerrainInk.copperGlint)
-        }
-    }
-
-    /// A crystal of tin ore: a pale prism with a pointed end, standing from `base` at `angle` degrees.
-    private static func crystal(_ svg: inout SVG, base: P, angle: Double, length: Double, width: Double) {
-        svg.group(at: base, turned: angle) { svg in
-            let w = width / 2
-            let body = [P(-w, 0.6), P(-w, -length + w * 1.5), P(0, -length), P(w, -length + w * 1.5), P(w, 0.6)]
-            let shift = P(-0.5, 0.4)
-            svg.polygon(body.map { $0 + shift }, fill: .colour(TerrainInk.tinCrystal))
-            svg.polygon([P(0, -length), P(w, -length + w * 1.5), P(w, 0.6), P(0, 0.6)].map { $0 + shift },
-                        fill: .colour(TerrainInk.tinCrystalShade))
-            svg.polygon(body, fill: .none, stroke: line, width: 0.85)
-            svg.line([P(0, -length + 0.4), P(0, 0.2)], stroke: line, width: 0.5, opacity: 0.6)
-        }
-    }
-
-    /// Tin: a crag of blue-grey rock with clusters of pale crystals.
-    private static func drawTin(_ svg: inout SVG, shadow: Bool) {
-        if shadow { groundShadow(&svg, at: P(0, 4), rx: 26, ry: 8) }
-        let faces = TerrainFaces(top: TerrainInk.tinTop, lit: TerrainInk.tinLit, shade: TerrainInk.tinShade)
-        rock(&svg, TerrainRock(
-            outline: [P(-19, 7), P(-23, -2), P(-19, -12), P(-10, -17), P(-3, -15), P(3, -21), P(12, -19), P(19, -10),
-                      P(20, 1), P(11, 9), P(-4, 10)],
-            top: [P(-19, -12), P(-10, -17), P(-3, -15), P(3, -21), P(12, -19), P(7, -11), P(-6, -8)],
-            shade: [P(12, -19), P(19, -10), P(20, 1), P(11, 9), P(8, -2), P(7, -11)],
-            edges: [[P(-16, -10), P(-6, -8), P(7, -11), P(12, -19)], [P(7, -11), P(8, -2), P(11, 9)]]), faces) { svg in
-            crystal(&svg, base: P(-9, -9), angle: -24, length: 9, width: 3.2)
-            crystal(&svg, base: P(-7, -9.6), angle: 4, length: 12, width: 3.6)
-            crystal(&svg, base: P(-5, -9), angle: 30, length: 8, width: 3)
-            crystal(&svg, base: P(11, -6), angle: 10, length: 9, width: 3.2)
-            crystal(&svg, base: P(13, -5.4), angle: 38, length: 6.5, width: 2.8)
-            crystal(&svg, base: P(-15, 3), angle: -16, length: 6, width: 2.6)
-            crystal(&svg, base: P(-13, 3.4), angle: 18, length: 7, width: 2.8)
-            glint(&svg, at: P(-6.4, -24.4), size: 0.9)
-        }
     }
 
     /// Gold: a dark boulder seamed with yellow, with nuggets and sparkles.

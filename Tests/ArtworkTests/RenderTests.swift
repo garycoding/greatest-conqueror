@@ -14,11 +14,11 @@ import Testing
 struct RenderTests {
     let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["ARTWORK_RENDERS"] ?? "/", isDirectory: true)
 
-    static let kinds: [UnitKind] = [.worker, .scholar, .engineer, .clubman, .slinger, .founder]
+    static let kinds: [UnitKind] = [.worker]
 
     /// A kind's Stone-age name, with the sector's name where the two differ.
     static func name(_ kind: UnitKind) -> String {
-        let stage = kind.stageName(at: .stone)
+        let stage = kind.stageName(at: .towns)
         return stage.lowercased() == "\(kind)" ? stage : "\(stage) (\(kind))"
     }
 
@@ -66,16 +66,10 @@ struct RenderTests {
     static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
         switch (kind, pose) {
         case (_, .standing): "standing: a breath, and a blink"
-        case (.scholar, .walking): "walking: a slower, shorter stride, leaning on his stick"
         case (_, .walking): "walking: a 12-frame stride"
         case (.worker, .working): "working: the two-handed chop"
-        case (.scholar, .working): "working: reading a tablet, until a thought arrives"
-        case (.engineer, .working): "working: driving a post"
         case (_, .working): "working: the standing pose serves"
         case (.worker, .fighting): "fighting: a one-handed hack with the axe"
-        case (.engineer, .fighting): "fighting: a swing of the mallet"
-        case (.clubman, .fighting): "fighting: a two-handed blow of the club"
-        case (.slinger, .fighting): "fighting: the sling whirled, and the stone let fly"
         default: pose.rawValue
         }
     }
@@ -97,7 +91,7 @@ struct RenderTests {
             var frames: [CGImage] = []
             for pose in sprites.poses where pose.subject == .unit(kind, .stone) {
                 let walking = pose.pose == .walking
-                let servesAsStanding = pose.pose == .working && [.clubman, .slinger, .founder].contains(kind)
+                let servesAsStanding = pose.pose == .working && false
                 let count = pose.pose == .standing ? 24 : (servesAsStanding ? 12 : 36)
                 for i in 0..<count {
                     let frame = i % 12

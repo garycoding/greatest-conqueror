@@ -29,7 +29,7 @@ private func lobby() -> Lobby {
 }
 
 @Test func everyMessageEncodesAndDecodesToItself() throws {
-    let view = Samples.stoneAgeOpening()
+    let view = Samples.townsAgeOpening()
     let start = MatchStart(player: PlayerID(0), mapWidth: view.mapWidth, mapHeight: view.mapHeight,
                            terrain: view.terrain, catalogue: .standard, speed: 2)
     let messages: [NetMessage] = [
@@ -46,7 +46,7 @@ private func lobby() -> Lobby {
 }
 
 @Test func aViewTravelsWithoutItsTerrainAndRegainsIt() {
-    let view = Samples.stoneAgeOpening()
+    let view = Samples.townsAgeOpening()
     let start = MatchStart(player: view.player, mapWidth: view.mapWidth, mapHeight: view.mapHeight,
                            terrain: view.terrain, catalogue: .standard, speed: 1)
     #expect(view.withoutTerrain.terrain.isEmpty)

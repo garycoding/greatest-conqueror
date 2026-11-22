@@ -12,10 +12,10 @@ import Synchronization
 ///   differ (`SpriteSubject.terrain`). A tile is the map's diamond, 64 by 32
 ///   points, its ground drawn a little beyond the diamond's edges so that
 ///   neighbours overlap and no seam shows between them (`tileCanvas`).
-/// - Every site of the Stone and Bronze ages (`SpriteSubject.site`): a tree,
-///   prey, stone, copper, tin and gold, standing on the centre of its tile.
-/// - The outcrop (`SpriteSubject.outcrop`): plain rock on a deposit not yet
-///   revealed (requirement 19), darker and lower than a stone site.
+/// - Every site on land (`SpriteSubject.site`): a tree, prey and gold,
+///   standing on the centre of its tile.
+/// - The outcrop (`SpriteSubject.outcrop`): plain rock, darker and lower than
+///   a gold mine.
 ///
 /// Each is drawn in the pose `complete`, at frame 0; every other key returns
 /// `nil`. None carries a team's colour, so none has a mask. Each picture is
@@ -31,7 +31,7 @@ public final class TerrainSprites: SpriteSource {
         for terrain in Terrain.allCases {
             for variant in 0..<variantCount { keys.append(SpriteKey(.terrain(terrain, variant: variant), .complete)) }
         }
-        for kind in SiteKind.allCases where kind.firstAge <= .bronze && kind != .fish { keys.append(SpriteKey(.site(kind), .complete)) }
+        for kind in SiteKind.allCases where kind != .fish { keys.append(SpriteKey(.site(kind), .complete)) }
         keys.append(SpriteKey(.outcrop, .complete))
         return keys
     }()
@@ -56,7 +56,7 @@ public final class TerrainSprites: SpriteSource {
         guard key.pose == .complete, key.frame == 0 else { return false }
         switch key.subject {
         case .terrain(_, let variant): return (0..<variantCount).contains(variant)
-        case .site(let kind): return kind.firstAge <= .bronze && kind != .fish  // the fish: drawn by `StoneBoatSprites`
+        case .site(let kind): return kind != .fish  // the fish: drawn by `StoneBoatSprites`
         case .outcrop: return true
         case .unit, .building: return false
         }
@@ -82,7 +82,7 @@ public final class TerrainSprites: SpriteSource {
         switch subject {
         case .terrain(_, let variant): (0..<variantCount).contains(variant) ? tileCanvas : nil
         case .site(.tree): treeCanvas
-        case .site(let kind): kind.firstAge <= .bronze ? siteCanvas : nil
+        case .site: siteCanvas
         case .outcrop: siteCanvas
         case .unit, .building: nil
         }
@@ -145,27 +145,10 @@ enum TerrainInk {
     static let needlesShade = "#4f6435"
     static let bark = Ink.wood
 
-    // Stone and the outcrop.
-    static let stoneTop = "#efe4d4"
-    static let stoneLit = "#d9cfc4"
-    static let stoneShade = "#a99ca8"
+    // The outcrop.
     static let outcropTop = "#776c72"
     static let outcropLit = "#665c62"
     static let outcropShade = "#4f474c"
-
-    // Copper: green ore, its veins and nuggets the colour of the metal.
-    static let copperTop = "#93bb9e"
-    static let copperLit = "#71a07f"
-    static let copperShade = "#547d61"
-    static let copper = "#d2763c"
-    static let copperGlint = "#f1a86c"
-
-    // Tin: blue-grey rock with pale crystals.
-    static let tinTop = "#b6bdcc"
-    static let tinLit = "#959caf"
-    static let tinShade = "#6f768b"
-    static let tinCrystal = "#f2f0ea"
-    static let tinCrystalShade = "#c3cfdd"
 
     // Gold: dark warm rock with yellow veins and nuggets.
     static let goldTop = "#9a7c5c"

@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 struct TerrainTests {
     @Test func everyKeyOfTheBatchHasItsSprite() throws {
         let sprites = TerrainSprites()
-        #expect(TerrainSprites.keys.count == Terrain.allCases.count * 4 + 6 + 1)
+        #expect(TerrainSprites.keys.count == Terrain.allCases.count * 4 + 3 + 1)
         for key in TerrainSprites.keys {
             let sprite = try #require(sprites.sprite(key), "\(key)")
             #expect(sprite.teamMask == nil, "\(key)")
@@ -46,8 +46,8 @@ struct TerrainTests {
     @Test func everyOtherKeyIsNil() {
         let sprites = TerrainSprites()
         let ours = Set(TerrainSprites.keys)
-        var others = SpriteKey.required(through: .ai).filter { !ours.contains($0) }
-        others += [SpriteSubject.terrain(.grass, variant: 4), .terrain(.deepWater, variant: -1), .site(.iron), .site(.oilField)]
+        var others = SpriteKey.required(through: .hospitals).filter { !ours.contains($0) }
+        others += [SpriteSubject.terrain(.grass, variant: 4), .terrain(.deepWater, variant: -1)]
             .map { SpriteKey($0, .complete) }
         for key in TerrainSprites.keys {
             others.append(SpriteKey(key.subject, .complete, frame: 1))
@@ -130,28 +130,26 @@ struct TerrainTests {
         }
     }
 
-    /// An outcrop is not to be taken for stone to quarry: it is lower, and darker.
-    @Test func theOutcropIsLowerAndDarkerThanStone() throws {
+    /// An outcrop is not to be taken for a gold mine: it is lower, and darker.
+    @Test func theOutcropIsLowerAndDarkerThanGold() throws {
         let sprites = TerrainSprites()
-        let stone = TerrainPixels(try #require(sprites.sprite(SpriteKey(.site(.stone), .complete))).base)
+        let stone = TerrainPixels(try #require(sprites.sprite(SpriteKey(.site(.gold), .complete))).base)
         let outcrop = TerrainPixels(try #require(sprites.sprite(SpriteKey(.outcrop, .complete))).base)
         let stoneBounds = try #require(stone.solidBounds()), outcropBounds = try #require(outcrop.solidBounds())
         // Both stand on the same canvas, so their rows compare directly: the
-        // outcrop rises less than half as high above the ground as the stone.
+        // outcrop rises less high above the ground than the gold.
         let ground = (1 - TerrainSprites.siteCanvas.anchor.y) * Double(stone.height)
-        #expect((ground - Double(outcropBounds.top)) * 2 < ground - Double(stoneBounds.top))
-        #expect(outcrop.meanLightness() < stone.meanLightness() - 0.25)
+        #expect(ground - Double(outcropBounds.top) < ground - Double(stoneBounds.top))
+        #expect(outcrop.meanLightness() < stone.meanLightness())
     }
 
-    /// Copper, tin and gold stay apart from one another, from stone and from
-    /// the outcrop: their solid pixels' average colours lie at least 0.12 apart
-    /// (the nearest pair, copper and tin, measured 0.153). A guard against two
-    /// drifting together; whether they read apart at a glance is judged by eye.
+    /// Gold stays apart from the outcrop: their solid pixels' average colours
+    /// lie at least 0.12 apart. A guard against the two drifting together;
+    /// whether they read apart at a glance is judged by eye.
     @Test func depositsAreToldApart() throws {
         let sprites = TerrainSprites()
         var means: [(String, [Double])] = []
-        for (name, subject) in [("stone", SpriteSubject.site(.stone)), ("copper", .site(.copper)), ("tin", .site(.tin)),
-                                ("gold", .site(.gold)), ("outcrop", .outcrop)] {
+        for (name, subject) in [("gold", SpriteSubject.site(.gold)), ("outcrop", .outcrop)] {
             means.append((name, TerrainPixels(try #require(sprites.sprite(SpriteKey(subject, .complete))).base).meanColour()))
         }
         for i in means.indices {
@@ -253,7 +251,7 @@ private enum TerrainPreview {
         }
 
         /// Twelve tiles square: a river with two fords, a wood, open grass with
-        /// deer, a path, and every deposit, with an outcrop beside the stone.
+        /// deer, a path, and gold, with an outcrop beside it.
         static let standard: Scene = {
             let rows = [
                 "ffffggsWWggg",
@@ -275,8 +273,8 @@ private enum TerrainPreview {
                 for (x, c) in row.enumerated() where c == "f" && !felled.contains([x, y]) { things.append((.site(.tree), x, y)) }
             }
             things += [(.site(.prey), 4, 1), (.site(.prey), 5, 2), (.site(.prey), 3, 6),
-                       (.site(.stone), 10, 0), (.site(.stone), 11, 1), (.outcrop, 10, 4), (.outcrop, 11, 4),
-                       (.site(.copper), 1, 7), (.site(.copper), 1, 8), (.site(.tin), 2, 10), (.site(.gold), 10, 9)]
+                       (.site(.gold), 10, 0), (.site(.gold), 11, 1), (.outcrop, 10, 4), (.outcrop, 11, 4),
+                       (.site(.gold), 10, 9)]
             return Scene(rows: rows, things: things)
         }()
     }
@@ -351,8 +349,7 @@ private enum TerrainPreview {
             }
         }
         label("Sites and the outcrop, at game size", in: context, at: CGPoint(x: 30, y: 352), size: 22)
-        let subjects: [(String, SpriteSubject)] = [("tree", .site(.tree)), ("prey", .site(.prey)), ("stone", .site(.stone)),
-                                                   ("copper", .site(.copper)), ("tin", .site(.tin)), ("gold", .site(.gold)),
+        let subjects: [(String, SpriteSubject)] = [("tree", .site(.tree)), ("prey", .site(.prey)), ("gold", .site(.gold)),
                                                    ("outcrop", .outcrop)]
         for (i, (name, subject)) in subjects.enumerated() {
             guard let sprite = sprites.sprite(SpriteKey(subject, .complete)) else { return nil }
@@ -367,7 +364,7 @@ private enum TerrainPreview {
     /// The sites and the outcrop drawn three times larger than the game draws
     /// them, from the same SVG, side by side on grass.
     static func enlargedSites() -> CGImage? {
-        let subjects: [SpriteSubject] = [.site(.tree), .site(.prey), .site(.stone), .site(.copper), .site(.tin), .site(.gold), .outcrop]
+        let subjects: [SpriteSubject] = [.site(.tree), .site(.prey), .site(.gold), .outcrop]
         let scale = 6.0, cell = 72 * scale
         let width = Int(cell) * 4, height = Int(124 * scale + 80 * scale)
         guard let context = Raster.bitmap(width: width, height: height) else { return nil }

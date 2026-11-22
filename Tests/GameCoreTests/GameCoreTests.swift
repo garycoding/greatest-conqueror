@@ -11,51 +11,50 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
 
 @Test func valuesEncodeAndDecodeToThemselves() throws {
     #expect(try roundTrip(Samples.map()) == Samples.map())
-    #expect(try roundTrip(Samples.stoneAgeOpening()) == Samples.stoneAgeOpening())
-    #expect(try roundTrip(Samples.bronzeAgeSkirmish()) == Samples.bronzeAgeSkirmish())
+    #expect(try roundTrip(Samples.townsAgeOpening()) == Samples.townsAgeOpening())
+    #expect(try roundTrip(Samples.farmsAgeSkirmish()) == Samples.farmsAgeSkirmish())
     #expect(try roundTrip(Samples.twoPlayerSetup()) == Samples.twoPlayerSetup())
     #expect(try roundTrip(Catalogue.standard) == Catalogue.standard)
     let orders: [Order] = [
         .move(units: [EntityID(1)], to: MapPosition(x: 1, y: 2)), .gather(units: [EntityID(2)], site: SiteID(3)),
-        .work(units: [EntityID(4)], at: EntityID(1)), .construct(engineers: [EntityID(5)], building: .house, at: GridPoint(3, 4)),
+        .work(units: [EntityID(4)], at: EntityID(1)), .construct(workers: [EntityID(5)], building: .house, at: GridPoint(3, 4)),
         .attack(units: [EntityID(6)], target: EntityID(9)), .train(at: EntityID(1), unit: .worker),
-        .cancelTraining(at: EntityID(1)), .research(at: EntityID(1), improvement: .betterTools), .advanceAge,
-        .found(founder: EntityID(7), at: GridPoint(1, 1)), .stop(units: [EntityID(1)]),
-        .upgrade(units: [EntityID(8)], to: .spearman, at: EntityID(3)), .setPaused(true),
+        .cancelTraining(at: EntityID(1)), .advanceAge(at: EntityID(1)), .stop(units: [EntityID(1)]),
+        .demolish(workers: [EntityID(2)], building: EntityID(1)), .setPaused(true),
     ]
     #expect(try roundTrip(orders) == orders)
     #expect(try roundTrip(OrderResult.refused(.notEnough(ResourceAmounts([.wood: 20])))) == .refused(.notEnough(ResourceAmounts([.wood: 20]))))
 }
 
-@Test func catalogueHoldsEveryKindOfTheFirstMilestone() {
+@Test func catalogueHoldsEveryKind() {
     let c = Catalogue.standard
     for kind in UnitKind.allCases { #expect(c.units.filter { $0.kind == kind }.count == 1, "\(kind)") }
     for kind in BuildingKind.allCases { #expect(c.buildings.filter { $0.kind == kind }.count == 1, "\(kind)") }
-    for i in Improvement.allCases { #expect(c.improvements.filter { $0.improvement == i }.count == 1, "\(i)") }
-    #expect(c.advance(from: .stone) != nil)
-    // The requirements' table for the two ages.
-    #expect(c.stats(.clubman).age == .stone && c.stats(.slinger).age == .stone)
-    #expect([UnitKind.spearman, .archer, .chariot].allSatisfy { c.stats($0).age == .bronze })
-    #expect([BuildingKind.townCentre, .house, .storagePit].allSatisfy { c.stats($0).age == .stone })
-    #expect([BuildingKind.stockPen, .barracks, .watchTower, .palisade].allSatisfy { c.stats($0).age == .bronze })
-    #expect(c.stats(.merchant).age == .bronze)
-    #expect(c.stats(.founder).attack == nil && c.stats(.founder).trainedAt.isEmpty)
-    // Everything trainable is trained somewhere that trains it.
+    // An advance out of every age but the last.
+    for age in Age.allCases { #expect((c.advance(from: age) != nil) == (age.next != nil), "\(age)") }
+    #expect(c.lastAge == .hospitals)
+    #expect([BuildingKind.townCentre, .house].allSatisfy { c.stats($0).age == .towns })
+    #expect([BuildingKind.barracks, .watchTower].allSatisfy { c.stats($0).age == .farms })
+    // Everything trainable is trained somewhere that trains it, and the reverse.
     for stats in c.units where !stats.trainedAt.isEmpty {
         for building in stats.trainedAt { #expect(c.stats(building).trains.contains(stats.kind), "\(stats.kind) at \(building)") }
     }
-    // Nothing costs a resource before that resource's age.
-    for stats in c.units { for r in Resource.allCases where stats.cost[r] > 0 { #expect(r.firstAge <= stats.age, "\(stats.kind)") } }
-    for stats in c.buildings { for r in Resource.allCases where stats.cost[r] > 0 { #expect(r.firstAge <= stats.age, "\(stats.kind)") } }
+    for stats in c.buildings {
+        for unit in stats.trains { #expect(c.stats(unit).trainedAt.contains(stats.kind), "\(unit) at \(stats.kind)") }
+    }
+    // Workers deliver food, wood and gold to the town centre; boats food and gold to the boat house.
+    #expect(c.stats(.townCentre).accepts == [.food, .wood, .gold])
+    #expect(c.stats(.boatHouse).accepts == [.food, .gold])
 }
 
-@Test func resourcesAndSitesAppearInTheirAges() {
-    #expect(Resource.allCases.filter { $0.firstAge == .stone } == [.food, .wood, .stone])
-    #expect(Resource.allCases.filter { $0.firstAge == .bronze } == [.bronze, .gold])
-    #expect(SiteKind.copper.yield == .bronze && SiteKind.tin.yield == .bronze)
-    #expect(SiteKind.copper.firstAge == .bronze && SiteKind.oilField.firstAge == .industrial)
-    #expect(Samples.stoneAgeOpening().shownResources == [.food, .wood, .stone])
-    #expect(Samples.stoneAgeOpening().sites.allSatisfy { $0.kind.firstAge == .stone })
+@Test func theFiveAgesAndTheThreeResources() {
+    #expect(Age.allCases == [.towns, .farms, .ships, .cannons, .hospitals])
+    #expect(Age.allCases.map(\.rawValue) == [0, 1, 2, 3, 4])
+    #expect(Age.allCases.map(\.look) == [.stone, .bronze, .iron, .alchemy, .industrial])
+    #expect(Age.towns.title == "Age of towns" && Age.hospitals.title == "Age of hospitals")
+    #expect(Resource.allCases == [.food, .wood, .gold])
+    #expect(SiteKind.gold.yield == .gold && SiteKind.fish.yield == .food && SiteKind.prey.yield == .food)
+    #expect(Samples.townsAgeOpening().shownResources == [.food, .wood, .gold])
 }
 
 @Test func generatorIsSeededAndStable() {
@@ -80,25 +79,27 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(Projection.screen(MapPosition(x: 1, y: 1)).y < 0)   // both downward
 }
 
-@Test func spriteChecklistCoversTheFirstMilestone() {
-    let keys = SpriteKey.required(through: .bronze)
+@Test func spriteChecklistCoversTheFirstTwoAges() {
+    let keys = SpriteKey.required(through: .farms)
     #expect(Set(keys).count == keys.count)
-    for kind in BuildingKind.allCases where Catalogue.standard.stats(kind).age <= .bronze && kind != .bridge { #expect(keys.contains(SpriteKey(.building(kind, .bronze), .complete))) }
+    for kind in BuildingKind.allCases where Catalogue.standard.stats(kind).age <= .farms {
+        #expect(keys.contains(SpriteKey(.building(kind, .bronze), .complete)))
+    }
     #expect(keys.contains(SpriteKey(.unit(.worker, .stone), .working)))
     #expect(keys.contains(SpriteKey(.unit(.worker, .bronze), .working)))
-    #expect(!keys.contains(SpriteKey(.unit(.scholar, .stone), .fighting)))
-    #expect(keys.contains(SpriteKey(.site(.copper), .complete)))
-    #expect(!keys.contains(SpriteKey(.site(.iron), .complete)))
+    #expect(keys.contains(SpriteKey(.unit(.spearman, .bronze), .fighting)))
+    #expect(!keys.contains(SpriteKey(.unit(.swordsman, .iron), .fighting)))
+    #expect(keys.contains(SpriteKey(.site(.gold), .complete)))
 }
 
 @MainActor @Test func sessionTakesRefusalsFromTheViewAndDropsVanishedSelection() {
     var sent: [Order] = []
-    let session = PlayerSession(view: Samples.stoneAgeOpening(), catalogue: .standard,
+    let session = PlayerSession(view: Samples.townsAgeOpening(), catalogue: .standard,
                                 camera: Camera(centre: MapPosition(x: 10, y: 10))) { sent.append($0) }
     session.selection = [EntityID(1), EntityID(999)]
     session.issue(.setPaused(true))
     #expect(sent == [.setPaused(true)])
-    var next = Samples.bronzeAgeSkirmish()
+    var next = Samples.farmsAgeSkirmish()
     next.events.append(.refused(.populationLimit))
     session.update(next)
     #expect(session.selection == [EntityID(1)])
@@ -106,7 +107,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
 }
 
 @Test func placementFollowsTheOneRule() {
-    let view = Samples.stoneAgeOpening()
+    let view = Samples.townsAgeOpening()
     // On open, explored grass beside the town centre: allowed.
     #expect(Placement.canPlace(.house, at: GridPoint(12, 7), in: view))
     // Over the town centre's own footprint: refused.
@@ -121,8 +122,8 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
 }
 
 @Test func spriteSubjectsAgreeWithTheChecklist() {
-    let view = Samples.bronzeAgeSkirmish()
-    let keys = Set(SpriteKey.required(through: .bronze))
+    let view = Samples.farmsAgeSkirmish()
+    let keys = Set(SpriteKey.required(through: .hospitals))
     for entity in view.entities {
         let owner = view.players.first { $0.id == entity.owner }!
         let subject = SpriteSubject.of(entity, ownerAge: owner.age)
@@ -138,28 +139,27 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     var sum = StableChecksum()
     sum.add(bytes: try encoder.encode(Catalogue.standard))
     sum.add(bytes: try encoder.encode(Samples.twoPlayerSetup()))
-    sum.add(bytes: try encoder.encode(Samples.bronzeAgeSkirmish()))
+    sum.add(bytes: try encoder.encode(Samples.farmsAgeSkirmish()))
     #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum EncodingFixture { static let expected: UInt64 = 0xA419_5251_4769_6594 }
+enum EncodingFixture { static let expected: UInt64 = 0x3C9D_3EA5_535A_A2B5 }
 
 @Test func samplesAreConsistent() {
-    for view in [Samples.stoneAgeOpening(), Samples.bronzeAgeSkirmish()] {
+    for view in [Samples.townsAgeOpening(), Samples.farmsAgeSkirmish()] {
         #expect(view.terrain.count == view.mapWidth * view.mapHeight)
         #expect(view.visibility.count == view.terrain.count)
         #expect(view.entities.map(\.id) == view.entities.map(\.id).sorted())
         #expect(Set(view.entities.map(\.id)).count == view.entities.count)
-        #expect(view.sites.allSatisfy { $0.kind.firstAge <= view.age })
         for e in view.entities { if case .building(let b) = e.kind { #expect(Placement.origin(b, centre: e.position) == e.tile, "\(b)") } }
     }
-    let skirmish = Samples.bronzeAgeSkirmish()
+    let skirmish = Samples.farmsAgeSkirmish()
     let used = skirmish.entities.filter { $0.owner == skirmish.player }.reduce(0) { n, e in
         if case .unit(let k) = e.kind { return n + Catalogue.standard.stats(k).population } else { return n } }
     let housing = skirmish.entities.filter { $0.owner == skirmish.player }.reduce(0) { n, e in
         if case .building(let k) = e.kind { return n + Catalogue.standard.stats(k).housing } else { return n } }
     #expect(skirmish.population == used && skirmish.populationLimit == housing)
-    #expect(Samples.stoneAgeOpening().entities.first!.tile == Samples.map().starts[0])
+    #expect(Samples.townsAgeOpening().entities.first!.tile == Samples.map().starts[0])
     let map = Samples.map()
     #expect(map.starts.count == 2)
     #expect(map.sites.map(\.id) == map.sites.map(\.id).sorted())

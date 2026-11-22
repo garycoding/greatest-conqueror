@@ -28,7 +28,7 @@ public final class AlchemyBoatSprites: ViewedSpriteSource {
     private let cache = Mutex<[SpriteKey: SpriteImage]>([:])
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .alchemy, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .cannons, catalogue: catalogue).filter { key in
             guard case .unit(.boat, .alchemy) = key.subject else { return false }
             return AlchemySmack.drawn(key.pose)
         }

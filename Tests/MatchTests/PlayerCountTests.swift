@@ -86,14 +86,14 @@ func computerPlayersPlayAMatchOfThreeOrFive(players: Int) {
     let seats = (0..<6).map { i in
         Seat(player: PlayerID(i), team: TeamID(i), kind: .computer(.standard), civilization: civilizations[i])
     }
-    let ready = Lobby(name: "Large", seats: seats, startingAge: .iron, mapSize: .large)
+    let ready = Lobby(name: "Large", seats: seats, startingAge: .ships, mapSize: .large)
     let seed: UInt64 = 61
     let map = MapGenerator().generate(MapRequest(size: ready.size, playerCount: 6, seed: seed))
     #expect(map.width == 192 && map.height == 192)
     let setup = try #require(ready.setup(map: map, seed: seed))
     var host = Host(setup: setup)
     expectEveryPlayerHasAStart(host, setup)
-    for player in setup.players { #expect(host.peek(for: player.id).age == .iron) }
+    for player in setup.players { #expect(host.peek(for: player.id).age == .ships) }
     let clock = ContinuousClock()
     let elapsed = clock.measure { for _ in 0..<Tick.seconds(60) { host.advance() } }
     #expect(elapsed < .seconds(60), "a minute of play took \(elapsed)")

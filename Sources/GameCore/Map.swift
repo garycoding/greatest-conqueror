@@ -49,45 +49,28 @@ public enum Terrain: Int, CaseIterable, Codable, Sendable, Hashable {
     public var isBuildable: Bool { isPassable }
 }
 
-/// The kinds of resource site on the map (requirement 13 and "Economy").
+/// The kinds of resource site on the map (requirement 9).
 public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// A tree, felled for wood.
     case tree
-    /// Animals hunted for food in the Stone age.
+    /// Deer, hunted for food.
     case prey
-    case stone, copper, tin, gold, iron
-    /// An oil field, pumped from the Industrial age.
-    case oilField
+    /// A gold mine: a rock on land, mined by workers, or in the water, mined by boats.
+    case gold
     /// One tile of a shoal of fish in the water, 2 × 2 tiles to a shoal
     /// (ruled 2026-11-21); only boats gather it, and they sail over it.
     case fish
 
-    /// A player cannot see or use a site before reaching this age (requirement 19).
-    public var firstAge: Age {
-        switch self {
-        case .tree, .prey, .stone, .fish: .stone
-        case .copper, .tin, .gold: .bronze
-        case .iron: .iron
-        case .oilField: .industrial
-        }
-    }
-
     /// Whether the site occupies its tile, so that nothing walks or is built
-    /// there whilst it remains. Prey and oil fields do not; trees, stone and
-    /// metal deposits do (`Placement`).
-    public var blocksTile: Bool { self != .prey && self != .oilField && self != .fish }
+    /// there whilst it remains. Prey and fish do not; trees and gold do (`Placement`).
+    public var blocksTile: Bool { self != .prey && self != .fish }
 
-    /// What gathering at the site yields. Copper and tin each yield bronze, but
-    /// only whilst the player mines both (requirement 18).
+    /// What gathering at the site yields.
     public var yield: Resource {
         switch self {
         case .tree: .wood
         case .prey, .fish: .food
-        case .stone: .stone
-        case .copper, .tin: .bronze
         case .gold: .gold
-        case .iron: .iron
-        case .oilField: .oil
         }
     }
 }

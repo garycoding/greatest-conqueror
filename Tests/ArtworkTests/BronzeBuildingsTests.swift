@@ -13,7 +13,8 @@ import Testing
 
     /// Every key of the batch: each building of the standard catalogue in the
     /// Bronze age's look, complete and under construction, at frame 0.
-    private static let batch: [SpriteKey] = Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge }).flatMap { stats in
+    /// The farm's Bronze look is the Iron farm's (`IronNewBuildingsArt.lookAlikes`).
+    private static let batch: [SpriteKey] = Catalogue.standard.buildings.filter({ $0.age <= .farms && $0.kind != .farm }).flatMap { stats in
         [SpriteKey(.building(stats.kind, .bronze), .complete), SpriteKey(.building(stats.kind, .bronze), .underConstruction)]
     }
 
@@ -24,8 +25,8 @@ import Testing
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 16)
-        var keys = SpriteKey.required(through: .ai)
+        #expect(Self.batch.count == 10)
+        var keys = SpriteKey.required(through: .hospitals)
         for key in Self.batch {
             keys.append(SpriteKey(key.subject, key.pose, frame: 1))
             keys.append(SpriteKey(key.subject, key.pose, frame: 11))
@@ -39,16 +40,16 @@ import Testing
     /// A building takes the look of its owner's age: once its owner is in the
     /// Bronze age, every building, the Stone age's included, is drawn from here.
     @Test func everyBuildingOfABronzeAgeOwnerIsSupplied() {
-        for stats in Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge }) {
+        for stats in Catalogue.standard.buildings.filter({ $0.age <= .farms && $0.kind != .farm }) {
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(stats.kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)
-            let subject = SpriteSubject.of(entity, ownerAge: .bronze)
+            let subject = SpriteSubject.of(entity, ownerAge: .farms)
             #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(stats.kind)")
             #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(stats.kind)")
             // In the Stone age only the buildings that the Bronze age brings take this look.
-            let early = Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .stone), .complete))
-            #expect((early != nil) == (stats.age == .bronze), "\(stats.kind)")
+            let early = Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .towns), .complete))
+            #expect((early != nil) == (stats.age == .farms), "\(stats.kind)")
         }
     }
 

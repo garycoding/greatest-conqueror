@@ -15,7 +15,7 @@ import Testing
     private let source = AlchemyWarriorSprites()
 
     @Test func theBatchIsTheKnightTheMusketeerAndTheCannonStandingWalkingAndFighting() {
-        let expected = SpriteKey.required(through: .alchemy).filter { key in
+        let expected = SpriteKey.required(through: .cannons).filter { key in
             guard case .unit(let kind, .alchemy) = key.subject else { return false }
             return [.knight, .musketeer, .cannon].contains(kind) && key.pose != .working
         }
@@ -48,14 +48,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 for pose in poses {
                     for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for age in Look.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -232,7 +232,7 @@ struct AlchemyWarriorsRenders {
                     let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
                     let sx = walking ? 1200 + Double(i) * 1.6 : 1250
                     Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: sx, y: groundLine), in: context)
-                    Preview.label("\(kind.stageName(at: .alchemy)), Alchemy age, in Sumer's colour", in: context,
+                    Preview.label("\(kind.stageName(at: .cannons)), Alchemy age, in Sumer's colour", in: context,
                                   at: CGPoint(x: 28, y: Double(height) - 52), size: 26)
                     Preview.label(Self.caption(kind, pose) + ", 12 frames a second", in: context, at: CGPoint(x: 28, y: 28), size: 22)
                     Preview.label("at game size", in: context, at: CGPoint(x: 1210, y: 60), size: 18)
@@ -258,11 +258,11 @@ struct AlchemyWarriorsRenders {
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Alchemy age's knight, musketeer and cannon beside the Iron age's horseman, swordsman and catapult, in the colours of Rome and Angkor",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
-        let columns: [(UnitKind, Age)] = [(.horseman, .iron), (.knight, .alchemy), (.swordsman, .iron), (.musketeer, .alchemy), (.catapult, .iron),
+        let columns: [(UnitKind, Look)] = [(.horseman, .iron), (.knight, .alchemy), (.swordsman, .iron), (.musketeer, .alchemy), 
                                           (.cannon, .alchemy)]
         for (i, (kind, age)) in columns.enumerated() {
             let left = Double(i * column)
-            Preview.label("\(kind.stageName(at: age)), \(age == .iron ? "Iron" : "Alchemy") age", in: context,
+            Preview.label("\(kind.stageName(at: .towns)), \(age == .iron ? "Iron" : "Alchemy") age", in: context,
                           at: CGPoint(x: left + 20, y: Double(height) - 92), size: 22)
             let look: any PersonLook = try #require(age == .iron ? IronWarriorsLooks.look(kind) : AlchemyWarriorsLooks.look(kind))
             let canvas = age == .iron ? IronWarriorsLooks.canvas(kind) : AlchemyWarriorsLooks.canvas(kind)

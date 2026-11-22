@@ -72,30 +72,22 @@ extension MapScene {
     }
 
     /// Place the building being placed with its footprint under the pointer: the
-    /// selected engineers are ordered to construct it. Where the footprint is not
-    /// allowed, or no engineer is selected, nothing is issued and the refusal is shown.
+    /// selected workers are ordered to construct it. Where the footprint is not
+    /// allowed, or no worker is selected, nothing is issued and the refusal is shown.
     func place(at point: CGPoint, keepPlacing: Bool) {
         guard let kind = session.placing else { return }
-        // A bridge is dragged from bank to bank (`endDrag`); a click alone builds none.
-        if kind == .bridge { return }
         let catalogue = session.catalogue
         let origin = Placement.origin(kind, centre: geometry.mapPosition(for: point), catalogue: catalogue)
         guard Placement.canPlace(kind, at: origin, in: session.view, catalogue: catalogue) else {
             session.lastRefusal = .placementBlocked
             return
         }
-        // A founder founds a town centre rather than constructing it (requirement 26).
-        if kind == .townCentre, let founder = session.ownSelection.first(where: { $0.kind == .unit(.founder) }) {
-            session.issue(.found(founder: founder.id, at: origin))
-            session.placing = nil
-            return
-        }
-        let engineers = session.ownSelection.filter { $0.kind == .unit(.engineer) }.map(\.id)
-        guard !engineers.isEmpty else {
+        let workers = session.ownSelection.filter { $0.kind == .unit(.worker) }.map(\.id)
+        guard !workers.isEmpty else {
             session.lastRefusal = .notYours
             return
         }
-        session.issue(.construct(engineers: engineers, building: kind, at: origin))
+        session.issue(.construct(workers: workers, building: kind, at: origin))
         if !keepPlacing { session.placing = nil }
     }
 
@@ -128,7 +120,6 @@ extension MapScene {
         switch key {
         case .escape:
             session.placing = nil
-            bridgeStart = nil
             dragStart = nil
             dragIsBox = false
             boxOutline.isHidden = true
@@ -172,26 +163,6 @@ extension MapScene {
         dragStart = point
         dragIsBox = false
         pointer = point
-        bridgeStart = session.placing == .bridge ? geometry.mapPosition(for: point).tile : nil
-    }
-
-    /// The bridge dragged from `bridgeStart` to the tile under `point`, ordered
-    /// for the selected engineers; refused as `place` refuses.
-    func placeBridge(to point: CGPoint, keepPlacing: Bool) {
-        guard let start = bridgeStart else { return }
-        bridgeStart = nil
-        let end = Placement.bridgeEnd(from: start, toward: geometry.mapPosition(for: point).tile)
-        guard Placement.canBridge(from: start, to: end, in: session.view) else {
-            session.lastRefusal = .placementBlocked
-            return
-        }
-        let engineers = session.ownSelection.filter { $0.kind == .unit(.engineer) }.map(\.id)
-        guard !engineers.isEmpty else {
-            session.lastRefusal = .notYours
-            return
-        }
-        session.issue(.buildBridge(engineers: engineers, from: start, to: end))
-        if !keepPlacing { session.placing = nil }
     }
 
     func continueDrag(to point: CGPoint) {
@@ -205,12 +176,6 @@ extension MapScene {
     }
 
     func endDrag(at point: CGPoint, additive: Bool) {
-        if bridgeStart != nil {
-            dragStart = nil
-            dragIsBox = false
-            placeBridge(to: point, keepPlacing: additive)
-            return
-        }
         guard let start = dragStart else { return }
         let wasBox = dragIsBox
         dragStart = nil

@@ -9,10 +9,10 @@ import Testing
 /// A lake from (10, 10) to (19, 19), its shore on every side.
 private let lake = (10...19).flatMap { y in (10...19).map { GridPoint($0, y) } }
 
-/// A duel beside the lake, with a shoal of fish (2 × 2) in it, a stone rock
-/// in it, and a stone deposit on land.
+/// A duel beside the lake, with a shoal of fish (2 × 2) in it, a gold rock
+/// in it, and a gold mine on land.
 private func lakeside() -> Simulation {
-    duel(sites: [(.fish, 12, 12), (.fish, 13, 12), (.fish, 12, 13), (.fish, 13, 13), (.stone, 16, 16), (.stone, 6, 6)],
+    duel(sites: [(.fish, 12, 12), (.fish, 13, 12), (.fish, 12, 13), (.fish, 13, 13), (.gold, 16, 16), (.gold, 6, 6)],
          water: lake)
 }
 
@@ -68,38 +68,20 @@ private func lakeside() -> Simulation {
         var sim = lakeside()
         sim.exploreAll(me)
         _ = sim.add(.boatHouse, me, 8, 12)
-        _ = sim.add(.storagePit, me, 4, 4)
         let boat = sim.add(.boat, me, 15.5, 15.5)
         let worker = sim.add(.worker, me, 9.5, 16.5)
-        let rock = sim.sites.first { $0.kind == .stone && $0.tile == GridPoint(16, 16) }!.id
-        let quarry = sim.sites.first { $0.kind == .stone && $0.tile == GridPoint(6, 6) }!.id
+        let rock = sim.sites.first { $0.kind == .gold && $0.tile == GridPoint(16, 16) }!.id
+        let quarry = sim.sites.first { $0.kind == .gold && $0.tile == GridPoint(6, 6) }!.id
         #expect(sim.apply(.gather(units: [worker], site: rock), from: me) == .refused(.invalidTarget))
         #expect(sim.apply(.gather(units: [boat], site: quarry), from: me) == .refused(.invalidTarget))
-        let stone = sim.resources(me)[.stone]
+        let gold = sim.resources(me)[.gold]
         #expect(sim.apply(.gather(units: [boat], site: rock), from: me) == .accepted)
-        let landed = sim.run(until: { $0.resources(me)[.stone] > stone }, limit: 90 * Tick.rate)
-        #expect(landed, "no stone was landed from the rock")
-        // Workers never take their loads to a boat house, nor boats to a storage pit.
+        let landed = sim.run(until: { $0.resources(me)[.gold] > gold }, limit: 90 * Tick.rate)
+        #expect(landed, "no gold was landed from the rock")
+        // Workers never take their loads to a boat house, nor boats to a town centre.
         #expect(sim.apply(.gather(units: [worker], site: quarry), from: me) == .accepted)
         let delivered = sim.run(until: { $0.living(worker).dropOff != nil }, limit: 60 * Tick.rate)
         #expect(delivered)
-        #expect(sim.entity(sim.living(worker).dropOff!)?.buildingKind == .storagePit)
-    }
-
-    @Test func aMatchSavedBeforeBoatsGainsThem() throws {
-        let sim = duel()
-        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(sim)) as! [String: Any]
-        var catalogue = json["catalogue"] as! [String: Any]
-        catalogue["buildings"] = (catalogue["buildings"] as! [[String: Any]]).filter { ($0["kind"] as? Int) != BuildingKind.boatHouse.rawValue }
-        catalogue["units"] = (catalogue["units"] as! [[String: Any]]).filter { ($0["kind"] as? Int) != UnitKind.boat.rawValue }
-        var gathering = catalogue["gathering"] as! [String: Any]
-        gathering["amountBySite"] = Array((gathering["amountBySite"] as! [Int]).dropLast())
-        gathering["perSecondBySite"] = Array((gathering["perSecondBySite"] as! [Double]).dropLast())
-        catalogue["gathering"] = gathering
-        json["catalogue"] = catalogue
-        let reopened = try JSONDecoder().decode(Simulation.self, from: JSONSerialization.data(withJSONObject: json))
-        #expect(reopened.catalogue.stats(.boatHouse) == Catalogue.standard.stats(.boatHouse))
-        #expect(reopened.catalogue.stats(.boat) == Catalogue.standard.stats(.boat))
-        #expect(reopened.catalogue.gathering.amount(.fish) == Catalogue.standard.gathering.amount(.fish))
+        #expect(sim.entity(sim.living(worker).dropOff!)?.buildingKind == .townCentre)
     }
 }

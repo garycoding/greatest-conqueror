@@ -13,7 +13,8 @@ import Testing
     private static let source = IronOldBuildingSprites()
 
     /// The buildings of the Stone and Bronze ages, the boat house among them: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .bronze && $0.kind != .bridge }.map(\.kind)
+    // The farm, of the age of farms, is drawn in the Iron look by `IronNewBuildingSprites`.
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .farms && $0.kind != .farm }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Iron age's look,
     /// complete and under construction, at frame 0.
@@ -26,10 +27,10 @@ import Testing
                                              SpriteKey(.building(.boatHouse, .iron), .underConstruction, view: .back)]
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 16)
-        var keys = SpriteKey.required(through: .ai)
+        #expect(Self.batch.count == 10)
+        var keys = SpriteKey.required(through: .hospitals)
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 keys.append(SpriteKey(.building(kind, age), .complete))
                 keys.append(SpriteKey(.building(kind, age), .underConstruction))
             }
@@ -50,7 +51,7 @@ import Testing
     /// asks it for no other subject's views, and gives the back view from it.
     @Test func onlyTheBoatHouseIsDrawnInViews() throws {
         for kind in BuildingKind.allCases {
-            for age in Age.allCases {
+            for age in Look.allCases {
                 let subject = SpriteSubject.building(kind, age)
                 #expect(Self.source.drawsViews(of: subject) == (subject == .building(.boatHouse, .iron)), "\(subject)")
             }
@@ -86,10 +87,10 @@ import Testing
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)
-            let subject = SpriteSubject.of(entity, ownerAge: .iron)
+            let subject = SpriteSubject.of(entity, ownerAge: .ships)
             #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(kind)")
             #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(kind)")
-            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .bronze), .complete)) == nil, "\(kind)")
+            #expect(Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .farms), .complete)) == nil, "\(kind)")
         }
     }
 
@@ -317,15 +318,10 @@ private enum IronOldBuildingsPreview {
             Placed(kind: .house, x: 4, y: 7, complete: true, civilization: .sumer),
             Placed(kind: .house, x: 7, y: 3, complete: true, civilization: .sumer),
             Placed(kind: .house, x: 4, y: 4, complete: false, civilization: .sumer),
-            Placed(kind: .storagePit, x: 10, y: 6, complete: true, civilization: .sumer),
-            Placed(kind: .stockPen, x: 5, y: 10, complete: true, civilization: .sumer),
             Placed(kind: .barracks, x: 10, y: 10, complete: true, civilization: .sumer),
             Placed(kind: .watchTower, x: 9, y: 3, complete: false, civilization: .sumer),
             Placed(kind: .watchTower, x: 13, y: 8, complete: true, civilization: .sumer),
         ]
-        for y in 2..<8 { placed.append(Placed(kind: .palisade, x: 13, y: y, complete: true, civilization: .sumer)) }
-        for x in 9..<12 { placed.append(Placed(kind: .palisade, x: x, y: 2, complete: true, civilization: .sumer)) }
-        placed.append(Placed(kind: .palisade, x: 12, y: 2, complete: false, civilization: .sumer))
         func depth(_ p: Placed) -> Double {
             let f = Catalogue.standard.stats(p.kind).footprint
             return Double(p.x) + Double(p.y) + Double(f.x + f.y) / 2

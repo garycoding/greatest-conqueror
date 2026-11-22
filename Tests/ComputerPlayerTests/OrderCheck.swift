@@ -17,7 +17,7 @@ func decide(_ player: inout ComputerPlayer, _ view: PlayerView, catalogue: Catal
 
 /// The rules a person's orders meet, applied to the orders of one decision:
 /// the player orders only people and buildings it owns, gives no person two
-/// orders, never targets an ally or a founder, and never orders what it cannot
+/// orders, never targets an ally or a car, and never orders what it cannot
 /// afford, place, house or has not reached the age for.
 enum OrderCheck {
     static func problems(_ orders: [Order], in view: PlayerView, catalogue: Catalogue) -> [String] {
@@ -63,16 +63,10 @@ enum OrderCheck {
                 if to.x < 0 || to.y < 0 || to.x > Double(view.mapWidth) || to.y > Double(view.mapHeight) {
                     problems.append("move: \(to) is off the map")
                 }
-            case .exchange(let units, _, _):
-                command(units, "exchange") { $0 == .merchant }
-            case .carry(let units, _, _):
-                command(units, "carry") { $0 == .merchant }
             case .summonCar:
                 problems.append("summonCar: a computer player has no car")
             case .setKillRadius:
                 problems.append("setKillRadius: a computer player has no car")
-            case .buildBridge:
-                problems.append("buildBridge: a computer player does not build bridges")
             case .reseed(let farm):
                 if building(farm)?.entity.remaining != 0 { problems.append("reseed: \(farm) is not a farm of its own that has run dry") }
             case .gather(let units, let site):
@@ -89,19 +83,14 @@ enum OrderCheck {
                     command(units, "work") { _ in true }
                     break
                 }
-                let researching: Bool = { if case .researching = place.entity.activity { return true }; return false }()
                 command(units, "work at \(place.kind)") { kind in
-                    switch kind {
-                    case .worker: [.stockPen, .farm, .alchemistsWorkshop].contains(place.kind) && isComplete(place.entity)
-                    case .engineer: true
-                    case .scholar: place.kind == .townCentre || researching
-                    default: false
-                    }
+                    kind == .worker && (place.kind == .farm || !isComplete(place.entity)
+                                        || place.entity.health < place.entity.maxHealth)
                 }
-            case .construct(let engineers, let kind, let at):
-                command(engineers, "construct") { $0 == .engineer }
+            case .construct(let workers, let kind, let at):
+                command(workers, "construct") { $0 == .worker }
                 let stats = catalogue.stats(kind)
-                if stats.age > view.age { problems.append("construct: \(kind) needs the \(stats.age.name) age") }
+                if stats.age > view.age { problems.append("construct: \(kind) needs the age of \(stats.age.name)") }
                 if !Placement.canPlace(kind, at: at, in: view, catalogue: catalogue) {
                     problems.append("construct: \(kind) cannot stand at \(at)")
                 }
@@ -110,18 +99,18 @@ enum OrderCheck {
                 }
                 spent = spent + stats.cost
             case .dismiss(let units):
-                command(units, "dismiss") { $0 != .founder }
-            case .demolish(let engineers, let at):
-                command(engineers, "demolish") { $0 == .engineer }
+                command(units, "dismiss") { _ in true }
+            case .demolish(let workers, let at):
+                command(workers, "demolish") { $0 == .worker }
                 if building(at) == nil { problems.append("demolish: \(at) is not a building it owns") }
             case .attack(let units, let target):
-                command(units, "attack") { $0 != .founder && catalogue.stats($0).attack != nil }
+                command(units, "attack") { catalogue.stats($0).attack != nil }
                 guard let struck = view.entity(target) else {
                     problems.append("attack: \(target) is not in sight")
                     break
                 }
                 if view.isAlly(struck.owner) { problems.append("attack: \(target) belongs to an ally or itself") }
-                if struck.kind == .unit(.founder) { problems.append("attack: \(target) is a founder") }
+                if struck.kind == .unit(.car) { problems.append("attack: \(target) is a car") }
             case .train(let at, let unit):
                 guard let place = building(at) else {
                     problems.append("train: \(at) is not a building it owns")
@@ -134,41 +123,16 @@ enum OrderCheck {
                 spent = spent + catalogue.stats(unit).cost
                 population += catalogue.stats(unit).population
                 if population > view.populationLimit { problems.append("train: \(unit) exceeds the population limit") }
-            case .upgrade(let units, let to, let at):
-                command(units, "upgrade") { catalogue.upgrade(from: $0)?.to == to }
-                if let place = building(at) {
-                    if !isComplete(place.entity) || !catalogue.stats(place.kind).trains.contains(to) {
-                        problems.append("upgrade: \(place.kind) cannot upgrade to \(to)")
-                    }
-                } else {
-                    problems.append("upgrade: \(at) is not a building it owns")
-                }
-                if catalogue.stats(to).age > view.age { problems.append("upgrade: \(to) needs a later age") }
-                for id in units {
-                    if let kind = person(id), let step = catalogue.upgrade(from: kind) { spent = spent + step.cost }
-                }
-            case .advanceAge:
+            case .advanceAge(let at):
                 guard let advance = catalogue.advance(from: view.age) else {
                     problems.append("advanceAge: no age follows")
                     break
                 }
-                if view.ageProgress < 1 { problems.append("advanceAge: study is incomplete") }
+                if let place = building(at), place.kind == .townCentre, isComplete(place.entity) {} else {
+                    problems.append("advanceAge: \(at) is not a complete town centre of its own")
+                }
+                if view.ageProgress > 0 { problems.append("advanceAge: an advance is under way") }
                 spent = spent + advance.cost
-            case .found(let founder, let at):
-                command([founder], "found") { $0 == .founder }
-                if !Placement.canPlace(.townCentre, at: at, in: view, catalogue: catalogue) {
-                    problems.append("found: a town centre cannot stand at \(at)")
-                }
-            case .research(let at, let improvement):
-                guard let place = building(at), isComplete(place.entity),
-                      catalogue.stats(place.kind).researches.contains(improvement) else {
-                    problems.append("research: \(improvement) cannot be researched at \(at)")
-                    break
-                }
-                if catalogue.stats(improvement).age > view.age { problems.append("research: \(improvement) is of a later age") }
-                if view.improvements.contains(improvement) { problems.append("research: \(improvement) is known") }
-                if case .researching = place.entity.activity { problems.append("research: \(at) is already researching") }
-                spent = spent + catalogue.stats(improvement).cost
             case .cancelTraining, .setPaused, .stop:
                 problems.append("unexpected order \(order)")
             }

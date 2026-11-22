@@ -8,11 +8,9 @@ import Synchronization
 
 /// The game's artwork, drawn in the Cartoon Modern style of docs/art-style.md.
 ///
-/// This first batch holds the people of the Stone age: the worker (a hunter),
-/// the scholar (an elder), the engineer (a builder), the clubman, the slinger
-/// and the founder, each in its Stone-age look (`SpriteSubject.unit(kind,
-/// .stone)`), standing, walking, working and, where the catalogue gives the kind
-/// an attack, fighting. Each pose is a cycle of 12 frames (`SpriteKey.frame` 0
+/// This first batch holds the worker (a hunter) in the Stone look
+/// (`SpriteSubject.unit(.worker, .stone)`), standing, walking, working and
+/// fighting. Each pose is a cycle of 12 frames (`SpriteKey.frame` 0
 /// to 11). Every other key returns `nil`, and the drawing shows its placeholder.
 ///
 /// Each picture is written as SVG, drawn by macOS, and grained by Core Image
@@ -25,13 +23,13 @@ public final class CartoonSprites: ViewedSpriteSource {
 
     /// The keys this source supplies, each at frame 0: every person of the
     /// Stone age, in each pose the artwork's checklist asks of it
-    /// (`SpriteKey.required(through: .stone)`).
+    /// (`SpriteKey.required(through: .towns)`).
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
     private let cache = Mutex<[SpriteKey: SpriteImage]>([:])
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .stone, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .towns, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .stone) = key.subject, StonePeople.person(kind)?.rig(key.pose, 0) != nil else { return false }
             return true
         }
@@ -45,7 +43,7 @@ public final class CartoonSprites: ViewedSpriteSource {
 
     /// The kinds drawn in all five views (ruled 2026-11-21): every Stone person,
     /// the worker first as the exemplar.
-    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .clubman, .slinger, .founder]
+    static let viewed: Set<UnitKind> = [.worker]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .stone) = subject { return Self.viewed.contains(kind) }

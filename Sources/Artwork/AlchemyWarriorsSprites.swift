@@ -25,7 +25,7 @@ public struct AlchemyWarriorSprites: ViewedSpriteSource {
     private let supplied: Set<SpriteKey>
 
     public init(catalogue: Catalogue = .standard) {
-        poses = SpriteKey.required(through: .alchemy, catalogue: catalogue).filter { key in
+        poses = SpriteKey.required(through: .cannons, catalogue: catalogue).filter { key in
             guard case .unit(let kind, .alchemy) = key.subject, key.pose != .working else { return false }
             return AlchemyWarriorsLooks.look(kind) != nil
         }

@@ -51,24 +51,12 @@ struct PlayerState: Codable, Sendable, Hashable {
     /// Index into `Simulation.teams`.
     var teamIndex: Int
     var isHuman: Bool
-    var age: Age = .stone
+    var age: Age = .towns
     var resources: ResourceAmounts
-    /// Scholar-ticks of study toward the next age.
-    var study = 0
-    /// Whether this person has made a car; kept so that older saves open, and
-    /// no longer read: a person may make up to `CarStats.perPerson` (ruled 2026-11-21).
-    var hasCar: Bool?
-    /// In the order researched.
-    var improvements: [Improvement] = []
-    /// Copper and tin ore delivered but not yet paired into bronze; at most one load of each.
-    var copperOre = 0
-    var tinOre = 0
     var isDefeated = false
     /// Events since the player's last view. Not part of the checksum: they depend
     /// on when views are taken, not on the match.
     var events: [GameEvent] = []
-
-    func has(_ improvement: Improvement) -> Bool { improvements.contains(improvement) }
 }
 
 struct TeamState: Codable, Sendable, Hashable {
@@ -86,12 +74,6 @@ struct Cargo: Codable, Sendable, Hashable {
     var amount: Int
 }
 
-/// A warfighter paid for and changing into a later age's kind (requirement 17).
-struct PendingUpgrade: Codable, Sendable, Hashable {
-    var to: UnitKind
-    var remaining: Int
-}
-
 /// What a person is doing this tick, for the view's `Activity`.
 enum Doing: UInt8, CaseIterable, Codable, Sendable, Hashable {
     case idle, moving, gathering, carrying, working, constructing, fighting
@@ -107,24 +89,9 @@ enum Task: Codable, Sendable, Hashable {
     case work(EntityID)
     case demolish(EntityID)
     case attack(EntityID)
-    /// A merchant trading at an own town centre.
-    case trade(at: EntityID, give: Resource, take: Resource)
-    /// A merchant carrying a resource from home to an ally's building, again and again.
-    case carry(Resource, to: EntityID)
 }
 
 /// The way a person is following toward its goal.
-/// A person's journey by railway (ruled 2026-11-19): walking to the depot
-/// `board`, then waiting there `RailwayStats.journeyTime` from `departed`,
-/// then coming out beside `alight`, on the way to the goal whose anchor is
-/// `goal`.
-struct RailTrip: Codable, Sendable, Hashable {
-    var board: EntityID
-    var alight: EntityID
-    var departed: Int?
-    var goal: GridPoint
-}
-
 struct Route: Codable, Sendable, Hashable {
     /// Tiles whose centres are to be passed, the next one last.
     var waypoints: [GridPoint] = []
@@ -170,35 +137,28 @@ struct Entity: Codable, Sendable, Hashable {
     var doing: Doing = .idle
     var route = Route()
     var cargo: Cargo?
-    /// What a merchant carries to an ally; optional so that older saves open.
-    var goods: Int?
-    /// A journey by railway under way; optional so that older saves open.
-    var rail: RailTrip?
     /// The building a worker is carrying its load to.
     var dropOff: EntityID?
     /// Part of a unit gathered or herded, carried over between ticks.
     var fraction = 0.0
-    var upgrade: PendingUpgrade?
 
     // Buildings
-    /// Engineer-ticks of construction done.
+    /// Worker-ticks of construction done.
     var built = 0
     var complete = true
     /// Health owed by construction or repair, in units of 1 / buildTime.
     var healthCredit = 0
-    /// Food a farm has yielded since it was last sown; optional so that older saves open, nil being none.
+    /// Food a farm has yielded since it was last sown; nil being none.
     var farmUsed: Int?
-    /// For a bridge piece, its place in its bridge; optional so that older saves open.
-    var bridgePlace: BridgePlace?
-    /// For a car whose person has turned its kill radius off (ruled 2026-11-21),
-    /// true; optional so that older saves open, nil being on.
+    /// For a car whose person has turned its kill radius off (ruled 2026-11-21), true; nil being on.
     var killRadiusOff: Bool?
-    /// Engineer-ticks of demolition done.
+    /// Worker-ticks of demolition done.
     var demolished = 0
     var queue: [UnitKind] = []
     var trainProgress = 0
-    var research: Improvement?
-    var researchProgress = 0
+    /// At a town centre where the advance to the next age is under way, the
+    /// ticks of it done (requirement 6); nil elsewhere.
+    var advancing: Int?
     /// People trained here so far, to spread them around the building.
     var spawned = 0
 
@@ -207,9 +167,8 @@ struct Entity: Codable, Sendable, Hashable {
     var isPerson: Bool { if case .unit = kind { true } else { false } }
     /// Whether this is a boat, which moves on water only (ruled 2026-11-21).
     var isBoat: Bool { kind == .unit(.boat) }
-    var isFounder: Bool { unitKind == .founder }
-    /// Nothing harms a founder or a person's car, and neither is a target.
-    var isUnharmable: Bool { unitKind == .founder || unitKind == .car }
+    /// Nothing harms a person's car, and it is no target.
+    var isUnharmable: Bool { unitKind == .car }
 }
 
 /// The catalogue's figures by kind, in arrays indexed by raw value, for the tick's hot loops.

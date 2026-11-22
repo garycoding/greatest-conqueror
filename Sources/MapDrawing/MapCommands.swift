@@ -46,13 +46,9 @@ public enum MapCommands {
     /// none of the selection is a person of the player's.
     ///
     /// - Ground: move. A site: workers gather there, or boats if it is in the
-    ///   water (others move to it). An own
-    ///   building that is unfinished or damaged: engineers work there. An own town
-    ///   centre or stock pen: workers, scholars and engineers work there. A
-    ///   complete farm or alchemist's workshop: workers work there. A complete
-    ///   building where improvements are researched: scholars work there, to
-    ///   carry the research. Another of the player's or an ally's: move to it.
-    ///   An opponent: attack.
+    ///   water (others move to it). An own building that is unfinished or
+    ///   damaged, or a complete farm: workers work there. Another of the
+    ///   player's or an ally's: move to it. An opponent: attack.
     public static func contextualOrder(on target: MapTarget, view: PlayerView, selection: [EntityID],
                                        catalogue: Catalogue = .standard) -> Order? {
         let people = selection.compactMap { view.entity($0) }.filter {
@@ -77,23 +73,9 @@ public enum MapCommands {
             if entity.owner == view.player, case .building(let kind) = entity.kind {
                 var unfinished = false
                 if case .underConstruction = entity.activity { unfinished = true }
-                let engineers = ids { $0 == .engineer }
-                if (unfinished || entity.health < entity.maxHealth), !engineers.isEmpty {
-                    return .work(units: engineers, at: entity.id)
-                }
-                if kind == .townCentre || kind == .stockPen {
-                    let hands = ids { $0 == .worker || $0 == .scholar || $0 == .engineer }
-                    if !hands.isEmpty { return .work(units: hands, at: entity.id) }
-                }
-                // Scholars carry the research at a complete building that researches.
-                if !unfinished && !catalogue.stats(kind).researches.isEmpty {
-                    let scholars = ids { $0 == .scholar }
-                    if !scholars.isEmpty { return .work(units: scholars, at: entity.id) }
-                }
-                // A complete farm takes a farmer, a complete alchemist's workshop its craftsmen.
-                if (kind == .farm || kind == .alchemistsWorkshop) && !unfinished {
-                    let workers = ids { $0 == .worker }
-                    if !workers.isEmpty { return .work(units: workers, at: entity.id) }
+                let workers = ids { $0 == .worker }
+                if (unfinished || entity.health < entity.maxHealth || kind == .farm), !workers.isEmpty {
+                    return .work(units: workers, at: entity.id)
                 }
                 return .move(units: everyone, to: entity.position)
             }

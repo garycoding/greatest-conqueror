@@ -4,7 +4,7 @@ A real-time strategy game for macOS. Players on the same LAN, with computer play
 
 ## Status
 
-Version 0.1.0 is in development. The code was made from [Cities of Progress](https://github.com/garycoding/cities-of-progress) at commit 6492cca, and is being changed to the rules of Greatest Conqueror; until that work is done, the game still plays by the rules of Cities of Progress, and the documents in `docs/` still describe that game.
+Version 0.1.0 is in development. The code was made from [Cities of Progress](https://github.com/garycoding/cities-of-progress) at commit 6492cca, and is being changed to the rules of Greatest Conqueror. It has the five ages, the three resources and the kinds of unit and building that Greatest Conqueror keeps from Cities of Progress, still on that game's numbers; the new kinds and rules, and the tables, are to come, and most documents in `docs/` still describe Cities of Progress.
 
 It is a personal project, written in Swift for macOS on Apple silicon, and its source is published under the AGPL. No built app is distributed.
 

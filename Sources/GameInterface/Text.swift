@@ -7,47 +7,6 @@ import GameCore
 /// They live here, in a namespace of their own, so that no extension of a
 /// shared type can collide with another module's.
 public enum InterfaceText {
-    public static func name(of improvement: Improvement) -> String {
-        switch improvement {
-        case .betterTools: "Better tools"
-        case .bronzeWeapons: "Bronze weapons"
-        case .shields: "Shields"
-        case .ironTools: "Iron tools"
-        case .ironWeapons: "Iron weapons"
-        case .mail: "Mail"
-        case .plough: "Plough"
-        case .betterPowder: "Better powder"
-        case .plateArmour: "Plate armour"
-        case .guilds: "Guilds"
-        case .banking: "Banking"
-        case .machineTools: "Machine tools"
-        case .rifling: "Rifling"
-        case .steelPlate: "Steel plate"
-        case .refining: "Refining"
-        }
-    }
-
-    /// What an improvement does, for a tooltip.
-    public static func effect(of improvement: Improvement) -> String {
-        switch improvement {
-        case .betterTools: "Workers gather faster."
-        case .bronzeWeapons: "Warfighters strike harder."
-        case .shields: "Warfighters take less harm."
-        case .ironTools: "Workers gather faster still."
-        case .ironWeapons: "Warfighters strike harder still."
-        case .mail: "Warfighters take less harm still."
-        case .plough: "Farms yield more."
-        case .betterPowder: "Warfighters strike harder again."
-        case .plateArmour: "Warfighters take much less harm."
-        case .guilds: "Workers gather faster and workshops make more gunpowder."
-        case .banking: "Merchants' exchanges give more."
-        case .machineTools: "Workers gather faster and workshops make more gunpowder."
-        case .rifling: "Warfighters strike much harder."
-        case .steelPlate: "Warfighters take less harm again."
-        case .refining: "Oil wells pump more."
-        }
-    }
-
     /// An amount of resources as "50 Food, 10 Wood"; "Free" when it is zero.
     public static func cost(_ amounts: ResourceAmounts) -> String {
         let parts = Resource.allCases.filter { amounts[$0] != 0 }.map { "\(amounts[$0]) \($0.name)" }
@@ -58,12 +17,7 @@ public enum InterfaceText {
         switch site {
         case .tree: "wood"
         case .prey: "prey"
-        case .stone: "stone"
-        case .copper: "copper"
-        case .tin: "tin"
         case .gold: "gold"
-        case .iron: "iron"
-        case .oilField: "oil"
         case .fish: "fish"
         }
     }
@@ -87,20 +41,11 @@ public enum InterfaceText {
             switch site {
             case .prey: return ("Hunting", nil)
             case .tree: return ("Felling trees", nil)
-            case .oilField: return ("Pumping oil", nil)
             default: return ("Mining \(name(of: site))", nil)
             }
         case .carrying(let resource, let amount):
             return ("Carrying \(amount) \(resource.name)", nil)
         case .working:
-            if case .unit(let unit) = kind {
-                switch unit {
-                case .worker: return ("Tending a stock pen", nil)
-                case .scholar: return ("Studying", nil)
-                case .engineer: return ("Repairing", nil)
-                default: break
-                }
-            }
             return ("Working", nil)
         case .constructing:
             return ("Building", nil)
@@ -111,8 +56,8 @@ public enum InterfaceText {
         case .training(let unit, let progress, let queued):
             let more = queued > 1 ? ", \(queued) queued" : ""
             return ("Training \(unit.stageName(at: age))\(more)", clamp(progress))
-        case .researching(let improvement, let progress):
-            return ("Researching \(name(of: improvement))", clamp(progress))
+        case .advancing(let progress):
+            return ("Advancing to the next age", clamp(progress))
         }
     }
 

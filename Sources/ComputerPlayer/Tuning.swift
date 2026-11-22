@@ -16,12 +16,11 @@ struct Tuning: Sendable {
     var assignments: Int
     /// Workers it aims for, by age; the last entry serves every later age.
     var workers: [Int]
-    /// Engineers it aims for, by age; the last entry serves every later age.
-    var engineers: [Int]
-    /// Scholars it aims for whilst an advance lies ahead.
-    var scholars: Int
-    /// Workers it has before it trains a scholar.
-    var workersBeforeScholars: Int
+    /// Workers it sets aside to build and repair, by age; the last entry serves
+    /// every later age. They are counted apart from `workers`.
+    var builders: [Int]
+    /// Workers it has before it saves for the next age.
+    var workersBeforeAdvance: Int
     /// The longest queue it keeps at a building.
     var queue: Int
     /// Population places it keeps in hand: it begins a house when fewer remain.
@@ -46,22 +45,22 @@ struct Tuning: Sendable {
     var armyCap: Int
 
     func workers(at age: Age) -> Int { workers[min(age.rawValue, workers.count - 1)] }
-    func engineers(at age: Age) -> Int { engineers[min(age.rawValue, engineers.count - 1)] }
+    func builders(at age: Age) -> Int { builders[min(age.rawValue, builders.count - 1)] }
 
     static func of(_ difficulty: Difficulty) -> Tuning {
         let s = Tick.seconds
         switch difficulty {
         case .easy:
-            return Tuning(reaction: s(3), assignments: 3, workers: [10, 16], engineers: [1, 2], scholars: 2,
-                          workersBeforeScholars: 7, queue: 1, houseMargin: 2, builds: 1, barracks: 1,
+            return Tuning(reaction: s(3), assignments: 3, workers: [10, 16], builders: [1, 2],
+                          workersBeforeAdvance: 9, queue: 1, houseMargin: 2, builds: 1, barracks: 1,
                           attackSize: 6, firstAttack: s(15 * 60), joinSize: 4, counters: 0.25, recall: 0.8, armyCap: 14)
         case .standard:
-            return Tuning(reaction: s(1), assignments: 6, workers: [14, 24], engineers: [2, 3], scholars: 4,
-                          workersBeforeScholars: 6, queue: 2, houseMargin: 4, builds: 2, barracks: 1,
+            return Tuning(reaction: s(1), assignments: 6, workers: [14, 24], builders: [2, 3],
+                          workersBeforeAdvance: 9, queue: 2, houseMargin: 4, builds: 2, barracks: 1,
                           attackSize: 9, firstAttack: s(10 * 60), joinSize: 4, counters: 0.7, recall: 0.9, armyCap: 24)
         case .hard:
-            return Tuning(reaction: s(0.4), assignments: 8, workers: [16, 30], engineers: [2, 4], scholars: 5,
-                          workersBeforeScholars: 5, queue: 2, houseMargin: 6, builds: 3, barracks: 2,
+            return Tuning(reaction: s(0.4), assignments: 8, workers: [16, 30], builders: [2, 4],
+                          workersBeforeAdvance: 8, queue: 2, houseMargin: 6, builds: 3, barracks: 2,
                           attackSize: 10, firstAttack: s(7 * 60), joinSize: 4, counters: 1.2, recall: 0.97, armyCap: 34)
         }
     }

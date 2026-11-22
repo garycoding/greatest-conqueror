@@ -47,13 +47,12 @@ struct EmptyMap: View {
 
 @MainActor
 @Test func everyViewRendersForBothSamples() {
-    let stone = Samples.stoneAgeOpening()
+    let stone = Samples.townsAgeOpening()
     var stoneRoom = stone
     stoneRoom.populationLimit = 10
     var advance = stone
-    advance.ageProgress = 1
-    advance.resources = ResourceAmounts([.food: 400, .wood: 150, .stone: 50])
-    let bronze = Samples.bronzeAgeSkirmish()
+    advance.resources = ResourceAmounts([.food: 400, .wood: 150, .gold: 50])
+    let bronze = Samples.farmsAgeSkirmish()
     let samples: [(String, PlayerView)] = [("stone", stone), ("bronze", bronze)]
 
     for (name, view) in samples {
@@ -70,18 +69,18 @@ struct EmptyMap: View {
     let tc = stone.id(of: .building(.townCentre))
     #expect(render("stone-panel-town-centre-at-limit", width: 1000, height: 250) { SelectionPanel(session: session(stone, select: [tc])).padding(8) })
     #expect(render("stone-panel-town-centre-room", width: 1000, height: 250) { SelectionPanel(session: session(stoneRoom, select: [tc])).padding(8) })
-    #expect(render("stone-panel-engineer", width: 1000, height: 250) {
-        SelectionPanel(session: session(stone, select: [stone.id(of: .unit(.engineer))], placing: .house)).padding(8)
+    #expect(render("stone-panel-worker", width: 1000, height: 250) {
+        SelectionPanel(session: session(stone, select: [stone.id(of: .unit(.worker))], placing: .house)).padding(8)
     })
     #expect(render("stone-panel-nothing", width: 1000, height: 250) { SelectionPanel(session: session(stone)).padding(8) })
     #expect(render("stone-panel-hunters", width: 1000, height: 250) {
-        SelectionPanel(session: session(stone, select: stone.ids(ofUnits: [.worker, .scholar]))).padding(8)
+        SelectionPanel(session: session(stone, select: stone.ids(ofUnits: [.worker]))).padding(8)
     })
     #expect(render("bronze-panel-barracks", width: 1000, height: 250) {
         SelectionPanel(session: session(bronze, select: [bronze.id(of: .building(.barracks))])).padding(8)
     })
-    #expect(render("bronze-panel-army-and-engineers", width: 1000, height: 260) {
-        SelectionPanel(session: session(bronze, select: bronze.ids(ofUnits: [.engineer, .clubman, .slinger, .spearman, .archer, .chariot]))).padding(8)
+    #expect(render("bronze-panel-army-and-workers", width: 1000, height: 260) {
+        SelectionPanel(session: session(bronze, select: bronze.ids(ofUnits: [.worker, .spearman, .knight]))).padding(8)
     })
     #expect(render("bronze-panel-enemy-town-centre", width: 1000, height: 250) {
         SelectionPanel(session: session(bronze, select: [bronze.id(of: .building(.townCentre), owner: PlayerID(1))])).padding(8)
@@ -104,8 +103,8 @@ struct EmptyMap: View {
     #expect(render("stone-hud-town-centre", width: 1440, height: 900, scale: 1) {
         GameHUD(session: session(stone, select: [tc])) { EmptyMap() }
     })
-    #expect(render("stone-hud-engineer-placing", width: 1440, height: 900, scale: 1) {
-        let s = session(stoneRoom, select: [stone.id(of: .unit(.engineer))], placing: .house)
+    #expect(render("stone-hud-worker-placing", width: 1440, height: 900, scale: 1) {
+        let s = session(stoneRoom, select: [stone.id(of: .unit(.worker))], placing: .house)
         s.lastRefusal = .notEnough(ResourceAmounts([.wood: 60]))
         return GameHUD(session: s) { EmptyMap() }
     })
@@ -115,7 +114,7 @@ struct EmptyMap: View {
         return GameHUD(session: s) { EmptyMap() }
     })
     #expect(render("bronze-hud-army", width: 1440, height: 900, scale: 1) {
-        GameHUD(session: session(bronze, select: bronze.ids(ofUnits: [.clubman, .slinger, .spearman, .archer, .chariot]))) { EmptyMap() }
+        GameHUD(session: session(bronze, select: bronze.ids(ofUnits: [.spearman, .knight]))) { EmptyMap() }
     })
     var bronzePaused = bronze; bronzePaused.isPaused = true
     #expect(render("bronze-hud-paused", width: 1440, height: 900, scale: 1) { GameHUD(session: session(bronzePaused)) { EmptyMap() } })

@@ -50,14 +50,14 @@ import Testing
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
         for kind in UnitKind.allCases {
-            for age in Age.allCases {
+            for look in Look.allCases {
                 for pose in poses {
-                    for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, age), pose, frame: frame)) }
+                    for frame in [-1, 0, 6, 11, 12] { others.append(SpriteKey(.unit(kind, look), pose, frame: frame)) }
                 }
             }
         }
         for kind in BuildingKind.allCases {
-            for age in Age.allCases { others.append(SpriteKey(.building(kind, age), .complete)) }
+            for look in Look.allCases { others.append(SpriteKey(.building(kind, look), .complete)) }
         }
         for kind in SiteKind.allCases { others.append(SpriteKey(.site(kind), .complete)) }
         others.append(SpriteKey(.outcrop, .complete))
@@ -248,9 +248,9 @@ struct CarRenders {
         let height = 90 + rowHeight * civilizations.count
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
-        Preview.label("A person's car beside the Industrial armoured car and worker, at one scale, in the colours of Rome, Angkor, Shang, Tonga, Samoa and Greece",
+        Preview.label("A person's car beside the Industrial field gun and worker, at one scale, in the colours of Rome, Angkor, Shang, Tonga, Samoa and Greece",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 24)
-        let armoured = try #require(IndustrialWarriorsLooks.look(.armouredCar))
+        let armoured = try #require(IndustrialWarriorsLooks.look(.fieldGun))
         let worker = try #require(IndustrialPeopleLooks.look(.worker))
         let car = CarSprites(), warriors = IndustrialWarriorSprites(), people = IndustrialPeopleSprites()
         for (row, civilization) in civilizations.enumerated() {
@@ -261,7 +261,7 @@ struct CarRenders {
             let drawnCar = try #require(CarSaloon.render(.standing, frame: 0, canvas: carLarge))
             Preview.place(Preview.tinted(base: drawnCar.base, mask: drawnCar.mask, colour: tint), anchor: carLarge.anchor,
                           at: CGPoint(x: 230, y: groundY), in: context)
-            let armouredLarge = IndustrialWarriorsArmouredCar.canvas.scaled(to: scale)
+            let armouredLarge = IndustrialWarriorsLooks.canvas(.fieldGun).scaled(to: scale)
             let drawnArmoured = try #require(armoured.render(.standing, frame: 0, canvas: armouredLarge))
             Preview.place(Preview.tinted(base: drawnArmoured.base, mask: drawnArmoured.mask, colour: tint), anchor: armouredLarge.anchor,
                           at: CGPoint(x: 640, y: groundY), in: context)
@@ -271,7 +271,7 @@ struct CarRenders {
                           at: CGPoint(x: 930, y: groundY), in: context)
             let small: [(any SpriteSource, SpriteKey, Double)] = [
                 (car, SpriteKey(.unit(.car, .stone), .standing), 1150), (car, SpriteKey(.unit(.car, .stone), .walking, frame: 3), 1350),
-                (warriors, SpriteKey(.unit(.armouredCar, .industrial), .standing), 1560),
+                (warriors, SpriteKey(.unit(.fieldGun, .industrial), .standing), 1560),
                 (people, SpriteKey(.unit(.worker, .industrial), .standing), 1730),
             ]
             for (source, key, x) in small {

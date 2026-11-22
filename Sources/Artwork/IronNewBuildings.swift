@@ -6,11 +6,9 @@ import GameCore
 import Synchronization
 
 /// The buildings the Iron age brings, complete and under construction (the
-/// farm, the stable, the siege workshop and the stone wall), and the iron
-/// deposit, drawn in the Iron age's palette in the manner of the Bronze-age
-/// buildings and the terrain's sites (docs/art-style.md). The buildings carry
-/// the owner's colour in a mask; the deposit carries none. A farm lasts
-/// forever, so it is never drawn spent. Every other key gives nil.
+/// farm and the stable), drawn in the Iron age's palette in the manner of the
+/// Bronze-age buildings (docs/art-style.md). The buildings carry the owner's
+/// colour in a mask. Every other key gives nil.
 public struct IronNewBuildingSprites: SpriteSource {
     private let store = Store()
 
@@ -36,26 +34,30 @@ private final class Store: Sendable {
 /// What one of this batch's keys shows.
 enum IronNewBuildingsSubject: Hashable, Sendable {
     case building(BuildingKind, complete: Bool)
-    case ironDeposit
 }
 
 /// What this batch draws, on what canvas, and the drawing of it.
 enum IronNewBuildingsArt {
     /// The Iron age's new buildings.
-    static let kinds: [BuildingKind] = [.farm, .stable, .siegeWorkshop, .stoneWall]
+    static let kinds: [BuildingKind] = [.farm, .stable]
+
+    /// The buildings whose Iron drawing serves for the Bronze look too: the
+    /// farm, which Greatest Conqueror brings in the age of farms, drawn in the
+    /// Bronze look, whilst Cities of Progress drew it only from the Iron age
+    /// (the art mapping of 2026-11-22: reuse where it fits).
+    static let lookAlikes: [BuildingKind] = [.farm]
 
     /// The subject a key names, if it is one of this batch's: a new building
-    /// of the Iron age in the Iron age's look, complete or under construction,
-    /// or the iron deposit, complete, each at frame 0.
+    /// of the Iron age in the Iron look, or one of `lookAlikes` in the Bronze
+    /// look, complete or under construction, at frame 0.
     static func subject(of key: SpriteKey) -> IronNewBuildingsSubject? {
         guard key.frame == 0 else { return nil }
         switch key.subject {
-        case .building(let kind, .iron) where kinds.contains(kind):
+        case .building(let kind, .iron) where kinds.contains(kind),
+             .building(let kind, .bronze) where lookAlikes.contains(kind):
             if key.pose == .complete { return .building(kind, complete: true) }
             if key.pose == .underConstruction { return .building(kind, complete: false) }
             return nil
-        case .site(.iron):
-            return key.pose == .complete ? .ironDeposit : nil
         default:
             return nil
         }
@@ -79,14 +81,11 @@ enum IronNewBuildingsArt {
         switch kind {
         case .farm: 76
         case .stable: 92
-        case .siegeWorkshop: 112
-        case .stoneWall: 70
         default: 80
         }
     }
 
-    /// A subject drawn as a sprite: its picture and, for a building, its
-    /// team-colour mask, grained alike.
+    /// A subject drawn as a sprite: its picture and its team-colour mask, grained alike.
     static func render(_ subject: IronNewBuildingsSubject) -> SpriteImage? {
         switch subject {
         case .building(let kind, let complete):
@@ -96,10 +95,6 @@ enum IronNewBuildingsArt {
                 painter.building(kind, complete: complete)
                 svg = painter.svg
             }
-            return rendered?.sprite(anchor: canvas.anchor)
-        case .ironDeposit:
-            let canvas = TerrainSprites.siteCanvas
-            let rendered = Raster.render(on: canvas) { svg in IronNewBuildingsDeposit.draw(&svg) }
             return rendered?.sprite(anchor: canvas.anchor)
         }
     }
@@ -111,8 +106,6 @@ extension IronNewBuildingsPainter {
         switch kind {
         case .farm: farm(complete: complete)
         case .stable: stable(complete: complete)
-        case .siegeWorkshop: siegeWorkshop(complete: complete)
-        case .stoneWall: stoneWall(complete: complete)
         default: break
         }
     }

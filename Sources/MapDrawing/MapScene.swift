@@ -66,8 +66,6 @@ public final class MapScene: SKScene {
     var pointerIsLive = false
     let boxOutline = SKShapeNode()
     var dragStart: CGPoint?
-    /// The bank tile a bridge is being dragged from, whilst one is.
-    var bridgeStart: GridPoint?
     var dragIsBox = false
     var heldArrows: Set<ArrowKey> = []
     private var lastTime: TimeInterval?
@@ -180,13 +178,8 @@ public final class MapScene: SKScene {
     private func makeContext(_ view: PlayerView) -> DrawContext {
         var players: [PlayerID: PlayerSummary] = [:]
         for summary in view.players { players[summary.id] = summary }
-        var decks: [GridPoint: BridgePlace] = [:]
-        for e in view.entities where e.kind == .building(.bridge) {
-            if case .underConstruction = e.activity { continue }
-            if let place = e.bridgePlace { decks[e.tile] = place }
-        }
         return DrawContext(cache: cache, catalogue: session.catalogue, players: players, me: view.player,
-                           myTeam: players[view.player]?.team, frame: animationFrame, decks: decks,
+                           myTeam: players[view.player]?.team, frame: animationFrame,
                            terrain: view.terrain, mapWidth: view.mapWidth, mapHeight: view.mapHeight)
     }
 
@@ -205,8 +198,7 @@ public final class MapScene: SKScene {
         terrain?.update(with: view)
 
         var seenSites = 0
-        let covered = MapHitTesting.coveredSiteTiles(in: view)
-        for site in view.sites where site.remaining > 0 && !covered.contains(site.tile) {
+        for site in view.sites where site.remaining > 0 {
             let node: SiteNode
             if let existing = siteNodes[site.id] { node = existing } else {
                 node = SiteNode()
@@ -287,10 +279,6 @@ public final class MapScene: SKScene {
             return
         }
         let catalogue = session.catalogue
-        if kind == .bridge {
-            updateBridgeOutline(pointer: geometry.mapPosition(for: pointer).tile)
-            return
-        }
         let origin = Placement.origin(kind, centre: geometry.mapPosition(for: pointer), catalogue: catalogue)
         let key = PlacementKey(kind: kind, origin: origin, tick: session.view.tick)
         if !force, placementChecked == key, !placementOutline.isHidden { return }
@@ -313,50 +301,6 @@ public final class MapScene: SKScene {
             placementOutline.isHidden = false
         }
         placementState = (origin, allowed)
-    }
-
-    /// The outline of a bridge being placed: the bank tile under the pointer
-    /// before the drag, then the two rows from the first bank to the pointer's
-    /// tile, green where a bridge may run and red where it may not.
-    private func updateBridgeOutline(pointer tile: GridPoint) {
-        let view = session.view
-        let tiles: [GridPoint]
-        let allowed: Bool
-        if let start = bridgeStart {
-            let end = Placement.bridgeEnd(from: start, toward: tile)
-            let step = GridPoint((end.x - start.x).signum(), (end.y - start.y).signum())
-            var line = [start]
-            var t = start
-            while t != end && line.count <= BridgeRule.maxWater + 2 {
-                t = GridPoint(t.x + step.x, t.y + step.y)
-                line.append(t)
-            }
-            // Two tiles wide (ruled 2026-11-21): the row beside it, toward the screen's foot.
-            let d = (BridgeRun.of(from: start, to: end) ?? .alongX).across
-            tiles = line + (end == start ? [] : line.map { GridPoint($0.x + d.x, $0.y + d.y) })
-            allowed = Placement.canBridge(from: start, to: end, in: view)
-        } else {
-            tiles = [tile]
-            allowed = tile.x >= 0 && tile.y >= 0 && tile.x < view.mapWidth && tile.y < view.mapHeight
-                && view.terrain[tile.y * view.mapWidth + tile.x].isPassable && view.visibility(at: tile) != .unexplored
-        }
-        let path = CGMutablePath()
-        for t in tiles {
-            let x = Double(t.x), y = Double(t.y)
-            path.addLines(between: [MapPosition(x: x, y: y), MapPosition(x: x + 1, y: y), MapPosition(x: x + 1, y: y + 1),
-                                    MapPosition(x: x, y: y + 1)].map { p -> CGPoint in
-                let s = Projection.screen(p)
-                return CGPoint(x: s.x, y: s.y)
-            })
-            path.closeSubpath()
-        }
-        placementOutline.path = path
-        let colour = allowed ? NSColor(srgbRed: 0.2, green: 0.9, blue: 0.3, alpha: 1) : NSColor(srgbRed: 0.95, green: 0.2, blue: 0.2, alpha: 1)
-        placementOutline.strokeColor = colour
-        placementOutline.fillColor = colour.withAlphaComponent(0.3)
-        placementOutline.isHidden = false
-        placementState = nil
-        placementChecked = nil
     }
 
     // MARK: The frame
