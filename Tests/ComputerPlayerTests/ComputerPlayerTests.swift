@@ -117,6 +117,99 @@ private func moves(_ orders: [Order]) -> [(units: [EntityID], to: MapPosition)] 
     #expect(!decide(&early, few).contains { if case .advanceAge = $0 { return true } else { return false } })
 }
 
+/// Each difficulty advances at its own pace (`Tuning.advanceAt`): `hard` from
+/// three minutes, `standard` from four, `easy` from six.
+@Test func advancesOnlyOnceTheDifficultysTimeHasCome() {
+    func advances(_ difficulty: Difficulty, at minutes: Double) -> Bool {
+        var view = TestViews.openingReadyToAdvance()
+        view.tick = Tick.seconds(minutes * 60)
+        var cp = player(difficulty)
+        return decide(&cp, view).contains(.advanceAge(at: EntityID(1)))
+    }
+    #expect(advances(.hard, at: 3.5))
+    #expect(!advances(.standard, at: 3.5))
+    #expect(advances(.standard, at: 4.5))
+    #expect(!advances(.easy, at: 4.5))
+    #expect(advances(.easy, at: 6.5))
+}
+
+// MARK: The later ages
+
+/// The best tier of each line, soldiers, knights and cannons, that a maker
+/// makes in an age, read from `production.csv`.
+@Test func theBestTiersAreReadFromTheTables() {
+    let turn = Turn(view: Samples.farmsAgeSkirmish(), catalogue: .standard, tuning: Tuning.of(.hard),
+                    me: Samples.farmsAgeSkirmish().me!, memory: Memory(), generator: SeededGenerator(seed: 1),
+                    regions: Regions(terrain: Samples.farmsAgeSkirmish().terrain, width: 32, height: 32))
+    #expect(turn.bestTiers(madeBy: .building(.barracks), at: .farms) == [.soldier1])
+    #expect(turn.bestTiers(madeBy: .building(.barracks), at: .ships) == [.soldier2])
+    #expect(turn.bestTiers(madeBy: .building(.castle), at: .cannons) == [.soldier3, .knight2, .cannon1])
+    #expect(turn.bestTiers(madeBy: .building(.castle), at: .hospitals) == [.soldier4, .knight3, .cannon2])
+    #expect(turn.bestTiers(madeBy: .unit(.navyShip), at: .cannons).isEmpty)
+    #expect(turn.bestTiers(madeBy: .unit(.navyShip), at: .hospitals) == [.soldier4, .knight3, .cannon2])
+    #expect(turn.bestTiers(at: .ships) == [.soldier2, .knight1])
+}
+
+/// The skirmish moved on to the age of hospitals, the fight over, with room
+/// and stock to spare, a castle and a hospital standing beside the barracks.
+private func hospitalsAge() -> (view: PlayerView, castle: EntityID, hospital: EntityID) {
+    var view = TestViews.farmsArmy(extra: 0)
+    view.age = .hospitals
+    view.players[0].age = .hospitals
+    view.set(EntityID(10), .idle)
+    let castle = view.add(.building(.castle), owner: TestViews.me, at: 3, 15)
+    let hospital = view.add(.building(.hospital), owner: TestViews.me, at: 9.5, 16.5)
+    view.resources = ResourceAmounts([.food: 3000, .wood: 3000, .gold: 3000])
+    view.populationLimit = 60
+    return (view, castle, hospital)
+}
+
+@Test func everyMakerMakesTheBestTierItsAgeAllows() {
+    let (view, castle, _) = hospitalsAge()
+    var cp = player(.hard)
+    let trained = decide(&cp, view).compactMap { order -> (EntityID, UnitKind)? in
+        if case .train(let at, let unit) = order { return (at, unit) } else { return nil }
+    }
+    #expect(trained.contains { $0.0 == EntityID(10) && $0.1 == .soldier4 })
+    #expect(trained.contains { $0.0 == castle && [.soldier4, .knight3, .cannon2].contains($0.1) })
+    #expect(trained.allSatisfy { !$0.1.isWarfighter || [.soldier4, .knight3, .cannon2].contains($0.1) })
+}
+
+@Test func aHospitalMakesDoctorsAndTheyKeepWithTheArmy() {
+    let (view, _, hospital) = hospitalsAge()
+    var cp = player(.hard)
+    #expect(decide(&cp, view).contains(.train(at: hospital, unit: .doctor)))
+
+    // An idle doctor far from the army goes to it; one healing is left alone.
+    var later = view
+    later.tick += Tick.seconds(2)
+    let idle = later.add(.unit(.doctor), owner: TestViews.me, at: 2, 2)
+    let healing = later.add(.unit(.doctor), owner: TestViews.me, at: 3, 2)
+    for i in later.entities.indices where later.entities[i].id == idle { later.entities[i].job = .idle }
+    for i in later.entities.indices where later.entities[i].id == healing { later.entities[i].job = .healing }
+    var second = player(.hard)
+    let orders = decide(&second, later)
+    #expect(moves(orders).contains { $0.units == [idle] })
+    #expect(!orders.contains { order in
+        if case .move(let units, _) = order { return units.contains(healing) }
+        return false
+    })
+}
+
+/// What the plan for the coming age lacks draws the workers: with no gold in
+/// hand, gold has a larger share than with a stock of it.
+@Test func theWorkersFollowWhatThePlanLacks() {
+    func goldShare(holding gold: Int) -> Double {
+        var view = TestViews.farmsArmy(extra: 0)
+        view.resources = ResourceAmounts([.food: 400, .wood: 400, .gold: gold])
+        let turn = Turn(view: view, catalogue: .standard, tuning: Tuning.of(.standard), me: view.me!, memory: Memory(),
+                        generator: SeededGenerator(seed: 1),
+                        regions: Regions(terrain: view.terrain, width: view.mapWidth, height: view.mapHeight))
+        return turn.workShares(OpenSites(view: view, memory: Memory()))[Resource.gold.rawValue]
+    }
+    #expect(goldShare(holding: 0) > goldShare(holding: 3000))
+}
+
 // MARK: Boats (ruled 2026-11-21)
 
 /// The opening, moved on to the age of farms (in which the boathouse is first
@@ -164,6 +257,41 @@ private func openingByAPond() -> PlayerView {
     }
     #expect(fished.count == 1)
     #expect(fished.allSatisfy { id in view.sites.first { $0.id == id }?.kind == .fish })
+}
+
+/// From the age of hospitals a navy ship at the shore makes warfighters, of
+/// the best tiers (requirements 17 and 18).
+@Test func aNavyShipAtTheShoreMakesWarfightersInTheAgeOfHospitals() {
+    var view = openingByAPond()
+    view.age = .hospitals
+    view.players[0].age = .hospitals
+    view.resources = ResourceAmounts([.food: 3000, .wood: 3000, .gold: 3000])
+    view.populationLimit = 40
+    let ship = view.add(.unit(.navyShip), owner: TestViews.me, at: 15.5, 6.5)
+    var cp = player(.hard)
+    let made = decide(&cp, view).compactMap { order -> UnitKind? in
+        if case .train(let at, let unit) = order, at == ship { return unit } else { return nil }
+    }
+    #expect(made.count == 1)
+    #expect(made.allSatisfy { [.soldier4, .knight3, .cannon2].contains($0) })
+}
+
+/// A boathouse for navy ships goes on the shore of open water even where the
+/// water holds no fish or gold.
+@Test func buildsABoatHouseByOpenWaterForTheNavy() {
+    var view = openingByAPond()
+    view.age = .ships
+    view.players[0].age = .ships
+    view.sites.removeAll { view.terrain[$0.tile.y * view.mapWidth + $0.tile.x].isWater }
+    view.add(.unit(.worker), owner: TestViews.me, at: 13, 8)
+    _ = view.add(.building(.barracks), owner: TestViews.me, at: 2, 14)
+    _ = view.add(.building(.tower), owner: TestViews.me, at: 7, 1)
+    _ = view.add(.building(.stable), owner: TestViews.me, at: 2, 18)
+    _ = view.add(.building(.castle), owner: TestViews.me, at: 8, 18)
+    view.resources = ResourceAmounts([.food: 2000, .wood: 2000, .gold: 2000])
+    var cp = player(.hard)
+    let houses = constructs(decide(&cp, view)).filter { $0.kind == .boatHouse }
+    #expect(houses.count == 1)
 }
 
 @Test func workersAreNeverSentToTheWater() {
@@ -347,7 +475,7 @@ private func openingByAPond() -> PlayerView {
             "update OrderFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum OrderFixture { static let expected: UInt64 = 0xA385_F88B_51F5_3FBB }
+enum OrderFixture { static let expected: UInt64 = 0x4349_F29F_4C4F_E9D2 }
 
 @Test func aSavedPlayerResumesWithTheSameDecisions() throws {
     let views = TestViews.sequence()
