@@ -58,6 +58,9 @@ struct PlayerState: Codable, Sendable, Hashable {
     /// Index into `Simulation.teams`.
     var teamIndex: Int
     var isHuman: Bool
+    /// A person's seat that the host has handed to a computer player: it
+    /// receives no founder until the person takes it back (ruled 2026-11-22).
+    var playedByComputer = false
     var age: Age = .towns
     var resources: ResourceAmounts
     var isDefeated = false

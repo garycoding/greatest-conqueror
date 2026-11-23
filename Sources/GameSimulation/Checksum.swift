@@ -87,7 +87,7 @@ extension Simulation {
         var copy = generator
         d.add(copy.next())
         for p in players {
-            d.add(p.id.rawValue); d.add(p.age.rawValue); d.add(p.resources); d.add(p.isDefeated)
+            d.add(p.id.rawValue); d.add(p.age.rawValue); d.add(p.resources); d.add(p.isDefeated); d.add(p.playedByComputer)
         }
         for t in teams {
             d.add(t.id.rawValue); d.add(t.isDefeated)

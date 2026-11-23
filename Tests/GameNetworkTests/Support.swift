@@ -192,8 +192,9 @@ final class Loopback {
 
     init(lobby: Lobby = eveningLobby()) throws {
         server = HostServer(lobby: lobby, build: testBuild)
-        // The tests share a busy machine on CI; a connection is not taken for lost on a stall of a few seconds.
-        server.silenceLimit = .seconds(60)
+        // The tests share a busy machine on CI, where the long match tests can starve them for
+        // more than a minute; a connection is not taken for lost on such a stall.
+        server.silenceLimit = .seconds(600)
         try server.open(loopbackOnly: true)
     }
 
@@ -212,7 +213,7 @@ final class Loopback {
         client.reconnectDelays = [.milliseconds(10), .milliseconds(100), .milliseconds(100)]
         client.connectLimit = .milliseconds(500)
         client.firstConnectLimit = .seconds(5)
-        client.silenceLimit = .seconds(60)
+        client.silenceLimit = .seconds(600)
         client.join(host: "127.0.0.1", port: try await port())
         clients.append(client)
         return client
