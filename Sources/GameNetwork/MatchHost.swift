@@ -124,6 +124,7 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
         let seed = simulation.checksum() &* 0x9E37_79B9_7F4A_7C15 &+ UInt64(player.rawValue + 1)
         computers.append(Computer(player: player, difficulty: difficulty, seed: seed))
         computerPlayers.append(player)
+        simulation.setPlayedByComputer(player, true)
     }
 
     /// The person takes their seat back from the computer player.
@@ -131,5 +132,6 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
         guard let k = computerPlayers.firstIndex(of: player) else { return }
         computers.remove(at: k)
         computerPlayers.remove(at: k)
+        simulation.setPlayedByComputer(player, false)
     }
 }

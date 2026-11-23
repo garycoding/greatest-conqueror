@@ -26,6 +26,14 @@ import GameCore
 // founder becomes a worker.
 
 extension Simulation {
+    /// Marks a person's seat as played by a computer player, or as the
+    /// person's again; a seat taken back is looked at for a founder at once.
+    public mutating func setPlayedByComputer(_ player: PlayerID, _ computer: Bool) {
+        guard let p = players.firstIndex(where: { $0.id == player }), players[p].isHuman else { return }
+        players[p].playedByComputer = computer
+        if !computer { settlePending = true }
+    }
+
     mutating func settleTeams() {
         settlePending = false
         let held = holdings()
@@ -44,7 +52,7 @@ extension Simulation {
             for i in entities.indices where entities[i].alive && teamOf(entities[i].owner) == t { kill(i) }
         }
         if deathsPending { removeDead() }
-        for p in players.indices where players[p].isHuman && !teams[players[p].teamIndex].isDefeated
+        for p in players.indices where players[p].isHuman && !players[p].playedByComputer && !teams[players[p].teamIndex].isDefeated
             && !held.workerOrCentre[p] && !held.founder[p] {
             guard let spot = founderSpot(for: p) else { continue }
             spawnPerson(.founder, owner: players[p].id, at: spot.centre)

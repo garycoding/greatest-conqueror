@@ -300,6 +300,19 @@ extension Simulation {
         #expect(sim.people(me, .founder).count == 1)
     }
 
+    @Test func aPersonsSeatPlayedByTheComputerReceivesNoFounderUntilTakenBack() {
+        var sim = trio()
+        sim.setPlayedByComputer(me, true)
+        let soldier = sim.add(.soldier1, me, 8.5, 8.5)
+        for i in sim.entities.indices where sim.entities[i].owner == me && sim.entities[i].id != soldier { sim.kill(i) }
+        sim.step()
+        sim.run(20)
+        #expect(sim.people(me, .founder).isEmpty)
+        sim.setPlayedByComputer(me, false)
+        sim.step()
+        #expect(sim.people(me, .founder).count == 1)
+    }
+
     @Test func aComputerPlayerNeverReceivesAFounder() {
         var sim = trio(teams: [0, 1, 1])
         sim.destroyAll(PlayerID(1))

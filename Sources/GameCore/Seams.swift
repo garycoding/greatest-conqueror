@@ -95,6 +95,9 @@ public protocol GameSimulating: Codable, Sendable {
     /// Play by new tables from the next tick (requirement 27): the host's
     /// editor's Apply. The checksum counts them from then on.
     mutating func adopt(_ catalogue: Catalogue)
+    /// A person's seat is now played by a computer player, or by the person
+    /// again; while the computer plays it, it receives no founder (ruled 2026-11-22).
+    mutating func setPlayedByComputer(_ player: PlayerID, _ computer: Bool)
     /// What the player may know now, with the events since the player's last view.
     mutating func view(for player: PlayerID) -> PlayerView
     /// The same for a computer player playing that seat, which always explores
@@ -110,6 +113,7 @@ public protocol GameSimulating: Codable, Sendable {
 
 extension GameSimulating {
     public mutating func computerView(for player: PlayerID) -> PlayerView { view(for: player) }
+    public mutating func setPlayedByComputer(_ player: PlayerID, _ computer: Bool) {}
 }
 
 /// The map generator (module `MapGeneration`). The same request gives the same map.
