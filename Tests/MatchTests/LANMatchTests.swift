@@ -58,7 +58,9 @@ private final class SeatPlayer {
 }
 
 @MainActor
-private func until(_ what: String, within limit: Duration = .seconds(90), _ condition: () -> Bool) async throws {
+// Ten minutes for each wait: on the shared CI runner, starved by the long match
+// tests beside it, a lobby step has taken more than ninety seconds.
+private func until(_ what: String, within limit: Duration = .seconds(600), _ condition: () -> Bool) async throws {
     let deadline = ContinuousClock.now + limit
     while !condition() {
         guard ContinuousClock.now < deadline else {
