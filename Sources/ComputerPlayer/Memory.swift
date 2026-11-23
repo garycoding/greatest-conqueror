@@ -72,6 +72,19 @@ struct AvoidedSite: Codable, Sendable, Hashable {
     var until: Int
 }
 
+/// A builder sent to work at a building, and when.
+struct Errand: Codable, Sendable, Hashable {
+    var builder: EntityID
+    var building: EntityID
+    var tick: Int
+}
+
+/// A farm or an opponent's building passed over until a tick.
+struct Avoided: Codable, Sendable, Hashable {
+    var id: EntityID
+    var until: Int
+}
+
 /// A place where a building was refused.
 struct RefusedSite: Codable, Sendable, Hashable {
     var kind: BuildingKind
@@ -100,6 +113,35 @@ struct Campaign: Codable, Sendable, Hashable {
     /// The tick at which the army was last sent to `destination` with no
     /// target, hunting; nil before it hunts.
     var aimed: Int?
+    /// For an attack across the water, where the navy ships set the troops
+    /// down: a land tile beside the water, on the target's land (`Ferry`).
+    var landing: MapPosition?
+    /// The nearest the army has come to `destination`, and the tick at which it
+    /// last came two tiles nearer: an army that comes no nearer for a minute
+    /// and a half gives the target up.
+    var closest: Double?
+    var nearer: Int?
+}
+
+/// The navy ships carrying troops to an opponent the army cannot reach on
+/// foot (requirement 16): they sail to the harbour, on the water beside the
+/// player's own land, take troops aboard there, sail together to the landing,
+/// on the opponent's shore, and set them down; then they go back for more.
+struct Ferry: Codable, Sendable, Hashable {
+    enum Stage: Int, Codable, Sendable { case toHarbour, loading, sailing }
+
+    /// The ships, in id order.
+    var ships: [EntityID]
+    var stage: Stage
+    /// The centre of a water tile beside the player's land.
+    var harbour: MapPosition
+    /// The centre of a land tile beside the water, on the opponent's land.
+    var landing: MapPosition
+    /// The tick at which the stage began.
+    var since: Int
+    /// The troops aboard when last counted, and the tick at which the count last rose.
+    var aboard: Int
+    var rose: Int
 }
 
 /// What the computer player keeps from one view to the next. Every collection
@@ -119,12 +161,20 @@ struct Memory: Codable, Sendable, Hashable {
     var assignments: [Assignment] = []
     var avoidedSites: [AvoidedSite] = []
     var refusedSites: [RefusedSite] = []
+    /// Opponents' buildings an army could not come near, passed over until a tick.
+    var passedOver: [Avoided] = []
+    /// What each builder was last sent to work at, and the buildings of its own
+    /// that builders could not reach, passed over until a tick.
+    var errands: [Errand] = []
+    var unreachable: [Avoided] = []
     var campaign: Campaign?
     /// Attacks ended so far; each makes the next wait for a larger army.
     var waves = 0
     /// Warfighters the next attack waits for beyond the rule, drawn at random after each attack.
     var extra = 0
     var scout: Scouting?
+    /// The unit sent to look at ground on which a building is wanted (`lookAt`).
+    var lookout: Scouting?
     /// Destinations already given to scouts, most recent last.
     var scouted: [MapPosition] = []
     /// A fading count of the opponents' warfighters seen, by `UnitKind.rawValue`.
@@ -132,6 +182,19 @@ struct Memory: Codable, Sendable, Hashable {
     /// Where opponents' people were last seen, newest last, for an army hunting
     /// the last of them.
     var lastSeenPeople: [MapPosition]?
+    /// Where opponents' vessels were last seen, newest last.
+    var lastSeenVessels: [MapPosition] = []
+    /// Whether the player has made a unit of each kind, by `UnitKind.rawValue`.
+    var made: [Bool] = Array(repeating: false, count: UnitKind.allCases.count)
+    /// Farms workers were sent to in the last action, and farms found tended
+    /// by a farmer the view did not show to be theirs, with the tick until
+    /// which each is passed over.
+    var farmOrders: [EntityID] = []
+    var tendedFarms: [Avoided] = []
+    /// The tick at which busy workers were last moved to a resource that was short.
+    var lastMove: Int?
+    /// The navy ship carrying troops across the water, while one is.
+    var ferry: Ferry?
 
     /// Takes in a view: its events, the opponents' buildings in sight, and what
     /// has become of the player's plans, assignments and scout.
@@ -141,7 +204,9 @@ struct Memory: Codable, Sendable, Hashable {
         for event in view.events {
             switch event {
             case .underAttack(let id):
-                if let struck = view.entity(id), struck.owner == view.player {
+                // A vessel struck on the water is no matter for the army on land.
+                if let struck = view.entity(id), struck.owner == view.player,
+                   !(struck.kind == .unit(.fishingBoat) || struck.kind == .unit(.navyShip)) {
                     strikes.append(Strike(position: struck.position, tick: tick))
                 }
             case .destroyed(let id):
@@ -149,6 +214,9 @@ struct Memory: Codable, Sendable, Hashable {
                 if campaign?.target == id { campaign?.target = nil }
             case .refused(let refusal):
                 refused(refusal, at: tick)
+            case .trained(_, let kind):
+                if made.count != UnitKind.allCases.count { made = Array(repeating: false, count: UnitKind.allCases.count) }
+                made[kind.rawValue] = true
             default:
                 break
             }
@@ -188,7 +256,15 @@ struct Memory: Codable, Sendable, Hashable {
         assignments.removeAll { view.entity($0.worker)?.owner != view.player }
         avoidedSites.removeAll { $0.until <= tick }
         refusedSites.removeAll { $0.until <= tick }
+        tendedFarms.removeAll { $0.until <= tick }
+        passedOver.removeAll { $0.until <= tick }
+        unreachable.removeAll { $0.until <= tick }
+        errands.removeAll { tick - $0.tick > Tick.seconds(30) }
         if let scout, view.entity(scout.unit)?.owner != view.player { self.scout = nil }
+        if var ferry {
+            ferry.ships.removeAll { view.entity($0)?.owner != view.player }
+            self.ferry = ferry.ships.isEmpty ? nil : ferry
+        }
         if seen.count != UnitKind.allCases.count { seen = Array(repeating: 0, count: UnitKind.allCases.count) }
     }
 
@@ -202,6 +278,11 @@ struct Memory: Codable, Sendable, Hashable {
                 refusedSites.append(RefusedSite(kind: plan.kind, origin: plan.origin, until: tick + Tick.seconds(120)))
             }
             plans.removeAll { $0.tick == last }
+        case .invalidTarget:
+            // A farm that already has its farmer refuses another.
+            for farm in farmOrders where !tendedFarms.contains(where: { $0.id == farm }) {
+                tendedFarms.append(Avoided(id: farm, until: tick + Tick.seconds(60)))
+            }
         case .notEnough(let short):
             plans.removeAll { plan in
                 plan.tick == last && Resource.allCases.contains { short[$0] > 0 && plan.cost[$0] > 0 }

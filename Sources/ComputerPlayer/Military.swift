@@ -3,6 +3,20 @@
 
 import GameCore
 
+/// The lines of warfighters, each in tiers (requirement 19).
+enum Line: Int, CaseIterable {
+    case soldier, knight, cannon
+
+    init?(_ kind: UnitKind) {
+        switch kind {
+        case .soldier1, .soldier2, .soldier3, .soldier4: self = .soldier
+        case .knight1, .knight2, .knight3: self = .knight
+        case .cannon1, .cannon2: self = .cannon
+        case .worker, .doctor, .fishingBoat, .navyShip, .car, .founder: return nil
+        }
+    }
+}
+
 extension Turn {
     static let warfighterKinds = UnitKind.allCases.filter(\.isWarfighter)
 
@@ -24,12 +38,22 @@ extension Turn {
             view.visibility(at: place.tile) == .visible && !(enemyUnits + enemyVessels).contains { $0.position.distance(to: place) < 6 }
         }
         memory.lastSeenPeople = Array(places.suffix(8))
+        var vessels = memory.lastSeenVessels
+        for vessel in enemyVessels {
+            vessels.removeAll { $0.distance(to: vessel.position) < 4 }
+            vessels.append(vessel.position)
+        }
+        vessels.removeAll { place in
+            view.visibility(at: place.tile) == .visible && !enemyVessels.contains { $0.position.distance(to: place) < 4 }
+        }
+        memory.lastSeenVessels = Array(vessels.suffix(6))
     }
 
     /// Where an army with no building to attack goes: the nearest place an
     /// opponent's person was last seen, else ground not seen or not in sight.
     func huntingGround(from point: MapPosition) -> MapPosition? {
-        if let place = (memory.lastSeenPeople ?? []).min(by: { $0.distance(to: point) < $1.distance(to: point) }) { return place }
+        let seen = (memory.lastSeenPeople ?? []).filter { regions.region($0) == regions.region(point) }
+        if let place = seen.min(by: { $0.distance(to: point) < $1.distance(to: point) }) { return place }
         return frontier(from: point, orFog: true)
     }
 
@@ -52,9 +76,12 @@ extension Turn {
         // An opponent's worker among the buildings is attacked, but
         // only warfighters, or a strike, make the player threatened.
         raiders = intruders.filter { Turn.unitKind($0)?.isWarfighter ?? false }.count
-        threatened = raiders > 0 || !recent.isEmpty
+        // A strike with no opponent on land near it came from the water, or from a
+        // tower, out of the army's reach: it is no threat the army can answer.
+        let answerable = recent.filter { strike in enemyUnits.contains { $0.position.distance(to: strike.position) <= 10 } }
+        threatened = raiders > 0 || !answerable.isEmpty
         guard threatened || !intruders.isEmpty else { return }
-        let focus = recent.last?.position ?? Turn.nearest(intruders, to: base)?.position ?? base
+        let focus = answerable.last?.position ?? Turn.nearest(intruders, to: base)?.position ?? base
         if memory.campaign != nil, raiders >= 3 || (threatened && raiders * 2 >= warfighters.count) {
             memory.campaign = nil
         }
@@ -105,49 +132,137 @@ extension Turn {
 
     // MARK: The army
 
-    /// From the age of farms, buildings that train warfighters train a mixed army.
+    /// Every maker of warfighters makes a mixed army of the best tiers its age
+    /// allows (`bestTiers`): the buildings, and from the age the tables give
+    /// it (the age of hospitals) a navy ship at the shore.
     func trainArmy() {
-        guard view.age >= .farms else { return }
-        var army = Turn.warfighterKinds.reduce(warfighters.count) { $0 + training[$1.rawValue] }
-        let barracks = buildings.filter { building in
-            guard Turn.isComplete(building), case .building(let kind) = building.kind else { return false }
-            let trains = catalogue.stats(kind).trains
-            return trains.contains(where: \.isWarfighter) && !trains.contains(.worker)
-        }
-        let cap = tuning.armyCap
-        for building in barracks where isFree(building) && queueLength(building) < tuning.queue {
-            guard army < cap else { return }
-            guard let kind = nextWarfighter(at: building) else { continue }
+        var army = Turn.warfighterKinds.reduce(armySize) { $0 + training[$1.rawValue] }
+        let cap = tuning.armyCap(at: view.age)
+        var makers = buildings.filter { Turn.isComplete($0) && !bestTiers(madeBy: $0.kind, at: view.age).isEmpty }
+        makers += navy.filter { !bestTiers(madeBy: $0.kind, at: view.age).isEmpty && isAtShore($0) }
+        for maker in makers where isFree(maker) && queueLength(maker) < tuning.queue {
+            // Beyond the cap, only a best tier never yet made, so that every tier is made.
+            let new = bestTiers(madeBy: maker.kind, at: view.age).filter { !hasMade($0) && training[$0.rawValue] == 0 }
+            guard army < cap || !new.isEmpty else { continue }
+            guard let kind = army < cap ? nextWarfighter(at: maker) : new.first(where: { canPay(catalogue.stats($0).cost) })
+            else { continue }
             guard projectedPopulation + catalogue.stats(kind).population <= view.populationLimit else { return }
-            train(kind, at: building)
+            train(kind, at: maker)
             army += 1
         }
     }
 
-    /// The kind of the newest age trainable at a building whose share of the
-    /// army is furthest below the share `mix` gives it, of those that can be
-    /// paid for; when none of the newest age can be, those of the age before
-    /// (a new age's warfighters may cost a resource not yet mined).
-    private func nextWarfighter(at building: EntityView) -> UnitKind? {
-        guard case .building(let kind) = building.kind else { return nil }
-        let made = catalogue.production.filter { $0.maker == .building(kind) && $0.unit.isWarfighter && $0.age <= view.age }
-        let ages = Set(made.map(\.age)).sorted(by: >)
-        for age in ages.prefix(view.age >= .ships ? 2 : 1) {
-            if let kind = nextWarfighter(of: made.filter { $0.age == age }.map(\.unit)) { return kind }
-        }
-        return nil
-    }
-
-    private func nextWarfighter(of kinds: [UnitKind]) -> UnitKind? {
+    /// The kind of the best tiers made at a maker whose line's share of the
+    /// army is furthest below the share `mix` gives it, of those that can be paid for.
+    private func nextWarfighter(at maker: EntityView) -> UnitKind? {
+        let kinds = bestTiers(madeBy: maker.kind, at: view.age)
         guard !kinds.isEmpty else { return nil }
         let weights = Turn.mix(kinds, seen: memory.seen, counters: tuning.counters, catalogue: catalogue)
         let total = weights.reduce(0, +)
-        let have = kinds.map { kind in warfighters.filter { $0.kind == .unit(kind) }.count + training[kind.rawValue] }
+        var lines = [Int](repeating: 0, count: Line.allCases.count)
+        for unit in warfighters { if let kind = Turn.unitKind(unit), let line = Line(kind) { lines[line.rawValue] += 1 } }
+        for kind in Turn.warfighterKinds { if let line = Line(kind) { lines[line.rawValue] += training[kind.rawValue] } }
+        let have = kinds.map { Line($0).map { lines[$0.rawValue] } ?? 0 }
         let size = Double(have.reduce(0, +) + 1)
         let gaps = kinds.indices.map { weights[$0] / total - Double(have[$0]) / size }
         let order = kinds.indices.sorted { gaps[$0] != gaps[$1] ? gaps[$0] > gaps[$1] : $0 < $1 }
         for i in order where canPay(catalogue.stats(kinds[i]).cost, urgent: threatened) { return kinds[i] }
         return nil
+    }
+
+    /// The best tier of each line of warfighters (soldiers, knights, cannons)
+    /// that a maker makes in an age: of the kinds of the line it makes from that
+    /// age or earlier (`production.csv`), the one it makes from the latest age,
+    /// the higher tier of two from the same age.
+    func bestTiers(madeBy maker: EntityKind, at age: Age) -> [UnitKind] {
+        var best = [ProductionStats?](repeating: nil, count: Line.allCases.count)
+        for row in catalogue.made(by: maker) where row.age <= age {
+            guard let line = Line(row.unit) else { continue }
+            if let current = best[line.rawValue],
+               current.age > row.age || (current.age == row.age && current.unit.rawValue > row.unit.rawValue) { continue }
+            best[line.rawValue] = row
+        }
+        return best.compactMap { $0?.unit }
+    }
+
+    /// The best tier of each line made in an age at any building that can be built by then.
+    func bestTiers(at age: Age) -> [UnitKind] {
+        var best = [(unit: UnitKind, age: Age)?](repeating: nil, count: Line.allCases.count)
+        for row in catalogue.production where row.age <= age {
+            guard case .building(let kind) = row.maker, catalogue.stats(kind).age <= age, let line = Line(row.unit) else { continue }
+            if let current = best[line.rawValue],
+               current.age > row.age || (current.age == row.age && current.unit.rawValue >= row.unit.rawValue) { continue }
+            best[line.rawValue] = (row.unit, row.age)
+        }
+        return best.compactMap { $0?.unit }
+    }
+
+    /// Whether the player has made the best tier of each line its age allows
+    /// at its buildings, so that it makes every tier on its way through the
+    /// ages; after five minutes beyond the difficulty's time for the advance,
+    /// the advance waits no longer.
+    func madeTheAgesTiers() -> Bool {
+        if view.tick >= tuning.advanceAt(view.age) + Tick.seconds(5 * 60) { return true }
+        return bestTiers(at: view.age).allSatisfy(hasMade)
+    }
+
+    /// Whether the player has made a unit of a kind.
+    func hasMade(_ kind: UnitKind) -> Bool { kind.rawValue < memory.made.count && memory.made[kind.rawValue] }
+
+    /// Whether a navy ship is at the shore: some land tile it may set troops on,
+    /// or make units on, lies within reach (as `Simulation.shoreTiles` finds them).
+    func isAtShore(_ ship: EntityView) -> Bool {
+        prepareGround()
+        guard let ground else { return false }
+        let t = ship.position.tile
+        for y in (t.y - 2)...(t.y + 2) {
+            for x in (t.x - 2)...(t.x + 2) where ground.canStand(GridPoint(x, y), in: view) {
+                if GridPoint(x, y).centre.distance(to: ship.position) <= 1.5 { return true }
+            }
+        }
+        return false
+    }
+
+    // MARK: Doctors
+
+    /// The doctors it keeps: `Tuning.doctors` once a building the age allows makes them.
+    var doctorsWanted: Int {
+        catalogue.production.contains { row in
+            guard row.unit == .doctor, row.age <= view.age, case .building(let kind) = row.maker else { return false }
+            return catalogue.stats(kind).age <= view.age
+        } ? tuning.doctors : 0
+    }
+
+    /// A complete building that makes doctors makes them, one at a time, up to `doctorsWanted`.
+    func trainDoctors() {
+        guard doctors.count + training[UnitKind.doctor.rawValue] < doctorsWanted else { return }
+        let stats = catalogue.stats(.doctor)
+        for building in buildings where Turn.isComplete(building) && isFree(building) && queueLength(building) == 0 {
+            guard case .building(let kind) = building.kind,
+                  let made = catalogue.production(of: .doctor, at: kind), made.age <= view.age else { continue }
+            guard projectedPopulation + stats.population <= view.populationLimit, canPay(stats.cost) else { return }
+            train(.doctor, at: building)
+            return
+        }
+    }
+
+    /// Idle doctors keep with the army: each goes to the middle of the
+    /// warfighters on its own land, unless already near them. A doctor healing
+    /// is left alone, since idle doctors heal by the rules of the game.
+    func accompanyArmy() {
+        for doctor in doctors where isFree(doctor) && doctor.activity == .idle && doctor.job != .healing {
+            let land = regions.region(doctor.position)
+            let near = warfighters.filter { regions.region($0.position) == land }
+            let centre = memory.campaign != nil ? (Turn.mean(near.map(\.position)) ?? rallyPoint) : rallyPoint
+            guard doctor.position.distance(to: centre) > 4, isReachableFrom(doctor.position, centre) else { continue }
+            give(.move(units: [doctor.id], to: clamped(centre)), to: [doctor.id])
+        }
+    }
+
+    /// Whether two points on land lie in the same land region.
+    func isReachableFrom(_ a: MapPosition, _ b: MapPosition) -> Bool {
+        let x = regions.region(a), y = regions.region(b)
+        return x <= 0 || y <= 0 || x == y
     }
 
     /// The share of the army each kind should have: an even mix, by places
@@ -180,30 +295,57 @@ extension Turn {
             launch(army)
             return
         }
-        if warfighters.count < 2 || warfighters.count * 3 < current.size {
-            withdraw(army)
+        if armySize < 2 || armySize * 3 < current.size {
+            withdraw(army.filter { isReachableFrom($0.position, base) })
             return
         }
-        let centre = Turn.mean(army.map(\.position)) ?? base
+        // Across the water, the army is the troops set down on the target's land;
+        // the rest wait for the navy ships (`ferry`).
+        let ashore = current.landing.map { landing in army.filter { isReachableFrom($0.position, landing) } } ?? army
+        let centre = Turn.mean(ashore.map(\.position)) ?? current.landing ?? base
         var retarget = false
-        let known = current.target.map { id in memory.enemies.contains { $0.id == id } } ?? false
+        // A target the army comes no nearer is given up for five minutes.
+        let distance = centre.distance(to: current.destination)
+        if current.closest.map({ distance < $0 - 2 }) ?? true {
+            current.closest = distance
+            current.nearer = view.tick
+        } else if let target = current.target, let since = current.nearer, view.tick - since > Tick.seconds(90),
+                  distance > 6, !ashore.isEmpty {
+            memory.passedOver.append(Avoided(id: target, until: view.tick + Tick.seconds(300)))
+            current.target = nil
+            current.closest = nil
+        }
+        let known = current.target.map { id in memory.enemies.contains { $0.id == id }
+            && !memory.passedOver.contains { $0.id == id } } ?? false
         if !known {
-            if let next = allyTarget() ?? nearestEnemyBuilding(to: centre) {
+            if let next = allyTarget() ?? nearestEnemyBuilding(to: centre, onFoot: true) ?? nearestEnemyBuilding(to: centre) {
                 current.target = next.id
                 current.destination = next.position
+                current.landing = isReachableFrom(base, next.position) ? nil : landingPoint(for: next.position) ?? current.landing
+                current.closest = nil
                 retarget = true
-            } else if current.target != nil || army.filter({ $0.activity == .idle }).count * 2 >= army.count
+            } else if current.target != nil || ashore.filter({ $0.activity == .idle }).count * 2 >= ashore.count
                         || centre.distance(to: current.destination) < 6
                         || view.tick - (current.aimed ?? current.launched) > Tick.seconds(90) {
                 // A hunt goes on to new ground once the army is there, or after a
-                // minute and a half, so that ground it cannot reach holds it no longer.
+                // minute and a half, so that ground it cannot reach holds it no longer;
+                // once its own land is explored, on other land.
+                if current.landing == nil, let (abroad, point) = goAbroad() {
+                    current.destination = abroad
+                    current.landing = point
+                    current.aimed = view.tick
+                    current.closest = nil
+                    memory.campaign = current
+                    return
+                }
                 guard let destination = huntingGround(from: centre) else {
-                    withdraw(army)
+                    withdraw(army.filter { isReachableFrom($0.position, base) })
                     return
                 }
                 current.target = nil
                 current.destination = destination
                 current.aimed = view.tick
+                current.closest = nil
                 memory.scouted.append(destination)
                 if memory.scouted.count > 24 { memory.scouted.removeFirst(memory.scouted.count - 24) }
                 retarget = true
@@ -215,7 +357,7 @@ extension Turn {
         }
         let visible = current.target.map { view.entity($0) != nil } ?? false
         let stance: Campaign.Stance = !contact.isEmpty ? .engaging : (visible ? .attacking : .marching)
-        let units = army.filter { $0.activity != .fighting && (retarget || stance != current.stance || $0.activity == .idle) }
+        let units = ashore.filter { $0.activity != .fighting && (retarget || stance != current.stance || $0.activity == .idle) }
         current.stance = stance
         order(units, in: current, contact: contact)
         memory.campaign = current
@@ -228,19 +370,38 @@ extension Turn {
         }
         let needed = tuning.attackSize + min(8, 2 * memory.waves) + memory.extra
         let joint = army.count >= tuning.joinSize ? allyTarget() : nil
-        guard joint != nil || army.count >= needed else {
+        guard joint != nil || army.count + aboard >= needed else {
             rally(army)
             return
         }
-        let target = joint ?? nearestEnemyBuilding(to: base)
-        guard let destination = target?.position ?? huntingGround(from: Turn.mean(army.map(\.position)) ?? base) else {
+        // An opponent on other land is attacked across the water, once a navy
+        // ship can carry the troops there; until then the army waits.
+        var target = joint ?? nearestEnemyBuilding(to: base, onFoot: true)
+        var landing: MapPosition?
+        if target == nil, let far = nearestEnemyBuilding(to: base) {
+            guard let point = landingPoint(for: far.position) else {
+                rally(army)
+                return
+            }
+            target = far
+            landing = point
+        }
+        var hunt = target?.position
+        // With its own land explored and no opponent found, the army goes to look
+        // on other land, carried by the navy ships.
+        if target == nil, let (abroad, point) = goAbroad() {
+            hunt = abroad
+            landing = point
+        }
+        if hunt == nil { hunt = huntingGround(from: Turn.mean(army.map(\.position)) ?? base) }
+        guard let destination = hunt else {
             rally(army)
             return
         }
         let visible = target.map { view.entity($0.id) != nil } ?? false
-        let campaign = Campaign(target: target?.id, destination: destination, size: army.count, launched: view.tick,
-                                stance: visible ? .attacking : .marching)
-        order(army.filter { $0.activity != .fighting }, in: campaign, contact: [])
+        let campaign = Campaign(target: target?.id, destination: destination, size: army.count + aboard, launched: view.tick,
+                                stance: visible ? .attacking : .marching, landing: landing)
+        if landing == nil { order(army.filter { $0.activity != .fighting }, in: campaign, contact: []) }
         memory.campaign = campaign
     }
 
@@ -275,7 +436,7 @@ extension Turn {
         if !strays.isEmpty { give(.move(units: strays, to: point), to: strays) }
     }
 
-    private var rallyPoint: MapPosition { clamped(Turn.toward(base, front, by: 5)) }
+    var rallyPoint: MapPosition { clamped(Turn.toward(base, front, by: 5)) }
 
     /// The known opponent's building with the most of an allied computer
     /// player's warfighters fighting or moving near it, two at least.
@@ -302,7 +463,8 @@ extension Turn {
             release()
             return
         }
-        let current = memory.scout.flatMap { view.entity($0.unit) }.flatMap { $0.owner == view.player ? $0 : nil }
+        let current = memory.scout.flatMap { view.entity($0.unit) }
+            .flatMap { $0.owner == view.player && Turn.unitKind($0) != nil ? $0 : nil }
         guard let unit = current ?? pickScout(), isFree(unit), unit.activity != .fighting else { return }
         if let scouting = memory.scout, scouting.unit == unit.id, unit.activity != .idle,
            view.visibility(at: scouting.destination.tile) == .unexplored { return }
@@ -331,7 +493,7 @@ extension Turn {
     private func release() {
         guard let scouting = memory.scout else { return }
         memory.scout = nil
-        guard let unit = view.entity(scouting.unit), unit.owner == view.player, isFree(unit),
+        guard let unit = view.entity(scouting.unit), unit.owner == view.player, Turn.unitKind(unit) != nil, isFree(unit),
               unit.activity != .fighting else { return }
         give(.move(units: [unit.id], to: Turn.unitKind(unit) == .worker ? clamped(base) : rallyPoint), to: [unit.id])
     }
@@ -346,16 +508,28 @@ extension Turn {
         frontier(from: point, seeking: orFog ? [.unexplored, .explored] : [.unexplored])
     }
 
-    private func frontier(from point: MapPosition, seeking wanted: Set<TileVisibility>) -> MapPosition? {
+    private func frontier(from point: MapPosition, seeking wanted: Set<TileVisibility>,
+                          abroad: Bool = false) -> MapPosition? {
+        // Only ground (or, for a vessel, water) that can be reached from the point;
+        // `abroad`, only land that cannot.
+        let region = regions.region(point)
+        func fits(_ tile: GridPoint) -> Bool {
+            let here = regions.region(tile)
+            return abroad ? here > 0 && here != region : here == region
+        }
         let step = 6
         var best: [(score: Double, point: MapPosition)] = []
         var y = step / 2
         while y < view.mapHeight {
             var x = step / 2
             while x < view.mapWidth {
-                let tile = GridPoint(x, y)
+                let cell = GridPoint(x, y)
                 x += step
-                guard wanted.contains(view.visibility(at: tile)) else { continue }
+                guard wanted.contains(view.visibility(at: cell)) else { continue }
+                // The cell's middle tile, or failing that the nearest tile of the cell that fits.
+                guard let tile = fits(cell) ? cell : regions.nearest(abroad ? Int32.min : region, to: cell.centre, within: 2,
+                                                                     where: { fits($0) && wanted.contains(view.visibility(at: $0)) })
+                        ?? (abroad ? nearestAbroad(cell, fits) : nil) else { continue }
                 let candidate = tile.centre
                 guard !memory.scouted.contains(where: { $0.distance(to: candidate) < 4 }) else { continue }
                 let score = point.distance(to: candidate) - 0.5 * base.distance(to: candidate)
@@ -369,5 +543,31 @@ extension Turn {
         }
         guard !best.isEmpty else { return nil }
         return best[Int(generator.next() % UInt64(best.count))].point
+    }
+
+    /// A tile within two of a cell's middle that `fits`.
+    private func nearestAbroad(_ cell: GridPoint, _ fits: (GridPoint) -> Bool) -> GridPoint? {
+        for dy in -2...2 {
+            for dx in -2...2 {
+                let tile = GridPoint(cell.x + dx, cell.y + dy)
+                if regions.isInside(tile) && fits(tile) { return tile }
+            }
+        }
+        return nil
+    }
+
+    /// Where to look for opponents abroad, and where to land to do so, when no
+    /// opponent's building is known, the player's own land holds no ground
+    /// unexplored, and it has a navy ship to carry the army.
+    func goAbroad() -> (MapPosition, MapPosition)? {
+        guard memory.enemies.isEmpty, !navy.isEmpty, frontier(from: base, seeking: [.unexplored]) == nil,
+              let abroad = frontierAbroad(), let point = landingPoint(for: abroad) else { return nil }
+        return (abroad, point)
+    }
+
+    /// Ground not yet explored on land the player cannot reach on foot, where
+    /// the army, carried by the navy ships, may find an opponent it knows nothing of.
+    func frontierAbroad() -> MapPosition? {
+        frontier(from: base, seeking: [.unexplored], abroad: true)
     }
 }

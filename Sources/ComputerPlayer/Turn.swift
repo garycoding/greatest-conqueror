@@ -19,6 +19,8 @@ final class Turn {
     let me: PlayerSummary
     var memory: Memory
     var generator: SeededGenerator
+    /// The map's land and water regions (`Regions`).
+    let regions: Regions
     var orders: [Order] = []
 
     /// What remains to spend: the view's resources, less what the buildings
@@ -27,6 +29,10 @@ final class Turn {
     /// Held back for something wanted that cannot yet be paid for. Only urgent
     /// spending may use it.
     var reserve = ResourceAmounts()
+    /// What the plan for the coming age costs (`demand`), worked out once in an action.
+    var planned: ResourceAmounts?
+    /// The buildings wanted (`wanted`), worked out once in an action.
+    var wantedNow: [(BuildingKind, MapPosition, ClosedRange<Int>)]?
     /// Whether each entity, by `EntityID.rawValue`, has been given an order in
     /// this action (a person) or a training order (a building).
     private var ordered: [Bool]
@@ -37,8 +43,11 @@ final class Turn {
     /// Workers set aside to build and repair (`Tuning.builders`): the oldest.
     var builders: [EntityView] = []
     var warfighters: [EntityView] = []
+    var doctors: [EntityView] = []
     var boats: [EntityView] = []
     var navy: [EntityView] = []
+    /// Warfighters, doctors and workers aboard its navy ships: out of the view, but its own.
+    var aboard = 0
     var buildings: [EntityView] = []
     /// People in training at its buildings, by `UnitKind.rawValue`, with those
     /// queued in this action. A queue is counted as the kind it is training.
@@ -70,6 +79,8 @@ final class Turn {
     private var placed: [(kind: BuildingKind, origin: GridPoint)] = []
     /// The occupied ground, made when it is first needed (`prepareGround`).
     var ground: Ground?
+    /// The tiles its workers can walk to (`walkable`), found when first needed.
+    private var reach: [Bool]?
     /// The sites around the base, gathered when first needed.
     private var nearby: Surroundings?
     /// The players by `PlayerID.rawValue`.
@@ -79,13 +90,14 @@ final class Turn {
     private static let unitKinds = UnitKind.allCases.count
 
     init(view: PlayerView, catalogue: Catalogue, tuning: Tuning, me: PlayerSummary, memory: Memory,
-         generator: SeededGenerator) {
+         generator: SeededGenerator, regions: Regions) {
         self.view = view
         self.catalogue = catalogue
         self.tuning = tuning
         self.me = me
         self.memory = memory
         self.generator = generator
+        self.regions = regions
         var held = view.resources
         for plan in memory.plans { held = held - plan.cost }
         for resource in Resource.allCases where held[resource] < 0 { held[resource] = 0 }
@@ -113,8 +125,16 @@ final class Turn {
                     case .unit(let kind):
                         switch kind {
                         case .worker: workers.append(entity)
+                        case .doctor: doctors.append(entity)
                         case .fishingBoat: boats.append(entity)
-                        case .navyShip: navy.append(entity)
+                        case .navyShip:
+                            navy.append(entity)
+                            aboard += entity.passengers ?? 0
+                            if case .training(let kind, _, let queued)? = entity.making {
+                                training[kind.rawValue] += queued
+                                trainingPopulation += queued * catalogue.stats(kind).population
+                            }
+                        // A founder is never the computer player's to order (ruled 2026-11-22).
                         default: if kind.isWarfighter { warfighters.append(entity) }
                         }
                     case .building:
@@ -138,8 +158,8 @@ final class Turn {
             }
         }
         // The oldest workers build (`Tuning.builders`), one for every five
-        // workers at first; the view lists entities in id order.
-        let setAside = min(tuning.builders(at: view.age), max(1, workers.count / 5), workers.count)
+        // workers, two from six; the view lists entities in id order.
+        let setAside = min(tuning.builders(at: view.age), max(workers.count >= 6 ? 2 : 1, workers.count / 5), workers.count)
         builders = Array(workers.prefix(setAside))
         workers.removeFirst(setAside)
         if let centre = buildings.first(where: { $0.kind == .building(.townCentre) && Turn.isComplete($0) }) {
@@ -190,20 +210,25 @@ final class Turn {
 
     /// The parts of an action, in their order of priority.
     func play() {
+        memory.farmOrders = []
         remember()
         advance()
         defend()
         build()
         trainAtTownCentre()
         trainArmy()
+        trainNavy()
+        trainDoctors()
         campaign()
+        ferry()
         scout()
         employWorkers()
+        rebalanceWorkers()
         employBuilders()
         trainBoats()
         sendBoats()
-        trainNavy()
         sendNavy()
+        accompanyArmy()
         guardTheShore()
     }
 
@@ -242,15 +267,29 @@ final class Turn {
     /// The population the player will have once its queues are trained.
     var projectedPopulation: Int { view.population + trainingPopulation }
 
-    /// The people queued at a building, counting a training order given in this action.
+    /// The units queued at a maker, a building or a navy ship, counting a training order given in this action.
     func queueLength(_ building: EntityView) -> Int {
         var length = 0
         if case .training(_, _, let queued) = building.activity { length = queued }
+        if case .training(_, _, let queued)? = building.making { length = queued }
         return length + (wasOrdered(building.id) ? 1 : 0)
     }
 
     func completeBuildings(_ kind: BuildingKind) -> [EntityView] {
         buildings.filter { $0.kind == .building(kind) && Turn.isComplete($0) }
+    }
+
+    /// The warfighters it has, those aboard its navy ships counted (all but a few of those aboard are warfighters).
+    var armySize: Int { warfighters.count + aboard }
+
+    /// The land region of the base.
+    var homeLand: Int32 { regions.region(base) }
+
+    /// Whether a point on land can be reached on foot from the base.
+    func isReachableOnFoot(_ point: MapPosition) -> Bool {
+        let home = homeLand
+        let there = regions.region(point)
+        return home <= 0 || there <= 0 || home == there
     }
 
     /// Buildings of a kind standing, begun or ordered.
@@ -261,18 +300,50 @@ final class Turn {
     /// Where opponents are expected: the nearest known opponent's building, or
     /// failing that the middle of the map.
     var front: MapPosition {
-        nearestEnemyBuilding(to: base)?.position
+        (nearestEnemyBuilding(to: base, onFoot: true) ?? nearestEnemyBuilding(to: base))?.position
             ?? MapPosition(x: Double(view.mapWidth) / 2, y: Double(view.mapHeight) / 2)
     }
 
-    func nearestEnemyBuilding(to point: MapPosition) -> KnownBuilding? {
+    /// The known opponent's building nearest a point; with `onFoot`, of those
+    /// on the same land as the point.
+    func nearestEnemyBuilding(to point: MapPosition, onFoot: Bool = false) -> KnownBuilding? {
         var best: KnownBuilding?
         var bestDistance = Double.infinity
-        for building in memory.enemies {
+        for building in memory.enemies where (!onFoot || isReachableFrom(point, building.position))
+            && !memory.passedOver.contains(where: { $0.id == building.id }) {
             let d = building.position.distance(to: point)
             if d < bestDistance { best = building; bestDistance = d }
         }
         return best
+    }
+
+    /// The tiles its workers can walk to as the ground stands now, by
+    /// `y * width + x`: found once in an action, when first needed, from the
+    /// tiles its workers stand on, through every tile a person can stand on.
+    func walkable() -> [Bool] {
+        if let reach { return reach }
+        prepareGround()
+        let w = view.mapWidth, h = view.mapHeight
+        var out = [Bool](repeating: false, count: w * h)
+        guard let ground else { return out }
+        var stack: [Int] = []
+        for person in workers + builders {
+            let t = person.position.tile
+            guard ground.isInside(t), !out[t.y * w + t.x] else { continue }
+            out[t.y * w + t.x] = true
+            stack.append(t.y * w + t.x)
+        }
+        while let here = stack.popLast() {
+            let x = here % w, y = here / w
+            for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] {
+                guard nx >= 0, ny >= 0, nx < w, ny < h, !out[ny * w + nx],
+                      ground.canStand(GridPoint(nx, ny), in: view) else { continue }
+                out[ny * w + nx] = true
+                stack.append(ny * w + nx)
+            }
+        }
+        reach = out
+        return out
     }
 
     /// Makes the ground from the view's buildings and the player's plans, if it is not yet made.
@@ -480,14 +551,40 @@ struct Ground {
     /// Whether a worker can stand beside a building at `origin`: some tile
     /// along a side of its footprint, not at a corner, is open, so that it can
     /// be built at all.
-    func hasOpenSide(size: GridPoint, at origin: GridPoint, in view: PlayerView) -> Bool {
+    /// `reachable` says whether a worker can come to a tile at all (it is on the builders' land).
+    func hasOpenSide(size: GridPoint, at origin: GridPoint, in view: PlayerView,
+                     reachable: (GridPoint) -> Bool = { _ in true }) -> Bool {
+        func open(_ tile: GridPoint) -> Bool { canStand(tile, in: view) && reachable(tile) }
         for x in origin.x..<(origin.x + size.x) {
-            if canStand(GridPoint(x, origin.y - 1), in: view) || canStand(GridPoint(x, origin.y + size.y), in: view) { return true }
+            if open(GridPoint(x, origin.y - 1)) || open(GridPoint(x, origin.y + size.y)) { return true }
         }
         for y in origin.y..<(origin.y + size.y) {
-            if canStand(GridPoint(origin.x - 1, y), in: view) || canStand(GridPoint(origin.x + size.x, y), in: view) { return true }
+            if open(GridPoint(origin.x - 1, y)) || open(GridPoint(origin.x + size.x, y)) { return true }
         }
         return false
+    }
+
+    /// Whether a footprint of `size` at `origin` would close a way through: the
+    /// ring of tiles around it is shut (by water, a building, or a site that
+    /// blocks its tile) on two opposite sides, as on a strip of land between
+    /// waters or a path cut through a wood. A building there could cut a
+    /// player off from its opponents, or from its own land.
+    func closesAWay(size: GridPoint, at origin: GridPoint, in view: PlayerView) -> Bool {
+        func shut(_ x: Int, _ y: Int) -> Bool { !canStand(GridPoint(x, y), in: view) }
+        var left = false, right = false, top = false, bottom = false
+        var y = origin.y - 1
+        while y <= origin.y + size.y {
+            if shut(origin.x - 1, y) { left = true }
+            if shut(origin.x + size.x, y) { right = true }
+            y += 1
+        }
+        var x = origin.x - 1
+        while x <= origin.x + size.x {
+            if shut(x, origin.y - 1) { top = true }
+            if shut(x, origin.y + size.y) { bottom = true }
+            x += 1
+        }
+        return (left && right) || (top && bottom)
     }
 
     func canStand(_ tile: GridPoint, in view: PlayerView) -> Bool {
