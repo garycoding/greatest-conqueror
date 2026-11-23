@@ -80,18 +80,20 @@ struct Pen {
 }
 
 extension Turn {
-    /// Once it has the workers the difficulty sets, it holds the advance's cost
-    /// back from other spending and orders the advance at its town centre when
-    /// the cost is covered.
+    /// Once the difficulty's time for the age has come, it has the workers the
+    /// difficulty sets and, beyond the age of towns, the army, and it has made
+    /// the best tier of each kind of warfighter the age allows at its makers
+    /// (`madeTheAgesTiers`), it holds the advance's cost back from other
+    /// spending and orders the advance at its town centre when the cost is covered.
     func advance() {
         guard view.age.next != nil, let advance = catalogue.advance(from: view.age) else { return }
         // An advance under way: nothing more to do.
         if view.ageProgress > 0 || buildings.contains(where: { if case .advancing = $0.activity { true } else { false } }) {
             return
         }
-        // Beyond the age of farms, an army comes first: the advance waits for the first attack's worth.
-        if view.age >= .farms && warfighters.count < tuning.attackSize { return }
-        guard workers.count + builders.count >= tuning.workersBeforeAdvance,
+        guard view.tick >= tuning.advanceAt(view.age) else { return }
+        if view.age >= .farms && armySize < tuning.armyBeforeAdvance(view.age) { return }
+        guard workers.count + builders.count >= tuning.workersBeforeAdvance, madeTheAgesTiers(),
               let centre = Turn.nearest(completeBuildings(.townCentre), to: base) else { return }
         if canPay(advance.cost, urgent: true) {
             give(.advanceAge(at: centre.id), to: [])
@@ -131,6 +133,7 @@ extension Turn {
         }
         guard !idle.isEmpty else { return }
         var open = OpenSites(view: view, memory: memory)
+        let shares = workShares(open)
         // A worker idle soon after it was sent to a site did not reach it: that
         // site is left alone for a while.
         for worker in idle {
@@ -139,19 +142,66 @@ extension Turn {
             memory.avoidedSites.append(AvoidedSite(site: site, until: view.tick + Tick.seconds(90)))
             open.close(site)
         }
-        let shares = workShares(open)
-        var pens = completeBuildings(.farm).map { Pen(building: $0, herders: 0) }
-        if !pens.isEmpty {
-            for assignment in memory.assignments {
-                guard let pen = assignment.building, let i = pens.firstIndex(where: { $0.building.id == pen }),
-                      view.entity(assignment.worker)?.activity != .idle else { continue }
-                pens[i].herders += 1
+        let pens = farms()
+        send(idle, limit: tuning.assignments, on: &on, shares: shares, open: &open, pens: pens)
+        prospect(open)
+    }
+
+    /// When the plan lacks a resource of which it knows no site on its land,
+    /// someone goes to look at the nearest ground not yet explored: the sites
+    /// the view shows are those on explored ground.
+    func prospect(_ open: OpenSites) {
+        let plan = demand()
+        let lacking = Resource.allCases.filter { plan[$0] > view.resources[$0] }
+        let unknown = lacking.contains { resource in
+            switch resource {
+            case .food: return !open.has(.prey) && !open.has(.fruit) && completeBuildings(.farm).isEmpty
+            case .wood: return !open.has(.tree)
+            case .gold: return !open.has(.gold)
             }
         }
+        guard unknown, let place = frontier(from: base) else { return }
+        lookAt(place)
+    }
+
+    /// The complete farms, each with its farmer: a worker farming on it (a
+    /// builder that finished a farm tends it), or one sent to it and on its way.
+    private func farms() -> [Pen] {
+        var pens = completeBuildings(.farm).map { farm in
+            Pen(building: farm, herders: memory.tendedFarms.contains { $0.id == farm.id } ? 1 : 0)
+        }
+        guard !pens.isEmpty else { return pens }
+        for worker in workers + builders where worker.job == .working(.farm) || (worker.job == nil && worker.activity == .working) {
+            // The view does not say which farm: the nearest without a farmer, beside it.
+            let size = catalogue.stats(.farm).footprint
+            let beside = pens.indices.filter { i in
+                let o = pens[i].building.tile, t = worker.tile
+                return t.x >= o.x - 1 && t.y >= o.y - 1 && t.x <= o.x + size.x && t.y <= o.y + size.y
+            }
+            let free = beside.filter { pens[$0].herders == 0 }
+            let pick = (free.isEmpty ? beside : free).min {
+                pens[$0].building.position.distance(to: worker.position) < pens[$1].building.position.distance(to: worker.position)
+            }
+            if let i = pick { pens[i].herders += 1 }
+        }
+        for assignment in memory.assignments {
+            guard let pen = assignment.building, let i = pens.firstIndex(where: { $0.building.id == pen }),
+                  view.entity(assignment.worker)?.activity == .moving else { continue }
+            pens[i].herders += 1
+        }
+        return pens
+    }
+
+    /// Sends up to `limit` of `workers` to the work each is wanted for, in groups by place.
+    private func send(_ workers: [EntityView], limit: Int, on: inout [Int], shares: [Double], open: inout OpenSites,
+                      pens initial: [Pen], only resource: Resource? = nil) {
+        var pens = initial
         var groups: [(place: Workplace, workers: [EntityID])] = []
         var given = 0
-        for worker in idle where given < tuning.assignments {
-            guard let (task, place) = work(for: worker, on: on, shares: shares, open: &open, pens: pens) else { continue }
+        for worker in workers where given < limit {
+            let found = resource.map { place(for: $0, worker: worker, on: on, open: &open, pens: pens) }
+                ?? work(for: worker, on: on, shares: shares, open: &open, pens: pens)
+            guard let (task, place) = found else { continue }
             on[task.rawValue] += 1
             given += 1
             var assignment = Assignment(worker: worker.id, task: task, site: nil, building: nil, tick: view.tick)
@@ -173,13 +223,15 @@ extension Turn {
         for group in groups {
             switch group.place {
             case .site(let id): give(.gather(units: group.workers, site: id), to: group.workers)
-            case .pen(let id): give(.work(units: group.workers, at: id), to: group.workers)
+            case .pen(let id):
+                give(.work(units: group.workers, at: id), to: group.workers)
+                memory.farmOrders.append(id)
             }
         }
     }
 
     /// What a worker is doing, as far as its activity and its last assignment show.
-    private func task(of worker: EntityView) -> Task? {
+    func task(of worker: EntityView) -> Task? {
         switch worker.activity {
         case .gathering(let kind):
             return Task(site: kind)
@@ -192,33 +244,87 @@ extension Turn {
         }
     }
 
+    /// Moves busy workers from the resource furthest above its share to the one
+    /// furthest below, when each is two workers or more from its share: up to
+    /// `Tuning.moves` in one action, at most every ten seconds, and only
+    /// workers that have been at their work half a minute.
+    func rebalanceWorkers() {
+        guard workers.count >= 6 else { return }
+        if let last = memory.lastMove, view.tick >= last, view.tick - last < Tick.seconds(10) { return }
+        var on = [Int](repeating: 0, count: Task.allCases.count)
+        for worker in workers { if let task = task(of: worker) { on[task.rawValue] += 1 } }
+        var open = OpenSites(view: view, memory: memory)
+        let shares = workShares(open)
+        var have = [Double](repeating: 0, count: Resource.allCases.count)
+        for task in Task.allCases { have[task.resource.rawValue] += Double(on[task.rawValue]) }
+        let total = Double(workers.count)
+        let gaps = Resource.allCases.map { shares[$0.rawValue] * total - have[$0.rawValue] }
+        guard let short = Resource.allCases.max(by: { gaps[$0.rawValue] < gaps[$1.rawValue] }),
+              let over = Resource.allCases.min(by: { gaps[$0.rawValue] < gaps[$1.rawValue] }),
+              gaps[short.rawValue] >= 2, gaps[over.rawValue] <= -2 else { return }
+        let movable = workers.filter { worker in
+            guard isFree(worker), let task = task(of: worker), task.resource == over,
+                  worker.activity == .working || { if case .gathering = worker.activity { true } else { false } }()
+            else { return false }
+            return memory.assignment(of: worker.id).map { view.tick - $0.tick >= Tick.seconds(30) } ?? true
+        }
+        let count = min(tuning.moves, Int(min(gaps[short.rawValue], -gaps[over.rawValue]) / 2))
+        guard count > 0, !movable.isEmpty else { return }
+        memory.lastMove = view.tick
+        send(movable, limit: count, on: &on, shares: shares, open: &open, pens: farms(), only: short)
+    }
+
     /// The share of the workers each resource should have, by `Resource.rawValue`:
-    /// a table by age, leaning toward what the player is saving for, and nothing
-    /// for a resource it cannot gather.
-    private func workShares(_ open: OpenSites) -> [Double] {
+    /// what the player's plan for the coming age still lacks of each
+    /// (`demand`), with a tenth of the whole plan's cost besides so that no
+    /// resource is left untended, each divided by the rate at which a worker
+    /// gathers it, so that the shares are of workers; nothing for a resource it
+    /// cannot gather.
+    func workShares(_ open: OpenSites) -> [Double] {
+        let plan = demand()
+        let worker = catalogue.stats(.worker)
         var share = [Double](repeating: 0, count: Resource.allCases.count)
-        func set(_ resource: Resource, _ value: Double) { share[resource.rawValue] = value }
-        if view.age == .towns {
-            set(.food, 0.5); set(.wood, 0.35); set(.gold, 0.15)
-        } else {
-            set(.food, 0.4); set(.wood, 0.3); set(.gold, 0.3)
-            // The castle needs wood.
-            if view.age >= .cannons { set(.wood, 0.35); set(.gold, 0.3); set(.food, 0.35) }
+        for resource in Resource.allCases {
+            let lacking = max(0, plan[resource] - view.resources[resource])
+            let rate = resource == .food ? max(worker.gathers(.food), worker.farming) : worker.gathers(resource)
+            share[resource.rawValue] = (Double(lacking) + 0.1 * Double(plan[resource]) + 10) / max(0.05, rate)
         }
-        for resource in Resource.allCases where share[resource.rawValue] > 0 {
-            let short = max(0, reserve[resource] - view.resources[resource])
-            share[resource.rawValue] *= 1 + min(1, Double(short) / 200)
-        }
-        if !open.has(.prey) && !open.has(.fruit) && completeBuildings(.farm).isEmpty { set(.food, 0) }
-        if !open.has(.tree) { set(.wood, 0) }
-        if !open.has(.gold) { set(.gold, 0) }
+        if !open.has(.prey) && !open.has(.fruit) && completeBuildings(.farm).isEmpty { share[Resource.food.rawValue] = 0 }
+        if !open.has(.tree) { share[Resource.wood.rawValue] = 0 }
+        if !open.has(.gold) { share[Resource.gold.rawValue] = 0 }
         let total = share.reduce(0, +)
         return total > 0 ? share.map { $0 / total } : share
     }
 
+    /// What the player's plan for the coming age costs, read from the tables:
+    /// the advance to the next age (`ages.csv`), the buildings it still wants
+    /// (`wanted`), the workers, warfighters, doctors and navy ships it still
+    /// means to make, and what it holds back.
+    func demand() -> ResourceAmounts {
+        if let cached = planned { return cached }
+        var plan = reserve
+        if view.age.next != nil, let advance = catalogue.advance(from: view.age) { plan = plan + advance.cost }
+        for (kind, _, _) in wanted() { plan = plan + catalogue.stats(kind).cost }
+        let workersShort = tuning.workers(at: view.age) + tuning.builders(at: view.age) - workers.count - builders.count
+        if workersShort > 0 { plan = plan + catalogue.stats(.worker).cost.share(Double(min(workersShort, 10))) }
+        // The army: up to ten more of the best tiers it can make in this age, or in the next if it can make none yet.
+        let kinds = bestTiers(at: view.age).isEmpty ? (view.age.next.map { bestTiers(at: $0) } ?? []) : bestTiers(at: view.age)
+        let armyShort = min(10, max(0, tuning.armyCap(at: view.age) - armySize))
+        if !kinds.isEmpty && armyShort > 0 {
+            var each = ResourceAmounts()
+            for kind in kinds { each = each + catalogue.stats(kind).cost }
+            for resource in Resource.allCases { each[resource] = each[resource] * armyShort / kinds.count }
+            plan = plan + each
+        }
+        if doctorsWanted > doctors.count { plan = plan + catalogue.stats(.doctor).cost.share(Double(doctorsWanted - doctors.count)) }
+        if navyWanted > navy.count { plan = plan + catalogue.stats(.navyShip).cost.share(Double(navyWanted - navy.count)) }
+        planned = plan
+        return plan
+    }
+
     /// The work for an idle worker: the resource furthest below its share, at
     /// the nearest suitable place. A resource with no such place gives way to the next.
-    private func work(for worker: EntityView, on: [Int], shares: [Double], open: inout OpenSites,
+    func work(for worker: EntityView, on: [Int], shares: [Double], open: inout OpenSites,
                       pens: [Pen]) -> (Task, Workplace)? {
         var have = [Int](repeating: 0, count: Resource.allCases.count)
         for task in Task.allCases { have[task.resource.rawValue] += on[task.rawValue] }
@@ -238,7 +344,7 @@ extension Turn {
         return nil
     }
 
-    private func place(for resource: Resource, worker: EntityView, on: [Int], open: inout OpenSites,
+    func place(for resource: Resource, worker: EntityView, on: [Int], open: inout OpenSites,
                        pens: [Pen]) -> (Task, Workplace)? {
         switch resource {
         case .food:
@@ -307,7 +413,15 @@ extension Turn {
             Turn.isComplete(building) && building.health * 10 < building.maxHealth * 7
                 && !intruders.contains { $0.position.distance(to: building.position) <= 8 }
         }
-        let jobs = unfinished.isEmpty ? damaged : unfinished
+        // A builder idle soon after it was sent to a building did not reach it:
+        // that building is left alone for a while.
+        for errand in memory.errands where view.tick - errand.tick < Tick.seconds(8) && view.tick > errand.tick {
+            guard view.entity(errand.builder)?.activity == .idle,
+                  !memory.unreachable.contains(where: { $0.id == errand.building }) else { continue }
+            memory.unreachable.append(Avoided(id: errand.building, until: view.tick + Tick.seconds(90)))
+        }
+        let open = { (building: EntityView) in !self.memory.unreachable.contains { $0.id == building.id } }
+        let jobs = (unfinished.filter(open).isEmpty ? damaged : unfinished).filter(open)
         var groups: [(building: EntityID, builders: [EntityID])] = []
         for builder in builders where isFree(builder) && builder.activity == .idle && !planned.contains(builder.id) {
             guard let job = Turn.nearest(jobs, to: builder.position) else { break }
@@ -317,6 +431,12 @@ extension Turn {
                 groups.append((job.id, [builder.id]))
             }
         }
-        for group in groups { give(.work(units: group.builders, at: group.building), to: group.builders) }
+        for group in groups {
+            give(.work(units: group.builders, at: group.building), to: group.builders)
+            for builder in group.builders {
+                memory.errands.removeAll { $0.builder == builder }
+                memory.errands.append(Errand(builder: builder, building: group.building, tick: view.tick))
+            }
+        }
     }
 }

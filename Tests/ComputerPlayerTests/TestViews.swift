@@ -72,6 +72,8 @@ enum TestViews {
         view.populationLimit = 15
         view.ageProgress = 0
         view.resources = ResourceAmounts([.food: 420, .wood: 260, .gold: 50])
+        // Past the time every difficulty but `easy` waits for before it advances (`Tuning.advanceAt`).
+        view.tick = Tick.seconds(5 * 60)
         return view
     }
 
@@ -126,9 +128,10 @@ enum TestViews {
         room.tick = opening.tick + Tick.seconds(2)
         views.append(room)
         var ready = openingReadyToAdvance()
-        ready.tick = opening.tick + Tick.seconds(4)
+        ready.tick = opening.tick + Tick.seconds(4 * 60)
         views.append(ready)
         var unknown = Samples.farmsAgeSkirmish()
+        // After the advance, as the views go on.
         unknown.remove(unknown.owned(by: enemy).map(\.id))
         unknown.events = []
         unknown.tick = Tick.seconds(590)

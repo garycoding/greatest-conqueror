@@ -119,9 +119,9 @@ func reportHowEqualsPlay() {
 }
 
 /// Two hard computer players on seed 5: both reach the age of farms, and the
-/// match ends with a winner. (Cities of Progress asked for its third age; the
-/// computer players of Greatest Conqueror, with no warfighter before the age
-/// of farms, win before the age of ships until they are taught the new rules.)
+/// match ends with a winner. (With no warfighter before the age of farms, an
+/// attack comes early in that age; the later ages are followed by
+/// `aHardComputerPlayerReachesTheAgeOfHospitalsAndMakesEveryTier`.)
 @Test func twoHardComputerPlayersReachTheAgeOfFarmsAndFinish() {
     var host = Host(setup: computerMatch(seed: 5, size: 64, difficulties: [.hard, .hard]))
     var reached = false

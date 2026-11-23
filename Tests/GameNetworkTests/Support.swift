@@ -8,9 +8,11 @@ import Testing
 
 /// The tests that connect Macs, here a host and its clients on this Mac's
 /// loopback interface. They run one at a time, so that the timing of one does
-/// not disturb another.
+/// not disturb another. Each is allowed ten minutes: on the shared CI runner,
+/// with the computer player's long match tests running beside them, they have
+/// taken more than two (680 s for the suite on 2026-11-22, against 5 s here).
 @MainActor
-@Suite(.serialized, .timeLimit(.minutes(2)))
+@Suite(.serialized, .timeLimit(.minutes(10)))
 struct LANTests {}
 
 let testBuild = "test-build"

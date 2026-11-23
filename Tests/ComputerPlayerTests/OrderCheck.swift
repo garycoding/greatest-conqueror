@@ -44,6 +44,19 @@ enum OrderCheck {
             if case .underConstruction = entity.activity { return false }
             return true
         }
+        // As `Simulation.atShore`: an open land tile within one and a half tiles.
+        func atShore(_ ship: EntityView) -> Bool {
+            let t = ship.position.tile
+            for y in (t.y - 2)...(t.y + 2) {
+                for x in (t.x - 2)...(t.x + 2) {
+                    let tile = GridPoint(x, y)
+                    guard tile.x >= 0, tile.y >= 0, tile.x < view.mapWidth, tile.y < view.mapHeight,
+                          view.terrain(at: tile).isPassable, tile.centre.distance(to: ship.position) <= 1.5 else { continue }
+                    return true
+                }
+            }
+            return false
+        }
         func command(_ units: [EntityID], _ what: String, _ allowed: (UnitKind) -> Bool) {
             if units.isEmpty { problems.append("\(what): no one ordered") }
             for id in units {
@@ -112,6 +125,18 @@ enum OrderCheck {
                 if view.isAlly(struck.owner) { problems.append("attack: \(target) belongs to an ally or itself") }
                 if struck.kind == .unit(.car) { problems.append("attack: \(target) is a car") }
             case .train(let at, let unit):
+                if person(at) == .navyShip, let ship = own(at) {
+                    // A navy ship makes units (requirement 17), at the shore only (requirement 18).
+                    if catalogue.production(of: unit, at: .unit(.navyShip)).map({ $0.age > view.age }) ?? true {
+                        problems.append("train: a navy ship does not make \(unit) in the age of \(view.age.name)")
+                    }
+                    if !atShore(ship) { problems.append("train: navy ship \(at) is not at the shore") }
+                    if !trainedAt.insert(at).inserted { problems.append("train: two orders at \(at)") }
+                    spent = spent + catalogue.stats(unit).cost
+                    population += catalogue.stats(unit).population
+                    if population > view.populationLimit { problems.append("train: \(unit) exceeds the population limit") }
+                    break
+                }
                 guard let place = building(at) else {
                     problems.append("train: \(at) is not a building it owns")
                     break
@@ -133,7 +158,26 @@ enum OrderCheck {
                 }
                 if view.ageProgress > 0 { problems.append("advanceAge: an advance is under way") }
                 spent = spent + advance.cost
-            case .cancelTraining, .setPaused, .stop, .heal, .board, .land, .found:
+            case .board(let units, let ship):
+                // Soldiers, knights, cannons, workers and doctors board a navy ship of its own at the shore.
+                command(units, "board") { $0.boardsShips }
+                if let vessel = own(ship), vessel.kind == .unit(.navyShip) {
+                    if !atShore(vessel) { problems.append("board: navy ship \(ship) is not at the shore") }
+                    if units.count > catalogue.shipCargo - (vessel.passengers ?? 0) {
+                        problems.append("board: more troops than navy ship \(ship) has room for")
+                    }
+                } else {
+                    problems.append("board: \(ship) is not a navy ship it owns")
+                }
+            case .land(let ships, let at):
+                command(ships, "land") { $0 == .navyShip }
+                for id in ships where (own(id)?.passengers ?? 0) == 0 { problems.append("land: navy ship \(id) carries no one") }
+                let tile = at.tile
+                if tile.x < 0 || tile.y < 0 || tile.x >= view.mapWidth || tile.y >= view.mapHeight
+                    || !view.terrain(at: tile).isPassable {
+                    problems.append("land: \(at) is not on land")
+                }
+            case .cancelTraining, .setPaused, .stop, .heal, .found:
                 problems.append("unexpected order \(order)")
             }
         }
