@@ -1,0 +1,11 @@
+name,value
+tree_holds,100
+deer_holds,150
+gold_holds,400
+fish_holds,200
+bush_holds,150
+farm_yield,300
+farm_reseed_wood,60
+start_food,200
+start_wood,250
+start_gold,0

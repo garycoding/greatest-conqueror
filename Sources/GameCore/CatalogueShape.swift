@@ -3,10 +3,10 @@
 
 // The figures of the catalogue that the tables do not hold (requirement 25
 // names costs, health, attacks, building and production times, gathering,
-// healing and repair rates and radii, and the advances; these are the rest):
-// how each kind moves, sees, is armoured and is housed, the shape of the
-// ground's sites, the start of a match, the damage bonuses and the car. They
-// stay in the code until a later step moves them into the tables.
+// healing and repair rates and radii, the advances, and in `resources.csv`
+// what the sites hold, the farm and the stock at the start; these are the
+// rest): how each kind moves, sees, is armoured and is housed, the workers a
+// match begins with, the damage bonuses and the car.
 
 /// What the tables leave to the code about a unit kind.
 public struct UnitShape: Hashable, Sendable {
@@ -33,9 +33,7 @@ public struct BuildingShape: Hashable, Sendable {
 public struct CatalogueShape: Sendable {
     public var units: [UnitShape]
     public var buildings: [BuildingShape]
-    public var gathering: GatheringStats
     public var bonuses: [Bonus]
-    public var startingResources: ResourceAmounts
     public var startingPeople: Int
     public var founderPeople: Int
     /// How many troops a navy ship carries (requirement 16).
@@ -47,7 +45,6 @@ public struct CatalogueShape: Sendable {
     public func building(_ kind: BuildingKind) -> BuildingShape { buildings.first { $0.kind == kind }! }
 
     public static let standard: CatalogueShape = {
-        func cost(_ pairs: [Resource: Int]) -> ResourceAmounts { ResourceAmounts(pairs) }
         let units: [UnitShape] = [
             UnitShape(kind: .worker, armour: 0, speed: 1.0, sight: 4, population: 1),
             UnitShape(kind: .doctor, armour: 0, speed: 1.0, sight: 5, population: 1),
@@ -82,8 +79,6 @@ public struct CatalogueShape: Sendable {
             BuildingShape(kind: .cannonFactory, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
             BuildingShape(kind: .hospital, armour: 1, footprint: GridPoint(3, 3), sight: 4, housing: 0),
         ]
-        let gathering = GatheringStats(farmYield: 300, farmReseed: cost([.wood: 60]),
-                                       siteAmount: [.tree: 100, .prey: 150, .gold: 400, .fish: 200, .fruit: 150])
         let bonuses: [Bonus] = [
             Bonus(.soldier1, against: .knight1, 3),
             Bonus(.soldier2, against: .soldier1, 1.5),
@@ -94,8 +89,7 @@ public struct CatalogueShape: Sendable {
             Bonus(.soldier4, against: .knight2, 2), Bonus(.soldier4, against: .knight3, 2), Bonus(.soldier4, against: .soldier3, 1.5), Bonus(.soldier4, against: .soldier2, 1.5),
             Bonus(.cannon2, against: .soldier4, 1.5), Bonus(.cannon2, against: .soldier3, 1.5),
         ]
-        return CatalogueShape(units: units, buildings: buildings, gathering: gathering, bonuses: bonuses,
-                              startingResources: cost([.food: 200, .wood: 250]), startingPeople: 3,
+        return CatalogueShape(units: units, buildings: buildings, bonuses: bonuses, startingPeople: 3,
                               founderPeople: 2, shipCargo: 20, populationMaximum: 200, car: CarStats(killRadius: 11))
     }()
 }

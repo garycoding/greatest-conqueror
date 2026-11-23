@@ -35,16 +35,25 @@ public struct TableFolder: Sendable {
     /// folder's tables could not be used, why, in words for the player.
     public struct Loaded: Sendable {
         public var catalogue: Catalogue
+        /// The texts the catalogue was read from: the folder's, or the defaults where those could not be used.
+        public var texts: TableTexts
         public var problem: String?
     }
 
+    /// Writes every file of the tables into the folder, replacing its files (the
+    /// editor's Apply, and a zip loaded; requirements 27 and 28).
+    public func write(_ texts: TableTexts) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for file in TableFile.allCases { try texts[file].write(to: url(file), atomically: true, encoding: .utf8) }
+    }
+
     /// Seeds the folder and reads its tables. A file that is missing, cannot be
-    /// read or holds a fault leaves the default tables in use, all three, and
+    /// read or holds a fault leaves the default tables in use, every file of them, and
     /// the fault is reported with its file, line and column.
     public func load(defaults: TableTexts = .defaults) -> Loaded {
         func fallback(_ why: String) -> Loaded {
             let catalogue = (try? Catalogue(tables: defaults)) ?? .standard
-            return Loaded(catalogue: catalogue,
+            return Loaded(catalogue: catalogue, texts: defaults,
                           problem: "The tables in \(folder.path) could not be used, so the game plays by its own: \(why)")
         }
         do {
@@ -61,7 +70,7 @@ public struct TableFolder: Sendable {
             }
         }
         do {
-            return Loaded(catalogue: try Catalogue(tables: texts), problem: nil)
+            return Loaded(catalogue: try Catalogue(tables: texts), texts: texts, problem: nil)
         } catch let fault as TableError {
             return fallback("\(fault).")
         } catch {

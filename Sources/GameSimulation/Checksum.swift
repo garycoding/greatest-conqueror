@@ -81,6 +81,7 @@ extension Simulation {
         d.add(catalogue)
         d.add(tick)
         d.add(isPaused)
+        d.add(pausedBy?.rawValue ?? -1)
         if case .won(let team) = outcome { d.add(team.rawValue) } else { d.add(-1) }
         d.add(nextEntity)
         var copy = generator

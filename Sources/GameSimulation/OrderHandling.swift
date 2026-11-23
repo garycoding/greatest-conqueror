@@ -25,6 +25,7 @@ extension Simulation {
         if case .setPaused(let paused) = order {
             guard players[p].isHuman else { return .refused(.notYours) }
             isPaused = paused
+            pausedBy = paused ? player : nil
             return .accepted
         }
         // A defeated player whose team stands still gives orders: a person

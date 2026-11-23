@@ -51,8 +51,11 @@ public final class MatchClient {
     public private(set) var seat: PlayerID?
     /// The match being set up, as the host last sent it.
     public private(set) var lobby: Lobby?
-    /// What the host sent when the match started, or when this Mac rejoined it.
+    /// What the host sent when the match started, or when this Mac rejoined it;
+    /// its catalogue follows the host's tables as they change (`NetMessage.tables`).
     public private(set) var start: MatchStart?
+    /// The host's tables, by which the match is played and drawn on this Mac (requirement 29).
+    public var catalogue: Catalogue? { start?.catalogue }
     /// The person's session, from the first view of the match on; the same
     /// session for the whole match, across reconnections.
     public private(set) var session: PlayerSession?
@@ -332,6 +335,10 @@ public final class MatchClient {
         case .pong(let n):
             if let sent = pings.removeValue(forKey: n) { roundTrip = sent.duration(to: .now) }
             lastPong = max(lastPong, n)
+        case .tables(let catalogue, _):
+            // The host's new tables: the session plays by them, and the app draws by them.
+            start?.catalogue = catalogue
+            session?.catalogue = catalogue
         case .hello, .chooseCivilization, .order, .setSpeed, .ping:
             break
         }

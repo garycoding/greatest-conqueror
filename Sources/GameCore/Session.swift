@@ -26,7 +26,11 @@ public struct Camera: Hashable, Codable, Sendable {
 @Observable
 public final class PlayerSession {
     public private(set) var view: PlayerView
-    public let catalogue: Catalogue
+    /// The tables of the match: the host's, which its editor may replace during play.
+    public var catalogue: Catalogue { didSet { if catalogue != oldValue { tablesRevision += 1 } } }
+    /// How many times the tables have changed in this match, so that what is
+    /// made from them (the map's drawing) can be made anew.
+    public private(set) var tablesRevision = 0
     /// Selected entities, in the order they were selected.
     public var selection: [EntityID] = []
     public var camera: Camera

@@ -92,6 +92,9 @@ public protocol GameSimulating: Codable, Sendable {
     mutating func apply(_ order: Order, from player: PlayerID) -> OrderResult
     /// Advance one tick (1 / `Tick.rate` seconds), unless paused.
     mutating func step()
+    /// Play by new tables from the next tick (requirement 27): the host's
+    /// editor's Apply. The checksum counts them from then on.
+    mutating func adopt(_ catalogue: Catalogue)
     /// What the player may know now, with the events since the player's last view.
     mutating func view(for player: PlayerID) -> PlayerView
     /// The same for a computer player playing that seat, which always explores

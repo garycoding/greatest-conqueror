@@ -18,7 +18,8 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     public private(set) var computers: [Computer]
     /// The player each computer controls, in the order of `computers`.
     public private(set) var computerPlayers: [PlayerID]
-    public let catalogue: Catalogue
+    /// The tables the match plays by; the host's editor may replace them (`adopt`).
+    public private(set) var catalogue: Catalogue
     /// People whose Macs have left and whose seats are not yet handed on: while
     /// any remain the match holds still (ruling of 2026-11-18). Not saved: a
     /// reopened match has its own rule for absent people.
@@ -102,6 +103,13 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     }
 
     public func checksum() -> UInt64 { simulation.checksum() }
+
+    /// The match plays by new tables from the next tick, the computer players
+    /// with it (requirement 27).
+    public mutating func adopt(_ catalogue: Catalogue) {
+        self.catalogue = catalogue
+        simulation.adopt(catalogue)
+    }
 
     /// Whether a computer player now plays this player's seat.
     public func isComputer(_ player: PlayerID) -> Bool { computerPlayers.contains(player) }

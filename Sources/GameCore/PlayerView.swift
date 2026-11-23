@@ -154,12 +154,15 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public var events: [GameEvent]
     public var outcome: MatchOutcome?
     public var isPaused: Bool
+    /// The person who paused the match, whilst one has (requirement 30); nil
+    /// where it is not paused, or is held for a person whose Mac has left.
+    public var pausedBy: PlayerID?
 
     public init(tick: Int, player: PlayerID, age: Age, resources: ResourceAmounts, population: Int,
                 populationLimit: Int, ageProgress: Double, players: [PlayerSummary],
                 mapWidth: Int, mapHeight: Int, terrain: [Terrain], visibility: [TileVisibility],
                 entities: [EntityView], sites: [ResourceSite], outcrops: [GridPoint] = [], events: [GameEvent],
-                outcome: MatchOutcome?, isPaused: Bool) {
+                outcome: MatchOutcome?, isPaused: Bool, pausedBy: PlayerID? = nil) {
         self.outcrops = outcrops
         self.tick = tick; self.player = player; self.age = age; self.resources = resources
         self.population = population; self.populationLimit = populationLimit; self.ageProgress = ageProgress
@@ -167,6 +170,7 @@ public struct PlayerView: Hashable, Codable, Sendable {
         self.mapHeight = mapHeight; self.terrain = terrain; self.visibility = visibility
         self.entities = entities; self.sites = sites; self.events = events; self.outcome = outcome
         self.isPaused = isPaused
+        self.pausedBy = pausedBy
     }
 
     public func visibility(at p: GridPoint) -> TileVisibility { visibility[p.y * mapWidth + p.x] }
