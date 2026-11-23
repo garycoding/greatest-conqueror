@@ -487,11 +487,13 @@ enum OrderFixture { static let expected: UInt64 = 0x4349_F29F_4C4F_E9D2 }
     }
 }
 
-/// Two milliseconds in a release build, as the game runs; a debug build on a
-/// shared CI runner is several times slower, and slower still when its other
-/// test targets run beside it (12.8 ms seen on 2026-11-19), so it is allowed twenty-five.
+/// Two milliseconds in a release build, as the game runs (0.16 ms measured on
+/// 2026-11-22 with the computer player of step 7). An unoptimised debug build
+/// is far slower, and the shared CI runner about seven times slower again with
+/// its other test targets beside it: 10.7 ms here, 77 ms on CI. The debug limit
+/// only guards against a gross slowdown, so it is a hundred.
 #if DEBUG
-private let decisionLimit = Duration.milliseconds(25)
+private let decisionLimit = Duration.milliseconds(100)
 #else
 private let decisionLimit = Duration.milliseconds(2)
 #endif
