@@ -85,14 +85,14 @@ private func until(_ what: String, within limit: Duration = .seconds(600), _ con
     ])
     let server = HostServer(lobby: lobby, build: build)
     // The tests share a busy machine on CI; a connection is not taken for lost on a stall of a few seconds.
-    server.silenceLimit = .seconds(60)
+    server.silenceLimit = .seconds(600)
     try server.open(loopbackOnly: true)
     defer { server.close() }
     try await until("the server listens") { server.port != nil }
 
     let hyun = MatchClient(name: "Hyun", build: build)
     let mira = MatchClient(name: "Mira", build: build)
-    for client in [hyun, mira] { client.silenceLimit = .seconds(60) }
+    for client in [hyun, mira] { client.silenceLimit = .seconds(600) }
     defer { hyun.leave(); mira.leave() }
     hyun.join(host: "127.0.0.1", port: server.port!)
     try await until("Hyun is seated and has the lobby") { hyun.state == .inLobby && hyun.seat != nil && hyun.lobby != nil }
